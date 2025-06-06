@@ -56,7 +56,8 @@
     - join
     - for_each
     - for_each_indexed
-###
+
+  ###
     - seq::iota
     - seq::range
     - seq::unfold
