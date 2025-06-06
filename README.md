@@ -32,9 +32,50 @@
   - find_of
 
 ## zx::sequence
+    - maybe_front
+    - maybe_at
+    - find_if
+    - index_of
+    - copy
+    - accumulate
+    - inspect
+    - inspect_indexed
+    - transform
+    - transform_indexed
+    - filter
+    - filter_indexed
+    - transform_maybe
+    - transform_maybe_indexed
+    - drop_while
+    - drop_while_indexed
+    - take_while
+    - take_while_indexed
+    - drop
+    - take
+    - step
+    - join
+    - for_each
+    - for_each_indexed
+###
+    - seq::iota
+    - seq::range
+    - seq::unfold
+    - seq::view
+    - seq::owning
+    - seq::repeat
+    - seq::single
+    - seq::concat
+    - seq::vec
+    - seq::zip
+    - seq::init
+    - seq::init_infinite
+    - seq::get_lines
 
 ## functional
   ### pipe
+  ### do_all
+  ### apply
+  ### with
 
 ## type traits
 
