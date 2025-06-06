@@ -31,6 +31,8 @@ using u32 = std::uint32_t;
 using i32 = std::int32_t;
 using u64 = std::uint64_t;
 using i64 = std::int64_t;
+using f32 = float;
+using f64 = double;
 
 namespace detail
 {
@@ -3250,11 +3252,11 @@ auto operator+(const sequence<L>& lhs, const sequence<R>& rhs) -> sequence<std::
     return concat(lhs, rhs);
 }
 
-struct glyph
+struct char32
 {
     char32_t m_data;
 
-    friend std::ostream& operator<<(std::ostream& os, const glyph& item)
+    friend std::ostream& operator<<(std::ostream& os, const char32& item)
     {
         std::array<char, 4> data;
         const span<char> v = std::invoke(
@@ -3272,7 +3274,7 @@ struct glyph
         return os;
     }
 
-    static auto read(std::string_view txt) -> maybe<std::pair<glyph, std::string_view>>
+    static auto read(std::string_view txt) -> maybe<std::pair<char32, std::string_view>>
     {
         std::setlocale(LC_ALL, "en_US.utf8");
         std::mbstate_t state{};
@@ -3291,49 +3293,49 @@ struct glyph
             return {};
         }
         txt.remove_prefix(rc);
-        return std::pair{ glyph{ c32 }, txt };
+        return std::pair{ char32{ c32 }, txt };
     }
 
-    static auto to_glyphs(std::string_view text) -> sequence<glyph>
+    static auto split(std::string_view text) -> sequence<char32>
     {
-        return sequence<glyph>{ [=]() mutable -> iteration_result_t<glyph>
-                                {
-                                    if (auto n = read(text))
-                                    {
-                                        const auto [ch, remainder] = *n;
-                                        text = remainder;
-                                        return ch;
-                                    }
-                                    return {};
-                                } };
+        return sequence<char32>{ [=]() mutable -> iteration_result_t<char32>
+                                 {
+                                     if (auto n = read(text))
+                                     {
+                                         const auto [ch, remainder] = *n;
+                                         text = remainder;
+                                         return ch;
+                                     }
+                                     return {};
+                                 } };
     }
 
-    friend bool operator==(const glyph& lhs, const glyph& rhs)
+    friend bool operator==(const char32& lhs, const char32& rhs)
     {
         return lhs.m_data == rhs.m_data;
     }
 
-    friend bool operator!=(const glyph& lhs, const glyph& rhs)
+    friend bool operator!=(const char32& lhs, const char32& rhs)
     {
         return !(lhs == rhs);
     }
 
-    friend bool operator<(const glyph& lhs, const glyph& rhs)
+    friend bool operator<(const char32& lhs, const char32& rhs)
     {
         return lhs.m_data < rhs.m_data;
     }
 
-    friend bool operator>(const glyph& lhs, const glyph& rhs)
+    friend bool operator>(const char32& lhs, const char32& rhs)
     {
         return rhs < lhs;
     }
 
-    friend bool operator<=(const glyph& lhs, const glyph& rhs)
+    friend bool operator<=(const char32& lhs, const char32& rhs)
     {
         return !(lhs > rhs);
     }
 
-    friend bool operator>=(const glyph& lhs, const glyph& rhs)
+    friend bool operator>=(const char32& lhs, const char32& rhs)
     {
         return !(lhs < rhs);
     }
