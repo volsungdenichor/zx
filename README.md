@@ -1,15 +1,15 @@
 # zx
 
-## result
+## zx::result
   - transform
   - and_then
 
-## maybe
+## zx::maybe
   - transform
   - and_then
   - filter
 
-## iterator_range
+## zx::iterator_range
   - empty
   - size
   - ssize
@@ -31,5 +31,12 @@
   - slice
   - find_of
 
+## zx::sequence
+
 ## functional
   ### pipe
+
+## type traits
+
+## integer types
+  - i8, u8, i16, u16, i32, u32, i64, u64
