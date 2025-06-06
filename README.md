@@ -56,21 +56,19 @@
     - join
     - for_each
     - for_each_indexed
-
-  ###
-    - seq::iota
-    - seq::range
-    - seq::unfold
-    - seq::view
-    - seq::owning
-    - seq::repeat
-    - seq::single
-    - seq::concat
-    - seq::vec
-    - seq::zip
-    - seq::init
-    - seq::init_infinite
-    - seq::get_lines
+    - iota
+    - range
+    - unfold
+    - view
+    - owning
+    - repeat
+    - single
+    - concat
+    - vec
+    - zip
+    - init
+    - init_infinite
+    - get_lines
 
 ## functional
   ### pipe
