@@ -34,6 +34,17 @@ using i64 = std::int64_t;
 using f32 = float;
 using f64 = double;
 
+template <class E = std::runtime_error, class... Args>
+void assert_that(bool condition, Args&&... args)
+{
+    if (!condition)
+    {
+        std::stringstream ss;
+        (ss << ... << std::forward<Args>(args));
+        throw E{ ss.str() };
+    }
+}
+
 namespace detail
 {
 
@@ -360,6 +371,13 @@ constexpr auto to_error(In&& in) -> Result
 using detail::error;
 using detail::error_wrapper;
 
+struct bad_result_access : std::runtime_error
+{
+    explicit bad_result_access(const std::string& msg) : std::runtime_error{ msg }
+    {
+    }
+};
+
 template <class T, class E>
 struct result
 {
@@ -396,34 +414,37 @@ struct result
         return std::holds_alternative<value_storage>(m_storage);
     }
 
-    constexpr const value_type& value() const&
-    {
-        return std::get<value_storage>(m_storage);
-    }
-
-    constexpr value_type& value() &
-    {
-        return std::get<value_storage>(m_storage);
-    }
-
-    constexpr value_type&& value() &&
-    {
-        return std::get<value_storage>(std::move(m_storage));
-    }
-
     constexpr const value_type& operator*() const&
     {
+        assert_that<bad_result_access>(has_value(), "accessing the value of an empty 'result' object");
         return std::get<value_storage>(m_storage);
     }
 
     constexpr value_type& operator*() &
     {
+        assert_that<bad_result_access>(has_value(), "accessing the value of an empty 'result' object");
         return std::get<value_storage>(m_storage);
     }
 
     constexpr value_type&& operator*() &&
     {
+        assert_that<bad_result_access>(has_value(), "accessing the value of an empty 'result' object");
         return std::get<value_storage>(std::move(m_storage));
+    }
+
+    constexpr const value_type& value() const&
+    {
+        return **this;
+    }
+
+    constexpr value_type& value() &
+    {
+        return **this;
+    }
+
+    constexpr value_type&& value() &&
+    {
+        return *std::move(*this);
     }
 
     constexpr const value_type* operator->() const&
@@ -595,6 +616,7 @@ struct result<T&, E>
 
     constexpr value_type& operator*() const
     {
+        assert_that<bad_result_access>(has_value(), "accessing the value of an empty 'result' object");
         return std::get<value_storage>(m_storage);
     }
 
@@ -605,21 +627,24 @@ struct result<T&, E>
 
     constexpr value_type& value() const
     {
-        return std::get<value_storage>(m_storage);
+        return **this;
     }
 
     constexpr const error_type& error() const&
     {
+        assert_that<bad_result_access>(has_value(), "accessing the error of an 'result' object with value");
         return std::get<error_storage>(m_storage).m_error;
     }
 
     constexpr error_type& error() &
     {
+        assert_that<bad_result_access>(has_value(), "accessing the error of an 'result' object with value");
         return std::get<error_storage>(m_storage).m_error;
     }
 
     constexpr error_type&& error() &&
     {
+        assert_that<bad_result_access>(has_value(), "accessing the error of an 'result' object with value");
         return std::get<error_storage>(std::move(m_storage)).m_error;
     }
 
@@ -887,41 +912,31 @@ private:
 };
 
 template <class E>
-struct formatter<result<void, E>>
+std::ostream& operator<<(std::ostream& os, const result<void, E>& item)
 {
-    void format(std::ostream& os, const result<void, E>& item) const
+    if (item.has_value())
     {
-        if (item.has_value())
-        {
-            format_to(os, "ok()");
-        }
-        else
-        {
-            format_to(os, "error(", item.error(), ")");
-        }
+        format_to(os, "ok()");
     }
-};
-
-template <class T, class E>
-struct formatter<result<T, E>>
-{
-    void format(std::ostream& os, const result<T, E>& item) const
+    else
     {
-        if (item.has_value())
-        {
-            format_to(os, "ok(", item.value(), ")");
-        }
-        else
-        {
-            format_to(os, "error(", item.error(), ")");
-        }
+        format_to(os, "error(", item.error(), ")");
     }
-};
+    return os;
+}
 
 template <class T, class E>
 std::ostream& operator<<(std::ostream& os, const result<T, E>& item)
 {
-    return format_to(os, item);
+    if (item.has_value())
+    {
+        format_to(os, "ok(", item.value(), ")");
+    }
+    else
+    {
+        format_to(os, "error(", item.error(), ")");
+    }
+    return os;
 }
 
 template <class Func, class... Args>
@@ -985,6 +1000,13 @@ struct is_maybe<maybe<T>> : std::true_type
 
 }  // namespace detail
 
+struct bad_maybe_access : std::runtime_error
+{
+    explicit bad_maybe_access(const std::string& msg) : std::runtime_error{ msg }
+    {
+    }
+};
+
 template <class T>
 struct maybe
 {
@@ -1019,11 +1041,13 @@ struct maybe
 
     constexpr value_type& operator*() &
     {
+        assert_that<bad_maybe_access>(has_value(), "accessing value of an empty 'maybe' object");
         return *m_storage;
     }
 
     constexpr value_type&& operator*() &&
     {
+        assert_that<bad_maybe_access>(has_value(), "accessing value of an empty 'maybe' object");
         return *std::move(m_storage);
     }
 
@@ -1039,17 +1063,17 @@ struct maybe
 
     constexpr const value_type& value() const&
     {
-        return *m_storage;
+        return **this;
     }
 
     constexpr value_type& value() &
     {
-        return *m_storage;
+        return **this;
     }
 
     constexpr value_type&& value() &&
     {
-        return *std::move(m_storage);
+        return *std::move(*this);
     }
 
     constexpr bool has_value() const noexcept
@@ -1184,6 +1208,7 @@ struct maybe<T&>
 
     constexpr value_type& operator*() const
     {
+        assert_that<bad_maybe_access>(has_value(), "accessing value of an empty 'maybe' object");
         return *m_storage;
     }
 
@@ -1194,7 +1219,7 @@ struct maybe<T&>
 
     constexpr value_type& value() const
     {
-        return *m_storage;
+        return **this;
     }
 
     constexpr bool has_value() const noexcept
@@ -1254,25 +1279,17 @@ private:
 };
 
 template <class T>
-struct formatter<maybe<T>>
-{
-    void format(std::ostream& os, const maybe<T>& item) const
-    {
-        if (item.has_value())
-        {
-            format_to(os, "some(", item.value(), ")");
-        }
-        else
-        {
-            format_to(os, "none");
-        }
-    }
-};
-
-template <class T>
 std::ostream& operator<<(std::ostream& os, const maybe<T>& item)
 {
-    return format_to(os, item);
+    if (item.has_value())
+    {
+        format_to(os, "some(", item.value(), ")");
+    }
+    else
+    {
+        format_to(os, "none");
+    }
+    return os;
 }
 
 namespace detail
@@ -1392,20 +1409,14 @@ public:
 
     auto front() const -> reference
     {
-        if (empty())
-        {
-            throw std::out_of_range{ "iterator_range::front - empty range" };
-        }
+        assert_that<std::out_of_range>(!empty(), "iterator_range::front - empty range");
         return *begin();
     }
 
     template <class It = iterator, require<is_bidirectional_iterator<It>::value> = 0>
     auto back() const -> reference
     {
-        if (empty())
-        {
-            throw std::out_of_range{ "iterator_range::back - empty range" };
-        }
+        assert_that<std::out_of_range>(!empty(), "iterator_range::back - empty range");
         return *std::prev(end());
     }
 
@@ -1431,10 +1442,7 @@ public:
     template <class It = iterator, require<is_random_access_iterator<It>::value> = 0>
     auto at(difference_type n) const -> reference
     {
-        if (!(0 <= n && n < size()))
-        {
-            throw std::out_of_range{ "iterator_range::at - index out of range" };
-        }
+        assert_that<std::out_of_range>(0 <= n && n < size(), "iterator_range::at - index out of range");
         return *std::next(begin(), n);
     }
 
@@ -3228,10 +3236,7 @@ struct char32
             {
                 auto state = std::mbstate_t{};
                 const std::uint8_t size = std::c32rtomb(data.data(), item.m_data, &state);
-                if (size == std::size_t(-1))
-                {
-                    throw std::runtime_error{ "u32_to_mb: error in conversion" };
-                }
+                assert_that<std::runtime_error>(size != std::size_t(-1), "u32_to_mb: error in conversion");
                 return span<char>{ data.data(), data.data() + size };
             });
         std::copy(v.begin(), v.end(), std::ostream_iterator<char>{ os });
@@ -3244,10 +3249,7 @@ struct char32
         std::mbstate_t state{};
         char32_t c32 = {};
         std::size_t rc = std::mbrtoc32(&c32, txt.begin(), txt.size(), &state);
-        if (rc == std::size_t(-3))
-        {
-            throw std::runtime_error{ "u32_to_mb: error in conversion" };
-        }
+        assert_that<std::runtime_error>(rc != std::size_t(-3), "u32_to_mb: error in conversion");
         if (rc == std::size_t(-1))
         {
             return {};

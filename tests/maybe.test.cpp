@@ -27,8 +27,8 @@ TEST_CASE("extracting value from value initialized maybe returns proper result",
     REQUIRE(zx::maybe<int>{ 42 }.value() == 42);
 }
 
-// TEST_CASE("extracting value from empty maybe returns throws exception", "[monadic][maybe]")
-// {
-//     REQUIRE_THROWS(*zx::maybe<int>{});
-//     REQUIRE_THROWS(zx::maybe<int>{}.value());
-// }
+TEST_CASE("extracting value from empty maybe returns throws exception", "[monadic][maybe]")
+{
+    REQUIRE_THROWS_AS(*zx::maybe<int>{}, zx::bad_maybe_access);
+    REQUIRE_THROWS_AS(zx::maybe<int>{}.value(), zx::bad_maybe_access);
+}
