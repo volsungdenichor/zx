@@ -186,7 +186,7 @@ struct has_ostream_operator : is_detected<has_ostream_operator_impl, Os, T>
 
 #ifdef __GNUG__
 
-inline std::string demangle(const char* name)
+inline auto demangle(const char* name) -> std::string
 {
     int status = -4;
     std::unique_ptr<char, void (*)(void*)> res{ abi::__cxa_demangle(name, NULL, NULL, &status), std::free };
@@ -196,7 +196,7 @@ inline std::string demangle(const char* name)
 #else
 
 // does nothing if not g++
-inline std::string demangle(const char* name)
+inline auto demangle(const char* name) -> std::string
 {
     return name;
 }
@@ -211,6 +211,12 @@ struct type
         return os << demangle(typeid(T).name());
     }
 };
+
+template <class T>
+constexpr auto type_of(const T&) -> type<T>
+{
+    return type<T>{};
+}
 
 /*
    __                                      _     _     _
@@ -245,7 +251,7 @@ static constexpr inline struct format_to_fn
         }
         else
         {
-            os << "[" << type<T>{} << "]";
+            os << "[" << type_of(item) << "]";
         }
     }
 
@@ -368,29 +374,27 @@ struct formatter<std::pair<F, S>>
 class source_location
 {
 public:
-    source_location() = default;
-
-    source_location(std::string_view file_name, std::uint32_t line, std::string_view function_name)
+    constexpr source_location(std::string_view file_name, std::uint32_t line, std::string_view function_name)
         : m_file_name{ file_name }
         , m_line{ line }
         , m_function_name{ function_name }
     {
     }
 
-    source_location(const source_location&) = default;
-    source_location(source_location&&) = default;
+    constexpr source_location(const source_location&) = default;
+    constexpr source_location(source_location&&) noexcept = default;
 
-    std::string_view file_name() const noexcept
+    constexpr std::string_view file_name() const noexcept
     {
         return m_file_name;
     }
 
-    std::string_view function_name() const noexcept
+    constexpr std::string_view function_name() const noexcept
     {
         return m_function_name;
     }
 
-    std::uint32_t line() const noexcept
+    constexpr std::uint32_t line() const noexcept
     {
         return m_line;
     }
