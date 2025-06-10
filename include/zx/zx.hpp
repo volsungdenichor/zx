@@ -228,6 +228,18 @@ constexpr auto type_of(const T&) -> type<T>
                                                                    |___/
 */
 
+struct ostream_writer : public std::function<void(std::ostream&)>
+{
+    using base_type = std::function<void(std::ostream&)>;
+    using base_type::base_type;
+
+    friend std::ostream& operator<<(std::ostream& os, const ostream_writer& item)
+    {
+        item(os);
+        return os;
+    }
+};
+
 template <class T, class = void>
 struct formatter;
 
@@ -293,8 +305,32 @@ static constexpr inline struct println_fn
     }
 } println;
 
+static constexpr inline struct delimit_fn
+{
+    template <class Range>
+    auto operator()(Range&& range, std::string_view separator) const -> ostream_writer
+    {
+        const auto begin = std::begin(range);
+        const auto end = std::end(range);
+        return [=](std::ostream& os)
+        {
+            if (begin == end)
+            {
+                return;
+            }
+
+            format_to(os, *begin);
+            for (auto it = std::next(begin); it != end; ++it)
+            {
+                format_to(os, separator, *it);
+            }
+        };
+    }
+} delimit;
+
 }  // namespace detail
 
+using detail::delimit;
 using detail::format;
 using detail::format_to;
 using detail::print;
