@@ -4,6 +4,7 @@ set(UNIT_TEST_SOURCE_LIST
     result.test.cpp
     maybe.test.cpp
     iterator_range.test.cpp
+    predicates.test.cpp
 )
 
 Include(FetchContent)

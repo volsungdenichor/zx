@@ -6,6 +6,7 @@
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <numeric>
 #include <optional>
 #include <regex>
@@ -1676,21 +1677,19 @@ constexpr auto operator|=(T&& item, const pipe_t<Pipes...>& p) -> decltype(p(std
 }
 
 template <class... Pipes>
-struct formatter<pipe_t<Pipes...>>
+std::ostream& operator<<(std::ostream& os, const pipe_t<Pipes...>& item)
 {
-    void format(std::ostream& os, const pipe_t<Pipes...>& item) const
-    {
-        format_to(os, "pipe(");
-        std::apply(
-            [&os](const auto&... args)
-            {
-                auto n = 0u;
-                ((format_to(os, args) << (++n != sizeof...(args) ? ", " : "")), ...);
-            },
-            item.m_pipes);
-        format_to(os, ")");
-    }
-};
+    format_to(os, "pipe(");
+    std::apply(
+        [&os](const auto&... args)
+        {
+            auto n = 0u;
+            ((format_to(os, args) << (++n != sizeof...(args) ? ", " : "")), ...);
+        },
+        item.m_pipes);
+    format_to(os, ")");
+    return os;
+}
 
 namespace detail
 {
@@ -3408,7 +3407,7 @@ struct compound_fn
             static const auto name = Name{};
 
             os << "(" << name;
-            std::apply([&](const auto&... preds) { ((format_to(os, preds)), ...); }, item.m_preds);
+            std::apply([&](const auto&... preds) { ((format_to(os, ' ', preds)), ...); }, item.m_preds);
             os << ")";
             return os;
         }
@@ -3580,7 +3579,7 @@ struct compare_fn
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
             static const auto name = Name{};
-            return os << "(" << name << " " << item.m_value << ")";
+            return os << "(" << name << ' ' << item.m_value << ")";
         }
     };
 
@@ -3697,8 +3696,33 @@ struct contains_item_fn
     }
 };
 
-struct items_are
+struct no_item_fn
 {
+    template <class Pred>
+    struct impl
+    {
+        Pred m_pred;
+
+        template <class U>
+        bool operator()(U&& item) const
+        {
+            return std::none_of(
+                std::begin(item),
+                std::end(item),
+                [&](auto&& v) { return invoke_pred(m_pred, std::forward<decltype(v)>(v)); });
+        }
+
+        friend std::ostream& operator<<(std::ostream& os, const impl& item)
+        {
+            return os << "(no_item " << item.m_pred << ")";
+        }
+    };
+
+    template <class Pred>
+    auto operator()(Pred&& pred) const -> impl<std::decay_t<Pred>>
+    {
+        return impl<std::decay_t<Pred>>{ std::forward<Pred>(pred) };
+    }
 };
 
 struct items_are_fn
@@ -3730,7 +3754,7 @@ struct items_are_fn
         {
             os << "("
                << "items_are";
-            std::apply([&](const auto&... preds) { ((format_to(os, preds)), ...); }, item.m_preds);
+            std::apply([&](const auto&... preds) { ((format_to(os, ' ', preds)), ...); }, item.m_preds);
             os << ")";
             return os;
         }
@@ -3795,7 +3819,7 @@ struct starts_with_items_fn
         {
             os << "("
                << "starts_with_items";
-            std::apply([&](const auto&... preds) { ((format_to(os, preds)), ...); }, item.m_preds);
+            std::apply([&](const auto&... preds) { ((format_to(os, ' ', preds)), ...); }, item.m_preds);
             os << ")";
             return os;
         }
@@ -3861,7 +3885,7 @@ struct ends_with_items_fn
         {
             os << "("
                << "ends_with_items";
-            std::apply([&](const auto&... preds) { ((format_to(os, " ", preds)), ...); }, item.m_preds);
+            std::apply([&](const auto&... preds) { ((format_to(os, ' ', preds)), ...); }, item.m_preds);
             os << ")";
             return os;
         }
@@ -3938,7 +3962,7 @@ struct contains_items_fn
         {
             os << "("
                << "contains_items";
-            std::apply([&](const auto&... preds) { ((format_to(os, " ", preds)), ...); }, item.m_preds);
+            std::apply([&](const auto&... preds) { ((format_to(os, ' ', preds)), ...); }, item.m_preds);
             os << ")";
             return os;
         }
@@ -4012,7 +4036,7 @@ struct result_of_fn
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
             static const auto name = Name{};
-            return format_to(os, "(", name, " ", item.m_func, " ", item.m_pred, ")");
+            return format_to(os, "(", name, ' ', item.m_func, ' ', item.m_pred, ")");
         }
     };
 
@@ -4022,186 +4046,6 @@ struct result_of_fn
         return { std::forward<Func>(func), std::forward<Pred>(pred) };
     }
 };
-
-struct is_digit_fn
-{
-    struct impl
-    {
-        bool operator()(char item) const
-        {
-            return std::isdigit(item);
-        }
-
-        friend std::ostream& operator<<(std::ostream& os, const impl& item)
-        {
-            return os << "(is_digit)";
-        }
-    };
-
-    auto operator()() const -> impl
-    {
-        return impl{};
-    }
-};
-
-inline auto compare_characters(string_comparison comparison) -> std::function<bool(char, char)>
-{
-    static const auto to_lower = [](char ch) -> char { return std::tolower(ch); };
-    switch (comparison)
-    {
-        case string_comparison::case_sensitive: return [](char lt, char rt) { return lt == rt; };
-        case string_comparison::case_insensitive: return [](char lt, char rt) { return to_lower(lt) == to_lower(rt); };
-    }
-    throw std::runtime_error{ "unhandled comparison mode" };
-}
-
-struct string_is_fn
-{
-    struct impl
-    {
-        std::string m_expected;
-        string_comparison m_comparison;
-
-        bool operator()(std::string_view actual) const
-        {
-            return std::equal(
-                std::begin(actual),
-                std::end(actual),
-                std::begin(m_expected),
-                std::end(m_expected),
-                compare_characters(m_comparison));
-        }
-
-        friend std::ostream& operator<<(std::ostream& os, const impl& item)
-        {
-            return os << "(string_is " << item.m_comparison << " \"" << item.m_expected << "\")";
-        }
-    };
-
-    auto operator()(std::string expected, string_comparison comparison) const
-    {
-        return impl{ std::move(expected), comparison };
-    }
-};
-
-struct string_starts_with_fn
-{
-    struct impl
-    {
-        std::string m_expected;
-        string_comparison m_comparison;
-
-        bool operator()(std::string_view actual) const
-        {
-            return actual.size() >= m_expected.size()
-                   && std::equal(
-                       std::begin(actual),
-                       std::next(std::begin(actual), m_expected.size()),
-                       std::begin(m_expected),
-                       std::end(m_expected),
-                       compare_characters(m_comparison));
-        }
-
-        friend std::ostream& operator<<(std::ostream& os, const impl& item)
-        {
-            return os << "(string_starts_with " << item.m_comparison << " \"" << item.m_expected << "\")";
-        }
-    };
-
-    auto operator()(std::string expected, string_comparison comparison) const
-    {
-        return impl{ std::move(expected), comparison };
-    }
-};
-
-struct string_ends_with_fn
-{
-    struct impl
-    {
-        std::string m_expected;
-        string_comparison m_comparison;
-
-        bool operator()(std::string_view actual) const
-        {
-            return actual.size() >= m_expected.size()
-                   && std::equal(
-                       std::next(std::begin(actual), actual.size() - m_expected.size()),
-                       std::end(actual),
-                       std::begin(m_expected),
-                       std::end(m_expected),
-                       compare_characters(m_comparison));
-        }
-
-        friend std::ostream& operator<<(std::ostream& os, const impl& item)
-        {
-            return os << "(string_ends_with " << item.m_comparison << " \"" << item.m_expected << "\")";
-        }
-    };
-
-    auto operator()(std::string expected, string_comparison comparison) const
-    {
-        return impl{ std::move(expected), comparison };
-    }
-};
-
-struct string_contains_fn
-{
-    struct impl
-    {
-        std::string m_expected;
-        string_comparison m_comparison;
-
-        bool operator()(std::string_view actual) const
-        {
-            return std::search(
-                       std::begin(actual),
-                       std::end(actual),
-                       std::begin(m_expected),
-                       std::end(m_expected),
-                       compare_characters(m_comparison))
-                   != std::end(actual);
-        }
-
-        friend std::ostream& operator<<(std::ostream& os, const impl& item)
-        {
-            return os << "(string_contains " << item.m_comparison << " \"" << item.m_expected << "\")";
-        }
-    };
-
-    auto operator()(std::string expected, string_comparison comparison) const
-    {
-        return impl{ std::move(expected), comparison };
-    }
-};
-
-struct string_matches_fn
-{
-    struct impl
-    {
-        std::regex m_regex;
-
-        bool operator()(std::string_view actual) const
-        {
-            return std::regex_match(actual.begin(), actual.end(), m_regex);
-        }
-
-        friend std::ostream& operator<<(std::ostream& os, const impl& item)
-        {
-            return os << "(string_matches)";
-        }
-    };
-
-    auto operator()(std::regex regex) const
-    {
-        return impl{ std::move(regex) };
-    }
-
-    auto operator()(const std::string& regex) const
-    {
-        return (*this)(std::regex(regex));
-    }
-};
-
 }  // namespace detail
 
 template <class T>
@@ -4252,6 +4096,7 @@ static constexpr inline auto is_none = detail::is_none_fn{};
 
 static constexpr inline auto each_item = detail::each_item_fn{};
 static constexpr inline auto contains_item = detail::contains_item_fn{};
+static constexpr inline auto no_item = detail::no_item_fn{};
 static constexpr inline auto size_is = detail::size_is_fn{};
 static constexpr inline auto is_empty = detail::is_empty_fn{};
 
@@ -4263,12 +4108,6 @@ static constexpr inline auto ends_with_items = detail::ends_with_items_fn{};
 static constexpr inline auto ends_with_array = detail::ends_with_array_fn{};
 static constexpr inline auto contains_items = detail::contains_items_fn{};
 static constexpr inline auto contains_array = detail::contains_array_fn{};
-
-static constexpr inline auto string_is = detail::string_is_fn{};
-static constexpr inline auto string_starts_with = detail::string_starts_with_fn{};
-static constexpr inline auto string_ends_with = detail::string_ends_with_fn{};
-static constexpr inline auto string_contains = detail::string_contains_fn{};
-static constexpr inline auto string_matches = detail::string_matches_fn{};
 
 static constexpr inline auto eq = detail::compare_fn<std::equal_to<>, str_t<'e', 'q'>>{};
 static constexpr inline auto ne = detail::compare_fn<std::not_equal_to<>, str_t<'n', 'e'>>{};
