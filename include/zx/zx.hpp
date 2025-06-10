@@ -401,7 +401,7 @@ public:
 
     friend std::ostream& operator<<(std::ostream& os, const source_location& item)
     {
-        return os << item.file_name() << "(" << item.line() << "): " << item.function_name();
+        return format_to(os, item.file_name(), '(', item.line(), ')', ": ", item.function_name());
     }
 
 private:
@@ -1067,29 +1067,13 @@ private:
 template <class E>
 std::ostream& operator<<(std::ostream& os, const result<void, E>& item)
 {
-    if (item.has_value())
-    {
-        format_to(os, "ok()");
-    }
-    else
-    {
-        format_to(os, "error(", item.error(), ")");
-    }
-    return os;
+    return item.has_value() ? format_to(os, "ok()") : format_to(os, "error(", item.error(), ")");
 }
 
 template <class T, class E>
 std::ostream& operator<<(std::ostream& os, const result<T, E>& item)
 {
-    if (item.has_value())
-    {
-        format_to(os, "ok(", item.value(), ")");
-    }
-    else
-    {
-        format_to(os, "error(", item.error(), ")");
-    }
-    return os;
+    return item.has_value() ? format_to(os, "ok(", item.value(), ")") : format_to(os, "error(", item.error(), ")");
 }
 
 template <class Func, class... Args>
@@ -1452,16 +1436,17 @@ private:
 template <class T>
 std::ostream& operator<<(std::ostream& os, const maybe<T>& item)
 {
-    if (item.has_value())
-    {
-        format_to(os, "some(", item.value(), ")");
-    }
-    else
-    {
-        format_to(os, "none");
-    }
-    return os;
+    return item.has_value() ? format_to(os, "some(", item.value(), ")") : format_to(os, "none");
 }
+
+/*
+  _   _                           _                                                                   __  _____  __
+ (_) | |_    ___   _ __    __ _  | |_    ___    _ __           _ __    __ _   _ __     __ _    ___   / / |_   _| \ \
+ | | | __|  / _ \ | '__|  / _` | | __|  / _ \  | '__|         | '__|  / _` | | '_ \   / _` |  / _ \ / /    | |    \ \
+ | | | |_  |  __/ | |    | (_| | | |_  | (_) | | |            | |    | (_| | | | | | | (_| | |  __/ \ \    | |    / /
+ |_|  \__|  \___| |_|     \__,_|  \__|  \___/  |_|     _____  |_|     \__,_| |_| |_|  \__, |  \___|  \_\   |_|   /_/
+                                                      |_____|                         |___/
+*/
 
 namespace detail
 {
@@ -1500,15 +1485,6 @@ struct slice_t
     maybe<std::ptrdiff_t> begin;
     maybe<std::ptrdiff_t> end;
 };
-
-/*
-  _   _                           _                                                                   __  _____  __
- (_) | |_    ___   _ __    __ _  | |_    ___    _ __           _ __    __ _   _ __     __ _    ___   / / |_   _| \ \
- | | | __|  / _ \ | '__|  / _` | | __|  / _ \  | '__|         | '__|  / _` | | '_ \   / _` |  / _ \ / /    | |    \ \
- | | | |_  |  __/ | |    | (_| | | |_  | (_) | | |            | |    | (_| | | | | | | (_| | |  __/ \ \    | |    / /
- |_|  \__|  \___| |_|     \__,_|  \__|  \___/  |_|     _____  |_|     \__,_| |_| |_|  \__, |  \___|  \_\   |_|   /_/
-                                                      |_____|                         |___/
-*/
 
 template <class Iter>
 class iterator_range
@@ -1831,16 +1807,9 @@ constexpr auto operator|=(T&& item, const pipe_t<Pipes...>& p) -> decltype(p(std
 template <class... Pipes>
 std::ostream& operator<<(std::ostream& os, const pipe_t<Pipes...>& item)
 {
-    format_to(os, "pipe(");
-    std::apply(
-        [&os](const auto&... args)
-        {
-            auto n = 0u;
-            ((format_to(os, args) << (++n != sizeof...(args) ? ", " : "")), ...);
-        },
-        item.m_pipes);
-    format_to(os, ")");
-    return os;
+    format_to(os, "(pipe");
+    std::apply([&os](const auto&... args) { (format_to(os, ' ', args), ...); }, item.m_pipes);
+    return format_to(os, ")");
 }
 
 namespace detail
@@ -3586,10 +3555,9 @@ struct compound_fn
         {
             static const auto name = Name{};
 
-            os << "(" << name;
+            format_to(os, "(", name);
             std::apply([&](const auto&... preds) { ((format_to(os, ' ', preds)), ...); }, item.m_preds);
-            os << ")";
-            return os;
+            return format_to(os, ")");
         }
     };
 
@@ -3633,7 +3601,7 @@ struct negate_fn
 
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
-            return os << "(not " << item.m_pred << ")";
+            return format_to(os, "(not ", item.m_pred, ")");
         }
     };
 
@@ -3669,7 +3637,7 @@ struct is_some_fn
 
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
-            return os << "(is_some " << item.m_pred << ")";
+            return format_to(os, "(is_some ", item.m_pred, ")");
         }
     };
 
@@ -3693,7 +3661,7 @@ struct is_some_fn
 
         friend std::ostream& operator<<(std::ostream& os, const void_impl& item)
         {
-            return os << "(is_some)";
+            return format_to(os, "(is_some)");
         }
     };
 
@@ -3731,7 +3699,7 @@ struct is_none_fn
 
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
-            return os << "(is_none)";
+            return format_to(os, "(is_none)");
         }
     };
 
@@ -3759,7 +3727,7 @@ struct compare_fn
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
             static const auto name = Name{};
-            return os << "(" << name << ' ' << item.m_value << ")";
+            return format_to(os, "(", name, ' ', item.m_value, ")");
         }
     };
 
@@ -3785,7 +3753,7 @@ struct size_is_fn
 
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
-            return os << "(size_is " << item.m_pred << ")";
+            return format_to(os, "(size_is ", item.m_pred, ")");
         }
     };
 
@@ -3808,7 +3776,7 @@ struct is_empty_fn
 
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
-            return os << "(is_empty)";
+            return format_to(os, "(is_empty)");
         }
     };
 
@@ -3836,7 +3804,7 @@ struct each_item_fn
 
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
-            return os << "(each_item " << item.m_pred << ")";
+            return format_to(os, "(each_item ", item.m_pred, ")");
         }
     };
 
@@ -3865,7 +3833,7 @@ struct contains_item_fn
 
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
-            return os << "(contains_item " << item.m_pred << ")";
+            return format_to(os, "(contains_item ", item.m_pred, ")");
         }
     };
 
@@ -3894,7 +3862,7 @@ struct no_item_fn
 
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
-            return os << "(no_item " << item.m_pred << ")";
+            return format_to(os, "(no_item ", item.m_pred, ")");
         }
     };
 
@@ -3932,11 +3900,9 @@ struct items_are_fn
 
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
-            os << "("
-               << "items_are";
+            format_to(os, "(items_are");
             std::apply([&](const auto&... preds) { ((format_to(os, ' ', preds)), ...); }, item.m_preds);
-            os << ")";
-            return os;
+            return format_to(os, ")");
         }
     };
 
@@ -3997,11 +3963,9 @@ struct starts_with_items_fn
 
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
-            os << "("
-               << "starts_with_items";
+            format_to(os, "(starts_with_items");
             std::apply([&](const auto&... preds) { ((format_to(os, ' ', preds)), ...); }, item.m_preds);
-            os << ")";
-            return os;
+            return format_to(os, ")");
         }
     };
 
@@ -4063,11 +4027,9 @@ struct ends_with_items_fn
 
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
-            os << "("
-               << "ends_with_items";
+            format_to(os, "(ends_with_items");
             std::apply([&](const auto&... preds) { ((format_to(os, ' ', preds)), ...); }, item.m_preds);
-            os << ")";
-            return os;
+            return format_to(os, ")");
         }
     };
 
@@ -4140,11 +4102,9 @@ struct contains_items_fn
 
         friend std::ostream& operator<<(std::ostream& os, const impl& item)
         {
-            os << "("
-               << "contains_items";
+            format_to(os, "(contains_items");
             std::apply([&](const auto&... preds) { ((format_to(os, ' ', preds)), ...); }, item.m_preds);
-            os << ")";
-            return os;
+            return format_to(os, ")");
         }
     };
 
