@@ -12,6 +12,7 @@
 #include <regex>
 #include <sstream>
 #include <stdexcept>
+#include <string_view>
 #include <type_traits>
 #include <variant>
 #ifdef __GNUG__
@@ -24,6 +25,15 @@
 
 namespace zx
 {
+
+/*
+                                            _            _
+  _ __    _   _   _ __ ___     ___   _ __  (_)   ___    | |_   _   _   _ __     ___   ___
+ | '_ \  | | | | | '_ ` _ \   / _ \ | '__| | |  / __|   | __| | | | | | '_ \   / _ \ / __|
+ | | | | | |_| | | | | | | | |  __/ | |    | | | (__    | |_  | |_| | | |_) | |  __/ \__ \
+ |_| |_|  \__,_| |_| |_| |_|  \___| |_|    |_|  \___|    \__|  \__, | | .__/   \___| |___/
+                                                               |___/  |_|
+*/
 
 using u8 = std::uint8_t;
 using i8 = std::int8_t;
@@ -202,6 +212,15 @@ struct type
     }
 };
 
+/*
+   __                                      _     _     _
+  / _|   ___    _ __   _ __ ___     __ _  | |_  | |_  (_)  _ __     __ _
+ | |_   / _ \  | '__| | '_ ` _ \   / _` | | __| | __| | | | '_ \   / _` |
+ |  _| | (_) | | |    | | | | | | | (_| | | |_  | |_  | | | | | | | (_| |
+ |_|    \___/  |_|    |_| |_| |_|  \__,_|  \__|  \__| |_| |_| |_|  \__, |
+                                                                   |___/
+*/
+
 template <class T, class = void>
 struct formatter;
 
@@ -311,16 +330,99 @@ struct formatter<std::exception_ptr>
     }
 };
 
+template <class... Args>
+struct formatter<std::tuple<Args...>>
+{
+    void format(std::ostream& os, const std::tuple<Args...>& item) const
+    {
+        format_to(os, "(");
+        std::apply(
+            [&os](const auto&... args)
+            {
+                auto n = 0u;
+                ((format_to(os, args) << (++n != sizeof...(args) ? ", " : "")), ...);
+            },
+            item);
+        format_to(os, ")");
+    }
+};
+
+template <class F, class S>
+struct formatter<std::pair<F, S>>
+{
+    void format(std::ostream& os, const std::pair<F, S>& item) const
+    {
+        format_to(os, "(", item.first, ", ", item.second, ")");
+    }
+};
+
+/*
+                                        _                           _   _   _
+   ___   _ __   _ __    ___    _ __    | |__     __ _   _ __     __| | | | (_)  _ __     __ _
+  / _ \ | '__| | '__|  / _ \  | '__|   | '_ \   / _` | | '_ \   / _` | | | | | | '_ \   / _` |
+ |  __/ | |    | |    | (_) | | |      | | | | | (_| | | | | | | (_| | | | | | | | | | | (_| |
+  \___| |_|    |_|     \___/  |_|      |_| |_|  \__,_| |_| |_|  \__,_| |_| |_| |_| |_|  \__, |
+                                                                                        |___/
+*/
+
+class source_location
+{
+public:
+    source_location() = default;
+
+    source_location(std::string_view file_name, std::uint32_t line, std::string_view function_name)
+        : m_file_name{ file_name }
+        , m_line{ line }
+        , m_function_name{ function_name }
+    {
+    }
+
+    source_location(const source_location&) = default;
+    source_location(source_location&&) = default;
+
+    std::string_view file_name() const noexcept
+    {
+        return m_file_name;
+    }
+
+    std::string_view function_name() const noexcept
+    {
+        return m_function_name;
+    }
+
+    std::uint32_t line() const noexcept
+    {
+        return m_line;
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const source_location& item)
+    {
+        return os << item.file_name() << "(" << item.line() << "): " << item.function_name();
+    }
+
+private:
+    std::string_view m_file_name;
+    std::uint32_t m_line;
+    std::string_view m_function_name;
+};
+
 template <class E = std::runtime_error, class... Args>
 void assert_that(bool condition, Args&&... args)
 {
     if (!condition)
     {
-        std::stringstream ss;
-        (ss << ... << std::forward<Args>(args));
-        throw E{ ss.str() };
+        throw E{ str(std::forward<Args>(args)...) };
     }
 }
+
+/*
+                 _   _     _                          _     _            _
+   __ _   _ __  (_) | |_  | |__    _ __ ___     ___  | |_  (_)   ___    | |_   _   _   _ __     ___   ___
+  / _` | | '__| | | | __| | '_ \  | '_ ` _ \   / _ \ | __| | |  / __|   | __| | | | | | '_ \   / _ \ / __|
+ | (_| | | |    | | | |_  | | | | | | | | | | |  __/ | |_  | | | (__    | |_  | |_| | | |_) | |  __/ \__ \
+  \__,_| |_|    |_|  \__| |_| |_| |_| |_| |_|  \___|  \__| |_|  \___|    \__|  \__, | | .__/   \___| |___/
+                                                                               |___/  |_|
+*/
 
 template <class T, class E>
 struct result;
@@ -1642,38 +1744,21 @@ using span = iterator_range<const T*>;
 template <class T>
 using mut_span = iterator_range<T*>;
 
+/*
+   __                          _     _                           _
+  / _|  _   _   _ __     ___  | |_  (_)   ___    _ __     __ _  | |
+ | |_  | | | | | '_ \   / __| | __| | |  / _ \  | '_ \   / _` | | |
+ |  _| | |_| | | | | | | (__  | |_  | | | (_) | | | | | | (_| | | |
+ |_|    \__,_| |_| |_|  \___|  \__| |_|  \___/  |_| |_|  \__,_| |_|
+
+*/
+
 struct identity
 {
     template <class T>
     constexpr T&& operator()(T&& item) const noexcept
     {
         return std::forward<T>(item);
-    }
-};
-
-template <class... Args>
-struct formatter<std::tuple<Args...>>
-{
-    void format(std::ostream& os, const std::tuple<Args...>& item) const
-    {
-        format_to(os, "(");
-        std::apply(
-            [&os](const auto&... args)
-            {
-                auto n = 0u;
-                ((format_to(os, args) << (++n != sizeof...(args) ? ", " : "")), ...);
-            },
-            item);
-        format_to(os, ")");
-    }
-};
-
-template <class F, class S>
-struct formatter<std::pair<F, S>>
-{
-    void format(std::ostream& os, const std::pair<F, S>& item) const
-    {
-        format_to(os, "(", item.first, ", ", item.second, ")");
     }
 };
 
@@ -4212,3 +4297,5 @@ static constexpr inline auto field = detail::result_of_fn<str_t<'f', 'i', 'e', '
 static constexpr inline auto property = detail::result_of_fn<str_t<'p', 'r', 'o', 'p', 'e', 'r', 't', 'y'>>{};
 
 }  // namespace zx
+
+#define ZX_CURRENT_SOURCE_LOCATION ::zx::source_location(__FILE__, __LINE__, __PRETTY_FUNCTION__)
