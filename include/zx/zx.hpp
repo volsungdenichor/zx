@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cuchar>
 #include <functional>
+#include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -333,6 +334,15 @@ struct formatter<std::exception_ptr>
         {
             format_to(os, "std::exception_ptr<...>(\"\")");
         }
+    }
+};
+
+template <>
+struct formatter<bool>
+{
+    void format(std::ostream& os, const bool item) const
+    {
+        format_to(os, std::boolalpha, item);
     }
 };
 
@@ -1923,6 +1933,11 @@ struct get_element_fn
     constexpr auto operator()(T&& item) const -> decltype(std::get<N>(std::forward<T>(item)))
     {
         return std::get<N>(std::forward<T>(item));
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const get_element_fn&)
+    {
+        return format_to(os, "(get_element ", N, ")");
     }
 };
 
@@ -3521,6 +3536,33 @@ constexpr bool invoke_pred(Pred&& pred, T&& item)
     }
 }
 
+struct make_predicate_fn
+{
+    template <class Pred>
+    struct impl
+    {
+        Pred pred;
+        std::string name;
+
+        template <class U>
+        constexpr bool operator()(U&& item) const
+        {
+            return invoke_pred(pred, std::forward<U>(item));
+        }
+
+        friend std::ostream& operator<<(std::ostream& os, const impl& item)
+        {
+            return format_to(os, item.name);
+        }
+    };
+
+    template <class Pred>
+    auto operator()(Pred pred, std::string name) const -> impl<std::decay_t<Pred>>
+    {
+        return impl<std::decay_t<Pred>>{ std::forward<Pred>(pred), std::move(name) };
+    }
+};
+
 struct all_tag
 {
 };
@@ -4227,12 +4269,18 @@ struct str_t
     }
 };
 
+static constexpr inline auto make_predicate = detail::make_predicate_fn{};
+
 static constexpr inline auto any = detail::compound_fn<detail::any_tag, str_t<'a', 'n', 'y'>>{};
 static constexpr inline auto all = detail::compound_fn<detail::all_tag, str_t<'a', 'l', 'l'>>{};
 static constexpr inline auto negate = detail::negate_fn{};
 
-static constexpr inline auto is_some = detail::is_some_fn{};
-static constexpr inline auto is_none = detail::is_none_fn{};
+static constexpr inline auto eq = detail::compare_fn<std::equal_to<>, str_t<'e', 'q'>>{};
+static constexpr inline auto ne = detail::compare_fn<std::not_equal_to<>, str_t<'n', 'e'>>{};
+static constexpr inline auto lt = detail::compare_fn<std::less<>, str_t<'l', 't'>>{};
+static constexpr inline auto gt = detail::compare_fn<std::greater<>, str_t<'g', 't'>>{};
+static constexpr inline auto le = detail::compare_fn<std::less_equal<>, str_t<'l', 'e'>>{};
+static constexpr inline auto ge = detail::compare_fn<std::greater_equal<>, str_t<'g', 'e'>>{};
 
 static constexpr inline auto each_item = detail::each_item_fn{};
 static constexpr inline auto contains_item = detail::contains_item_fn{};
@@ -4249,16 +4297,12 @@ static constexpr inline auto ends_with_array = detail::ends_with_array_fn{};
 static constexpr inline auto contains_items = detail::contains_items_fn{};
 static constexpr inline auto contains_array = detail::contains_array_fn{};
 
-static constexpr inline auto eq = detail::compare_fn<std::equal_to<>, str_t<'e', 'q'>>{};
-static constexpr inline auto ne = detail::compare_fn<std::not_equal_to<>, str_t<'n', 'e'>>{};
-static constexpr inline auto lt = detail::compare_fn<std::less<>, str_t<'l', 't'>>{};
-static constexpr inline auto gt = detail::compare_fn<std::greater<>, str_t<'g', 't'>>{};
-static constexpr inline auto le = detail::compare_fn<std::less_equal<>, str_t<'l', 'e'>>{};
-static constexpr inline auto ge = detail::compare_fn<std::greater_equal<>, str_t<'g', 'e'>>{};
-
 static constexpr inline auto result_of = detail::result_of_fn<str_t<'r', 'e', 's', 'u', 'l', 't', '_', 'o', 'f'>>{};
 static constexpr inline auto field = detail::result_of_fn<str_t<'f', 'i', 'e', 'l', 'd'>>{};
 static constexpr inline auto property = detail::result_of_fn<str_t<'p', 'r', 'o', 'p', 'e', 'r', 't', 'y'>>{};
+
+static constexpr inline auto is_some = detail::is_some_fn{};
+static constexpr inline auto is_none = detail::is_none_fn{};
 
 }  // namespace zx
 

@@ -344,3 +344,32 @@ TEST_CASE("predicates - property", "")
     REQUIRE_THAT(pred(test_t{ 2 }), matchers::equal_to(true));
     REQUIRE_THAT(pred(test_t{ 12 }), matchers::equal_to(false));
 }
+
+TEST_CASE("predicates - composition", "")
+{
+    const std::map<int, char> map = {
+        { 10, 'A' },
+        { 20, 'E' },
+        { 30, 'I' },
+    };
+    {
+        const auto pred = zx::each_item(zx::result_of(zx::key, zx::ge(10)));
+        REQUIRE_THAT(  //
+            zx::str(pred),
+            matchers::equal_to("(each_item (result_of (get_element 0) (ge 10)))"sv));
+
+        REQUIRE_THAT(pred(map), matchers::equal_to(true));
+    }
+    {
+        static const auto is_vowel = zx::make_predicate(
+            [](char ch) { return std::string_view{ "AEIOUY" }.find(std::toupper(ch)) != std::string_view::npos; },
+            "is_vowel");
+
+        const auto pred = zx::each_item(zx::result_of(zx::value, is_vowel));
+        REQUIRE_THAT(  //
+            zx::str(pred),
+            matchers::equal_to("(each_item (result_of (get_element 1) is_vowel))"sv));
+
+        REQUIRE_THAT(pred(map), matchers::equal_to(true));
+    }
+}
