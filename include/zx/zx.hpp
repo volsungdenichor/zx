@@ -36,16 +36,14 @@ using i64 = std::int64_t;
 using f32 = float;
 using f64 = double;
 
-template <class E = std::runtime_error, class... Args>
-void assert_that(bool condition, Args&&... args)
-{
-    if (!condition)
-    {
-        std::stringstream ss;
-        (ss << ... << std::forward<Args>(args));
-        throw E{ ss.str() };
-    }
-}
+/*
+  _                                    _                    _   _
+ | |_   _   _   _ __     ___          | |_   _ __    __ _  (_) | |_   ___
+ | __| | | | | | '_ \   / _ \         | __| | '__|  / _` | | | | __| / __|
+ | |_  | |_| | | |_) | |  __/         | |_  | |    | (_| | | | | |_  \__ \
+  \__|  \__, | | .__/   \___|  _____   \__| |_|     \__,_| |_|  \__| |___/
+        |___/  |_|            |_____|
+*/
 
 namespace detail
 {
@@ -313,6 +311,17 @@ struct formatter<std::exception_ptr>
     }
 };
 
+template <class E = std::runtime_error, class... Args>
+void assert_that(bool condition, Args&&... args)
+{
+    if (!condition)
+    {
+        std::stringstream ss;
+        (ss << ... << std::forward<Args>(args));
+        throw E{ ss.str() };
+    }
+}
+
 template <class T, class E>
 struct result;
 
@@ -388,6 +397,15 @@ struct bad_result_access : std::runtime_error
     {
     }
 };
+
+/*
+                              _   _      __  _____         _____  __
+  _ __    ___   ___   _   _  | | | |_   / / |_   _|       | ____| \ \
+ | '__|  / _ \ / __| | | | | | | | __| / /    | |         |  _|    \ \
+ | |    |  __/ \__ \ | |_| | | | | |_  \ \    | |    _    | |___   / /
+ |_|     \___| |___/  \__,_| |_|  \__|  \_\   |_|   ( )   |_____| /_/
+                                                    |/
+*/
 
 template <class T, class E>
 struct result
@@ -593,6 +611,15 @@ private:
     std::variant<value_storage, error_storage> m_storage;
 };
 
+/*
+                              _   _      __  _____    ___           _____  __
+  _ __    ___   ___   _   _  | | | |_   / / |_   _|  ( _ )         | ____| \ \
+ | '__|  / _ \ / __| | | | | | | | __| / /    | |    / _ \/\       |  _|    \ \
+ | |    |  __/ \__ \ | |_| | | | | |_  \ \    | |   | (_>  <  _    | |___   / /
+ |_|     \___| |___/  \__,_| |_|  \__|  \_\   |_|    \___/\/ ( )   |_____| /_/
+                                                             |/
+*/
+
 template <class T, class E>
 struct result<T&, E>
 {
@@ -768,6 +795,15 @@ struct result<T&, E>
 private:
     std::variant<value_storage, error_storage> m_storage;
 };
+
+/*
+                              _   _      __                  _       _         _____  __
+  _ __    ___   ___   _   _  | | | |_   / / __   __   ___   (_)   __| |       | ____| \ \
+ | '__|  / _ \ / __| | | | | | | | __| / /  \ \ / /  / _ \  | |  / _` |       |  _|    \ \
+ | |    |  __/ \__ \ | |_| | | | | |_  \ \   \ V /  | (_) | | | | (_| |  _    | |___   / /
+ |_|     \___| |___/  \__,_| |_|  \__|  \_\   \_/    \___/  |_|  \__,_| ( )   |_____| /_/
+                                                                        |/
+*/
 
 template <class E>
 struct result<void, E>
@@ -1018,6 +1054,15 @@ struct bad_maybe_access : std::runtime_error
     }
 };
 
+/*
+                              _               __  _____  __
+  _ __ ___     __ _   _   _  | |__     ___   / / |_   _| \ \
+ | '_ ` _ \   / _` | | | | | | '_ \   / _ \ / /    | |    \ \
+ | | | | | | | (_| | | |_| | | |_) | |  __/ \ \    | |    / /
+ |_| |_| |_|  \__,_|  \__, | |_.__/   \___|  \_\   |_|   /_/
+                      |___/
+*/
+
 template <class T>
 struct maybe
 {
@@ -1190,6 +1235,15 @@ private:
     std::optional<value_type> m_storage;
 };
 
+/*
+                              _               __  _____    ___    __
+  _ __ ___     __ _   _   _  | |__     ___   / / |_   _|  ( _ )   \ \
+ | '_ ` _ \   / _` | | | | | | '_ \   / _ \ / /    | |    / _ \/\  \ \
+ | | | | | | | (_| | | |_| | | |_) | |  __/ \ \    | |   | (_>  <  / /
+ |_| |_| |_|  \__,_|  \__, | |_.__/   \___|  \_\   |_|    \___/\/ /_/
+                      |___/
+*/
+
 template <class T>
 struct maybe<T&>
 {
@@ -1340,6 +1394,15 @@ struct slice_t
     maybe<std::ptrdiff_t> begin;
     maybe<std::ptrdiff_t> end;
 };
+
+/*
+  _   _                           _                                                                   __  _____  __
+ (_) | |_    ___   _ __    __ _  | |_    ___    _ __           _ __    __ _   _ __     __ _    ___   / / |_   _| \ \
+ | | | __|  / _ \ | '__|  / _` | | __|  / _ \  | '__|         | '__|  / _` | | '_ \   / _` |  / _ \ / /    | |    \ \
+ | | | |_  |  __/ | |    | (_| | | |_  | (_) | | |            | |    | (_| | | | | | | (_| | |  __/ \ \    | |    / /
+ |_|  \__|  \___| |_|     \__,_|  \__|  \___/  |_|     _____  |_|     \__,_| |_| |_|  \__, |  \___|  \_\   |_|   /_/
+                                                      |_____|                         |___/
+*/
 
 template <class Iter>
 class iterator_range
@@ -1795,12 +1858,39 @@ static constexpr inline struct with_fn
     }
 } with;
 
+template <std::size_t N>
+struct get_element_fn
+{
+    template <class T>
+    constexpr auto operator()(T&& item) const -> decltype(std::get<N>(std::forward<T>(item)))
+    {
+        return std::get<N>(std::forward<T>(item));
+    }
+};
+
 }  // namespace detail
 
 static constexpr inline auto pipe = detail::pipe_fn{};
 using detail::apply;
 using detail::do_all;
 using detail::with;
+
+template <std::size_t I>
+static constexpr inline auto get_element = detail::get_element_fn<I>{};
+
+static constexpr inline auto first = get_element<0>;
+static constexpr inline auto second = get_element<1>;
+static constexpr inline auto key = get_element<0>;
+static constexpr inline auto value = get_element<1>;
+
+/*
+                                                             __  _____  __
+  ___    ___    __ _   _   _    ___   _ __     ___    ___   / / |_   _| \ \
+ / __|  / _ \  / _` | | | | |  / _ \ | '_ \   / __|  / _ \ / /    | |    \ \
+ \__ \ |  __/ | (_| | | |_| | |  __/ | | | | | (__  |  __/ \ \    | |    / /
+ |___/  \___|  \__, |  \__,_|  \___| |_| |_|  \___|  \___|  \_\   |_|   /_/
+                  |_|
+*/
 
 template <class T>
 using iteration_result_t = maybe<T>;
@@ -3233,6 +3323,14 @@ auto operator+(const sequence<L>& lhs, const sequence<R>& rhs) -> sequence<std::
     return concat(lhs, rhs);
 }
 
+/*
+         _                      _____   ____
+   ___  | |__     __ _   _ __  |___ /  |___ \
+  / __| | '_ \   / _` | | '__|   |_ \    __) |
+ | (__  | | | | | (_| | | |     ___) |  / __/
+  \___| |_| |_|  \__,_| |_|    |____/  |_____|
+*/
+
 struct char32
 {
     char32_t m_data;
@@ -3316,21 +3414,14 @@ struct char32
     }
 };
 
-enum class string_comparison
-{
-    case_sensitive,
-    case_insensitive
-};
-
-inline std::ostream& operator<<(std::ostream& os, const string_comparison item)
-{
-    switch (item)
-    {
-        case string_comparison::case_insensitive: return os << "case_insensitive";
-        case string_comparison::case_sensitive: return os << "case_sensitive";
-    }
-    return os;
-}
+/*
+                            _   _                  _
+  _ __    _ __    ___    __| | (_)   ___    __ _  | |_    ___   ___
+ | '_ \  | '__|  / _ \  / _` | | |  / __|  / _` | | __|  / _ \ / __|
+ | |_) | | |    |  __/ | (_| | | | | (__  | (_| | | |_  |  __/ \__ \
+ | .__/  |_|     \___|  \__,_| |_|  \___|  \__,_|  \__|  \___| |___/
+ |_|
+*/
 
 namespace detail
 {
