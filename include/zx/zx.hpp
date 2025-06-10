@@ -3444,6 +3444,24 @@ struct char32
 {
     char32_t m_data;
 
+    char32() = default;
+
+    char32(char32_t data) : m_data(data)
+    {
+    }
+
+    char32(std::string_view txt) : char32()
+    {
+        const auto res = read(txt);
+        assert_that<std::runtime_error>(res.has_value(), "char32: invalid input");
+        assert_that<std::runtime_error>(res->second.empty(), "char32: invalid input - exactly one glyph expected");
+        m_data = res->first.m_data;
+    }
+
+    char32(const char ch) : char32(std::string_view(&ch, 1))
+    {
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const char32& item)
     {
         std::array<char, 4> data;
