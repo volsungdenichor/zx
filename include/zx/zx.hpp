@@ -2749,8 +2749,10 @@ struct sequence_iterator
     using reference = T;
     using difference_type = std::ptrdiff_t;
     using value_type = std::decay_t<reference>;
-    using pointer
-        = std::conditional_t<std::is_reference_v<reference>, std::add_pointer_t<reference>, pointer_proxy<reference>>;
+    using pointer = std::conditional_t<  //
+        std::is_reference_v<reference>,
+        std::add_pointer_t<reference>,
+        pointer_proxy<reference>>;
     using iterator_category = std::forward_iterator_tag;
 
     next_function_type m_next_fn;
@@ -2937,18 +2939,6 @@ struct sequence : inspect_mixin<T>,
             }
         }
         return {};
-    }
-
-    template <class Output>
-    auto copy(Output out) const -> Output
-    {
-        return std::copy(begin(), end(), std::move(out));
-    }
-
-    template <class Seed, class BinaryFunc>
-    auto accumulate(Seed seed, BinaryFunc&& func) const -> Seed
-    {
-        return std::accumulate(begin(), end(), std::move(seed), std::forward<BinaryFunc>(func));
     }
 };
 
@@ -3470,17 +3460,6 @@ struct char32
         return os;
     }
 
-    static auto read(std::string_view txt) -> maybe<std::pair<char32, std::string_view>>
-    {
-        const auto [rc, c32] = decode(txt);
-        if (rc == std::size_t(0) || rc == std::size_t(-1) || rc == std::size_t(-2))
-        {
-            return {};
-        }
-        txt.remove_prefix(rc);
-        return std::pair{ char32{ c32 }, txt };
-    }
-
     static auto split(std::string_view text) -> sequence<char32>
     {
         return sequence<char32>{ [=]() mutable -> iteration_result_t<char32>
@@ -3493,6 +3472,23 @@ struct char32
                                      }
                                      return {};
                                  } };
+    }
+
+    static auto split(std::u32string_view text) -> sequence<char32>
+    {
+        return seq::view(text).transform([](char32_t ch) { return char32{ ch }; });
+    }
+
+private:
+    static auto read(std::string_view txt) -> maybe<std::pair<char32, std::string_view>>
+    {
+        const auto [rc, c32] = decode(txt);
+        if (rc == std::size_t(0) || rc == std::size_t(-1) || rc == std::size_t(-2))
+        {
+            return {};
+        }
+        txt.remove_prefix(rc);
+        return std::pair{ char32{ c32 }, txt };
     }
 
     static auto decode(std::string_view txt) -> std::pair<std::size_t, char32_t>
@@ -3559,13 +3555,13 @@ namespace detail
 struct unwrap_fn
 {
     template <class T>
-    auto operator()(T& item) const -> T&
+    constexpr auto operator()(T& item) const -> T&
     {
         return item;
     }
 
     template <class T>
-    auto operator()(std::reference_wrapper<T> item) const -> T&
+    constexpr auto operator()(std::reference_wrapper<T> item) const -> T&
     {
         return item;
     }
