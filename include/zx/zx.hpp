@@ -3465,30 +3465,15 @@ struct char32
     friend std::ostream& operator<<(std::ostream& os, const char32& item)
     {
         std::array<char, 4> data;
-        const span<char> v = std::invoke(
-            [&]() -> span<char>
-            {
-                auto state = std::mbstate_t{};
-                const std::uint8_t size = std::c32rtomb(data.data(), item.m_data, &state);
-                assert_that<std::runtime_error>(size != std::size_t(-1), "u32_to_mb: error in conversion");
-                return span<char>{ data.data(), data.data() + size };
-            });
+        const span<char> v = encode(data, item.m_data);
         std::copy(v.begin(), v.end(), std::ostream_iterator<char>{ os });
         return os;
     }
 
     static auto read(std::string_view txt) -> maybe<std::pair<char32, std::string_view>>
     {
-        std::setlocale(LC_ALL, "en_US.utf8");
-        std::mbstate_t state{};
-        char32_t c32 = {};
-        std::size_t rc = std::mbrtoc32(&c32, txt.begin(), txt.size(), &state);
-        assert_that<std::runtime_error>(rc != std::size_t(-3), "u32_to_mb: error in conversion");
-        if (rc == std::size_t(-1))
-        {
-            return {};
-        }
-        if (rc == std::size_t(-2))
+        const auto [rc, c32] = decode(txt);
+        if (rc == std::size_t(0) || rc == std::size_t(-1) || rc == std::size_t(-2))
         {
             return {};
         }
@@ -3510,32 +3495,50 @@ struct char32
                                  } };
     }
 
-    friend bool operator==(const char32& lhs, const char32& rhs)
+    static auto decode(std::string_view txt) -> std::pair<std::size_t, char32_t>
+    {
+        std::setlocale(LC_ALL, "en_US.utf8");
+        std::mbstate_t state{};
+        char32_t c32 = {};
+        std::size_t rc = std::mbrtoc32(&c32, txt.begin(), txt.size(), &state);
+        assert_that<std::runtime_error>(rc != std::size_t(-3), "mbrtoc32: error in conversion from char[] to char32_t");
+        return { rc, c32 };
+    }
+
+    static auto encode(std::array<char, 4>& out, char32_t value) -> span<char>
+    {
+        std::mbstate_t state{};
+        const std::uint8_t size = std::c32rtomb(out.data(), value, &state);
+        assert_that<std::runtime_error>(size != std::size_t(-1), "c32rtomb: error in conversion from char32_t to char[]");
+        return span<char>{ out.data(), out.data() + size };
+    }
+
+    friend constexpr bool operator==(const char32& lhs, const char32& rhs)
     {
         return lhs.m_data == rhs.m_data;
     }
 
-    friend bool operator!=(const char32& lhs, const char32& rhs)
+    friend constexpr bool operator!=(const char32& lhs, const char32& rhs)
     {
         return !(lhs == rhs);
     }
 
-    friend bool operator<(const char32& lhs, const char32& rhs)
+    friend constexpr bool operator<(const char32& lhs, const char32& rhs)
     {
         return lhs.m_data < rhs.m_data;
     }
 
-    friend bool operator>(const char32& lhs, const char32& rhs)
+    friend constexpr bool operator>(const char32& lhs, const char32& rhs)
     {
         return rhs < lhs;
     }
 
-    friend bool operator<=(const char32& lhs, const char32& rhs)
+    friend constexpr bool operator<=(const char32& lhs, const char32& rhs)
     {
         return !(lhs > rhs);
     }
 
-    friend bool operator>=(const char32& lhs, const char32& rhs)
+    friend constexpr bool operator>=(const char32& lhs, const char32& rhs)
     {
         return !(lhs < rhs);
     }
