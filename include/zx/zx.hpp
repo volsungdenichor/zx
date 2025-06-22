@@ -1,5 +1,14 @@
 #pragma once
 
+/*
+   __                  __
+  / /    ____ __  __   \ \
+ | |    |_  / \ \/ /    | |
+ | |     / /   >  <     | |
+ | |    /___| /_/\_\    | |
+  \_\                  /_/
+*/
+
 #include <algorithm>
 #include <cstdint>
 #include <cuchar>
@@ -100,12 +109,12 @@ constexpr bool is_detected_v = is_detected<Op, Args...>::value;
     template <class T0, class T1>                       \
     using name##impl = decltype(__VA_ARGS__);           \
                                                         \
-    template <class T0, class T1>                       \
+    template <class T0, class T1 = T0>                  \
     struct name : ::zx::is_detected<name##impl, T0, T1> \
     {                                                   \
     };                                                  \
                                                         \
-    template <class T0, class T1>                       \
+    template <class T0, class T1 = T0>                  \
     constexpr bool name##_v = name<T0, T1>::value;
 
 ZX_DEFINE_IS_DETECTED_1(has_ostream_operator, std::declval<std::ostream>() << std::declval<T0>());
@@ -442,7 +451,7 @@ struct formatter<std::pair<F, S>>
 class source_location
 {
 public:
-    constexpr source_location(std::string_view file_name, std::uint32_t line, std::string_view function_name)
+    constexpr source_location(std::string_view file_name, u32 line, std::string_view function_name)
         : m_file_name{ file_name }
         , m_line{ line }
         , m_function_name{ function_name }
@@ -462,7 +471,7 @@ public:
         return m_function_name;
     }
 
-    constexpr std::uint32_t line() const noexcept
+    constexpr u32 line() const noexcept
     {
         return m_line;
     }
@@ -474,7 +483,7 @@ public:
 
 private:
     std::string_view m_file_name;
-    std::uint32_t m_line;
+    u32 m_line;
     std::string_view m_function_name;
 };
 
