@@ -2126,13 +2126,13 @@ private:
         return std::invoke(std::get<I>(m_pipes), std::forward<Args>(args)...);
     }
 
-    template <std::size_t I, class... Args, std::enable_if_t<(I + 1) == sizeof...(Pipes), int> = 0>
+    template <std::size_t I, class... Args, require<(I + 1) == sizeof...(Pipes)> = 0>
     constexpr auto call(Args&&... args) const -> decltype(invoke<I>(std::forward<Args>(args)...))
     {
         return invoke<I>(std::forward<Args>(args)...);
     }
 
-    template <std::size_t I, class... Args, std::enable_if_t<(I + 1) < sizeof...(Pipes), int> = 0>
+    template <std::size_t I, class... Args, require<(I + 1) < sizeof...(Pipes)> = 0>
     constexpr auto call(Args&&... args) const -> decltype(call<I + 1>(invoke<I>(std::forward<Args>(args)...)))
     {
         return call<I + 1>(invoke<I>(std::forward<Args>(args)...));
@@ -2162,7 +2162,7 @@ constexpr auto operator|=(pipe_t<L...> lhs, pipe_t<R...> rhs) -> decltype(pipe(s
     return pipe(std::move(lhs), std::move(rhs));
 }
 
-template <class T, class... Pipes, std::enable_if_t<!is_pipeline<std::decay_t<T>>{}, int> = 0>
+template <class T, class... Pipes, require<!is_pipeline<std::decay_t<T>>{}> = 0>
 constexpr auto operator|=(T&& item, const pipe_t<Pipes...>& p) -> decltype(p(std::forward<T>(item)))
 {
     return p(std::forward<T>(item));
@@ -3228,17 +3228,17 @@ struct sequence : inspect_mixin<T>,
     {
     }
 
-    template <class U, std::enable_if_t<std::is_constructible_v<reference, U>, int> = 0>
+    template <class U, require<std::is_constructible_v<reference, U>> = 0>
     sequence(const sequence<U>& other) : sequence(cast_sequence<reference, U>{ other.get_next_function() })
     {
     }
 
-    template <class U, std::enable_if_t<std::is_constructible_v<reference, U>, int> = 0>
+    template <class U, require<std::is_constructible_v<reference, U>> = 0>
     sequence(sequence<U>&& other) : sequence(cast_sequence<reference, U>{ std::move(other).get_next_function() })
     {
     }
 
-    template <class Iter, std::enable_if_t<std::is_constructible_v<reference, iter_reference_t<Iter>>, int> = 0>
+    template <class Iter, require<std::is_constructible_v<reference, iter_reference_t<Iter>>> = 0>
     sequence(Iter b, Iter e) : sequence(view_sequence<Iter, reference>{ b, e })
     {
     }
@@ -3246,7 +3246,7 @@ struct sequence : inspect_mixin<T>,
     template <
         class Range,
         class Iter = iterator_t<Range>,
-        std::enable_if_t<std::is_constructible_v<reference, iter_reference_t<Iter>>, int> = 0>
+        require<std::is_constructible_v<reference, iter_reference_t<Iter>>> = 0>
     sequence(Range&& range) : sequence(std::begin(range), std::end(range))
     {
     }
@@ -3255,7 +3255,7 @@ struct sequence : inspect_mixin<T>,
     {
     }
 
-    template <class Container, std::enable_if_t<std::is_constructible_v<Container, iterator, iterator>, int> = 0>
+    template <class Container, require<std::is_constructible_v<Container, iterator, iterator>> = 0>
     operator Container() const
     {
         return Container{ begin(), end() };
@@ -4735,7 +4735,7 @@ static constexpr inline auto is_none = detail::is_none_fn{};
 
 }  // namespace zx
 
-#define ZX_CURRENT_SOURCE_LOCATION ::zx::source_location(__FILE__, __LINE__, __PRETTY_FUNCTION__)
+#define ZX_SOURCE_LOCATION ::zx::source_location(__FILE__, __LINE__, __PRETTY_FUNCTION__)
 
 namespace std
 {
