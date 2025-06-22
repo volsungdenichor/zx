@@ -1977,6 +1977,74 @@ struct get_element_fn
     }
 };
 
+static constexpr inline struct eq_fn
+{
+    template <class Iter>
+    bool operator()(const Iter& lhs, const Iter& rhs) const
+    {
+        return call(lhs, rhs, std::make_index_sequence<std::tuple_size_v<Iter>>{});
+    }
+
+private:
+    template <class Iter, std::size_t... I>
+    static bool call(const Iter& lhs, const Iter& rhs, std::index_sequence<I...>)
+    {
+        return (... || (std::get<I>(lhs) == std::get<I>(rhs)));
+    }
+} eq;
+
+template <class Iter>
+void inc(Iter& iter)
+{
+    std::apply([](auto&... it) { (++it, ...); }, iter);
+}
+
+static constexpr inline struct invoke_reducer_fn
+{
+    template <class Reducer, class State, class Iter>
+    auto operator()(Reducer&& reducer, State state, Iter it) const -> State
+    {
+        return call(
+            std::forward<Reducer>(reducer), std::move(state), it, std::make_index_sequence<std::tuple_size_v<Iter>>{});
+    }
+
+private:
+    template <class Reducer, class State, class Iter, std::size_t... I>
+    static auto call(Reducer&& reducer, State state, Iter it, std::index_sequence<I...>) -> State
+    {
+        return std::invoke(std::forward<Reducer>(reducer), std::move(state), *std::get<I>(it)...);
+    }
+} invoke_reducer;
+
+struct reduce_fn
+{
+    template <class State, class Reducer>
+    struct proxy_t
+    {
+        State m_state;
+        Reducer m_reducer;
+
+        template <class... Ranges>
+        auto operator()(Ranges&&... ranges) const -> State
+        {
+            State state = m_state;
+            const auto begin = std::tuple{ std::begin(ranges)... };
+            const auto end = std::tuple{ std::end(ranges)... };
+            for (auto it = begin; !eq(it, end); inc(it))
+            {
+                state = invoke_reducer(m_reducer, std::move(state), it);
+            }
+            return state;
+        }
+    };
+
+    template <class State, class Reducer>
+    constexpr auto operator()(State state, Reducer&& reducer) const -> proxy_t<State, std::decay_t<Reducer>>
+    {
+        return { std::move(state), std::forward<Reducer>(reducer) };
+    }
+};
+
 }  // namespace detail
 
 static constexpr inline auto pipe = detail::pipe_fn{};
@@ -1991,6 +2059,8 @@ static constexpr inline auto first = get_element<0>;
 static constexpr inline auto second = get_element<1>;
 static constexpr inline auto key = get_element<0>;
 static constexpr inline auto value = get_element<1>;
+
+static constexpr inline auto reduce = detail::reduce_fn{};
 
 /*
                                                              __  _____  __

@@ -3,6 +3,7 @@ set(TARGET_NAME zx-ut)
 set(UNIT_TEST_SOURCE_LIST
     result.test.cpp
     maybe.test.cpp
+    functional.test.cpp
     iterator_range.test.cpp
     predicates.test.cpp
 )
