@@ -6,6 +6,7 @@ set(UNIT_TEST_SOURCE_LIST
     functional.test.cpp
     iterator_range.test.cpp
     predicates.test.cpp
+    iterator_interface.test.cpp
 )
 
 Include(FetchContent)
