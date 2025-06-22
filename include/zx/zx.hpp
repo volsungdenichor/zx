@@ -74,6 +74,42 @@ constexpr bool should_pass_by_value = sizeof(T) <= 2 * sizeof(void*) && std::is_
 
 }  // namespace detail
 
+template <template <class...> class Op, class... Args>
+struct is_detected : detail::detector_impl<std::void_t<>, Op, Args...>
+{
+};
+
+template <template <class...> class Op, class... Args>
+constexpr bool is_detected_v = is_detected<Op, Args...>::value;
+
+#define ZX_DEFINE_IS_DETECTED_1(name, ...)          \
+                                                    \
+    template <class T0>                             \
+    using name##impl = decltype(__VA_ARGS__);       \
+                                                    \
+    template <class T0>                             \
+    struct name : ::zx::is_detected<name##impl, T0> \
+    {                                               \
+    };                                              \
+                                                    \
+    template <class T0>                             \
+    constexpr bool name##_v = name<T0>::value;
+
+#define ZX_DEFINE_IS_DETECTED_2(name, ...)              \
+                                                        \
+    template <class T0, class T1>                       \
+    using name##impl = decltype(__VA_ARGS__);           \
+                                                        \
+    template <class T0, class T1>                       \
+    struct name : ::zx::is_detected<name##impl, T0, T1> \
+    {                                                   \
+    };                                                  \
+                                                        \
+    template <class T0, class T1>                       \
+    constexpr bool name##_v = name<T0, T1>::value;
+
+ZX_DEFINE_IS_DETECTED_1(has_ostream_operator, std::declval<std::ostream>() << std::declval<T0>());
+
 template <class T>
 using in_t = std::conditional_t<detail::should_pass_by_value<T>, const T, const T&>;
 
@@ -96,14 +132,6 @@ template <class...>
 struct always_false : std::false_type
 {
 };
-
-template <template <class...> class Op, class... Args>
-struct is_detected : detail::detector_impl<std::void_t<>, Op, Args...>
-{
-};
-
-template <template <class...> class Op, class... Args>
-constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 
 template <class T>
 using iterator_t = decltype(std::begin(std::declval<T&>()));
@@ -180,14 +208,6 @@ struct is_random_access_range : is_random_access_iterator<iterator_t<T>>
 {
 };
 
-template <class Os, class T>
-using has_ostream_operator_impl = decltype(std::declval<Os>() << std::declval<T>());
-
-template <class T, class Os = std::ostream>
-struct has_ostream_operator : is_detected<has_ostream_operator_impl, Os, T>
-{
-};
-
 #ifdef __GNUG__
 
 inline auto demangle(const char* name) -> std::string
@@ -246,22 +266,21 @@ struct ostream_writer : public std::function<void(std::ostream&)>
 template <class T, class = void>
 struct formatter;
 
+ZX_DEFINE_IS_DETECTED_1(has_formatter, formatter<T0>{})
+
 namespace detail
 {
 
 static constexpr inline struct format_to_fn
 {
     template <class T>
-    using has_formatter_impl = decltype(formatter<T>{});
-
-    template <class T>
     static void do_format(std::ostream& os, const T& item)
     {
-        if constexpr (is_detected_v<has_formatter_impl, T>)
+        if constexpr (has_formatter_v<T>)
         {
             formatter<T>{}.format(os, item);
         }
-        else if constexpr (has_ostream_operator<T>::value)
+        else if constexpr (has_ostream_operator_v<T>)
         {
             os << item;
         }
@@ -1507,26 +1526,13 @@ struct convertible_to
     operator T() const;
 };
 
-template <class T>
-using iter_has_deref_impl = decltype(std::declval<T>().deref());
-
-template <class T>
-using iter_has_inc_impl = decltype(std::declval<T>().inc());
-
-template <class T>
-using iter_has_dec_impl = decltype(std::declval<T>().dec());
-
-template <class T>
-using iter_has_advance_impl = decltype(std::declval<T>().advance(std::declval<convertible_to<std::is_integral>>()));
-
-template <class T>
-using iter_has_is_equal_impl = decltype(std::declval<T>().is_equal(std::declval<T>()));
-
-template <class T>
-using iter_has_is_less_impl = decltype(std::declval<T>().is_less(std::declval<T>()));
-
-template <class T>
-using iter_has_distance_to_impl = decltype(std::declval<T>().distance_to(std::declval<T>()));
+ZX_DEFINE_IS_DETECTED_1(iter_has_deref, std::declval<T0>().deref());
+ZX_DEFINE_IS_DETECTED_1(iter_has_inc, std::declval<T0>().inc());
+ZX_DEFINE_IS_DETECTED_1(iter_has_dec, std::declval<T0>().dec());
+ZX_DEFINE_IS_DETECTED_1(iter_has_advance, std::declval<T0>().advance(std::declval<convertible_to<std::is_integral>>()));
+ZX_DEFINE_IS_DETECTED_1(iter_has_is_equal, std::declval<T0>().is_equal(std::declval<T0>()));
+ZX_DEFINE_IS_DETECTED_1(iter_has_is_less, std::declval<T0>().is_less(std::declval<T0>()));
+ZX_DEFINE_IS_DETECTED_1(iter_has_distance_to, std::declval<T0>().distance_to(std::declval<T0>()));
 
 template <class T, class = std::void_t<>>
 struct difference_type_impl
@@ -1535,31 +1541,10 @@ struct difference_type_impl
 };
 
 template <class T>
-struct difference_type_impl<T, std::void_t<iter_has_distance_to_impl<T>>>
+struct difference_type_impl<T, std::enable_if_t<iter_has_distance_to_v<T>>>
 {
     using type = decltype(std::declval<T>().distance_to(std::declval<T>()));
 };
-
-template <class T>
-constexpr bool iter_has_deref_v = is_detected_v<iter_has_deref_impl, T>;
-
-template <class T>
-constexpr bool iter_has_inc_v = is_detected_v<iter_has_inc_impl, T>;
-
-template <class T>
-constexpr bool iter_has_dec_v = is_detected_v<iter_has_dec_impl, T>;
-
-template <class T>
-constexpr bool iter_has_advance_v = is_detected_v<iter_has_advance_impl, T>;
-
-template <class T>
-constexpr bool iter_has_is_equal_v = is_detected_v<iter_has_is_equal_impl, T>;
-
-template <class T>
-constexpr bool iter_has_is_less_v = is_detected_v<iter_has_is_less_impl, T>;
-
-template <class T>
-constexpr bool iter_has_distance_to_v = is_detected_v<iter_has_distance_to_impl, T>;
 
 template <class T>
 constexpr bool iter_is_incrementable_v = iter_has_advance_v<T> || iter_has_inc_v<T>;
@@ -3961,8 +3946,7 @@ struct unwrap_fn
 
 static constexpr inline auto unwrap = unwrap_fn{};
 
-template <class L, class R>
-using is_equality_comparable = decltype(std::declval<L>() == std::declval<R>());
+ZX_DEFINE_IS_DETECTED_2(is_equality_comparable, std::declval<T0>() == std::declval<T1>());
 
 template <class Pred, class T>
 constexpr bool invoke_pred(Pred&& pred, T&& item)
@@ -3971,7 +3955,7 @@ constexpr bool invoke_pred(Pred&& pred, T&& item)
     {
         return std::invoke(std::forward<Pred>(pred), std::forward<T>(item));
     }
-    else if constexpr (is_detected<is_equality_comparable, T, Pred>::value)
+    else if constexpr (is_equality_comparable_v<T, Pred>)
     {
         return pred == item;
     }
