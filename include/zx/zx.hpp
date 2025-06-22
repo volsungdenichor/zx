@@ -1562,6 +1562,18 @@ template <class T>
 constexpr bool iter_has_distance_to_v = is_detected_v<iter_has_distance_to_impl, T>;
 
 template <class T>
+constexpr bool iter_is_incrementable_v = iter_has_advance_v<T> || iter_has_inc_v<T>;
+
+template <class T>
+constexpr bool iter_is_decrementable_v = iter_has_advance_v<T> || iter_has_dec_v<T>;
+
+template <class T>
+constexpr bool iter_is_equality_comparable_v = iter_has_is_equal_v<T> || iter_has_distance_to_v<T>;
+
+template <class T>
+constexpr bool iter_is_less_than_comparable_v = iter_has_is_less_v<T> || iter_has_distance_to_v<T>;
+
+template <class T>
 using difference_type = typename detail::difference_type_impl<T>::type;
 
 template <class T>
@@ -1613,7 +1625,7 @@ private:
         return { **this };
     }
 
-    template <class Impl_ = Impl, require<iter_has_advance_v<Impl_> || iter_has_inc_v<Impl_>> = 0>
+    template <class Impl_ = Impl, require<iter_is_incrementable_v<Impl_>> = 0>
     void inc()
     {
         if constexpr (iter_has_inc_v<Impl_>)
@@ -1626,7 +1638,7 @@ private:
         }
     }
 
-    template <class Impl_ = Impl, require<iter_has_advance_v<Impl_> || iter_has_dec_v<Impl_>> = 0>
+    template <class Impl_ = Impl, require<iter_is_decrementable_v<Impl_>> = 0>
     void dec()
     {
         if constexpr (iter_has_dec_v<Impl_>)
@@ -1639,7 +1651,7 @@ private:
         }
     }
 
-    template <class Impl_ = Impl, require<iter_has_is_equal_v<Impl_> || iter_has_distance_to_v<Impl_>> = 0>
+    template <class Impl_ = Impl, require<iter_is_equality_comparable_v<Impl_>> = 0>
     bool is_equal(const Impl& other) const
     {
         if constexpr (iter_has_is_equal_v<Impl_>)
@@ -1652,7 +1664,7 @@ private:
         }
     }
 
-    template <class Impl_ = Impl, require<iter_has_is_less_v<Impl_> || iter_has_distance_to_v<Impl_>> = 0>
+    template <class Impl_ = Impl, require<iter_is_less_than_comparable_v<Impl_>> = 0>
     bool is_less(const Impl& other) const
     {
         if constexpr (iter_has_is_less_v<Impl_>)
@@ -1676,14 +1688,14 @@ public:
         return get_pointer();
     }
 
-    template <class Impl_ = Impl, require<iter_has_advance_v<Impl_> || iter_has_inc_v<Impl_>> = 0>
+    template <class Impl_ = Impl, require<iter_is_incrementable_v<Impl_>> = 0>
     iterator_interface& operator++()
     {
         inc();
         return *this;
     }
 
-    template <class Impl_ = Impl, require<iter_has_advance_v<Impl_> || iter_has_inc_v<Impl_>> = 0>
+    template <class Impl_ = Impl, require<iter_is_incrementable_v<Impl_>> = 0>
     iterator_interface operator++(int)
     {
         iterator_interface tmp{ *this };
@@ -1691,14 +1703,14 @@ public:
         return tmp;
     }
 
-    template <class Impl_ = Impl, require<iter_has_advance_v<Impl_> || iter_has_dec_v<Impl_>> = 0>
+    template <class Impl_ = Impl, require<iter_is_decrementable_v<Impl_>> = 0>
     iterator_interface& operator--()
     {
         dec();
         return *this;
     }
 
-    template <class Impl_ = Impl, require<iter_has_advance_v<Impl_> || iter_has_dec_v<Impl_>> = 0>
+    template <class Impl_ = Impl, require<iter_is_decrementable_v<Impl_>> = 0>
     iterator_interface operator--(int)
     {
         iterator_interface tmp{ *this };
@@ -1753,25 +1765,25 @@ public:
         return !(lhs == rhs);
     }
 
-    template <class Impl_ = Impl, require<iter_has_is_less_v<Impl_> || iter_has_distance_to_v<Impl_>> = 0>
+    template <class Impl_ = Impl, require<iter_is_less_than_comparable_v<Impl_>> = 0>
     friend bool operator<(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return lhs.is_less(rhs.m_impl);
     }
 
-    template <class Impl_ = Impl, require<iter_has_is_less_v<Impl_> || iter_has_distance_to_v<Impl_>> = 0>
+    template <class Impl_ = Impl, require<iter_is_less_than_comparable_v<Impl_>> = 0>
     friend bool operator>(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return rhs < lhs;
     }
 
-    template <class Impl_ = Impl, require<iter_has_is_less_v<Impl_> || iter_has_distance_to_v<Impl_>> = 0>
+    template <class Impl_ = Impl, require<iter_is_less_than_comparable_v<Impl_>> = 0>
     friend bool operator<=(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return !(lhs > rhs);
     }
 
-    template <class Impl_ = Impl, require<iter_has_is_less_v<Impl_> || iter_has_distance_to_v<Impl_>> = 0>
+    template <class Impl_ = Impl, require<iter_is_less_than_comparable_v<Impl_>> = 0>
     friend bool operator>=(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return !(lhs < rhs);
