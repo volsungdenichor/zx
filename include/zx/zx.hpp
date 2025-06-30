@@ -2289,6 +2289,27 @@ static constexpr inline struct with_fn
     }
 } with;
 
+static constexpr inline struct deconstruct_fn
+{
+    template <class Func>
+    struct impl
+    {
+        Func m_func;
+
+        template <class Tuple>
+        auto operator()(Tuple&& tuple) const -> decltype(std::apply(m_func, std::forward<Tuple>(tuple)))
+        {
+            return std::apply(m_func, std::forward<Tuple>(tuple));
+        }
+    };
+
+    template <class Func>
+    auto operator()(Func&& func) const -> pipe_t<impl<std::decay_t<Func>>>
+    {
+        return { { std::forward<Func>(func) } };
+    }
+} deconstruct;
+
 template <std::size_t N>
 struct get_element_fn
 {
@@ -2372,10 +2393,77 @@ struct reduce_fn
     }
 };
 
+struct let_fn
+{
+    template <class Func>
+    constexpr auto operator()(Func&& func) const -> std::invoke_result_t<Func>
+    {
+        return std::invoke(std::forward<Func>(func));
+    }
+
+    template <class T0, class Func>
+    constexpr auto operator()(T0&& t0, Func&& func) const -> std::invoke_result_t<Func, T0>
+    {
+        return std::invoke(std::forward<Func>(func), std::forward<T0>(t0));
+    }
+
+    template <class T0, class T1, class Func>
+    constexpr auto operator()(T0&& t0, T1&& t1, Func&& func) const -> std::invoke_result_t<Func, T0, T1>
+    {
+        return std::invoke(std::forward<Func>(func), std::forward<T0>(t0), std::forward<T1>(t1));
+    }
+
+    template <class T0, class T1, class T2, class Func>
+    constexpr auto operator()(T0&& t0, T1&& t1, T2&& t2, Func&& func) const -> std::invoke_result_t<Func, T0, T1, T2>
+    {
+        return std::invoke(std::forward<Func>(func), std::forward<T0>(t0), std::forward<T1>(t1), std::forward<T2>(t2));
+    }
+
+    template <class T0, class T1, class T2, class T3, class Func>
+    constexpr auto operator()(T0&& t0, T1&& t1, T2&& t2, T3&& t3, Func&& func) const
+        -> std::invoke_result_t<Func, T0, T1, T2, T3>
+    {
+        return std::invoke(
+            std::forward<Func>(func),
+            std::forward<T0>(t0),
+            std::forward<T1>(t1),
+            std::forward<T2>(t2),
+            std::forward<T3>(t3));
+    }
+
+    template <class T0, class T1, class T2, class T3, class T4, class Func>
+    constexpr auto operator()(T0&& t0, T1&& t1, T2&& t2, T3&& t3, T4&& t4, Func&& func) const
+        -> std::invoke_result_t<Func, T0, T1, T2, T3, T4>
+    {
+        return std::invoke(
+            std::forward<Func>(func),
+            std::forward<T0>(t0),
+            std::forward<T1>(t1),
+            std::forward<T2>(t2),
+            std::forward<T3>(t3),
+            std::forward<T4>(t4));
+    }
+
+    template <class T0, class T1, class T2, class T3, class T4, class T5, class Func>
+    constexpr auto operator()(T0&& t0, T1&& t1, T2&& t2, T3&& t3, T4&& t4, T5&& t5, Func&& func) const
+        -> std::invoke_result_t<Func, T0, T1, T2, T3, T4, T5>
+    {
+        return std::invoke(
+            std::forward<Func>(func),
+            std::forward<T0>(t0),
+            std::forward<T1>(t1),
+            std::forward<T2>(t2),
+            std::forward<T3>(t3),
+            std::forward<T4>(t4),
+            std::forward<T5>(t5));
+    }
+};
+
 }  // namespace detail
 
 static constexpr inline auto pipe = detail::pipe_fn{};
 using detail::apply;
+using detail::deconstruct;
 using detail::do_all;
 using detail::with;
 
@@ -2388,6 +2476,7 @@ static constexpr inline auto key = get_element<0>;
 static constexpr inline auto value = get_element<1>;
 
 static constexpr inline auto reduce = detail::reduce_fn{};
+static constexpr inline auto let = detail::let_fn{};
 
 /*
                                                              __  _____  __
