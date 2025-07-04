@@ -7,6 +7,7 @@ set(UNIT_TEST_SOURCE_LIST
     iterator_range.test.cpp
     predicates.test.cpp
     iterator_interface.test.cpp
+    char32.test.cpp
 )
 
 Include(FetchContent)

@@ -64,6 +64,15 @@ struct is_empty_matcher
     }
 };
 
+struct size_is_matcher
+{
+    template <class T>
+    auto operator()(T matcher) const
+    {
+        return Catch::Matchers::SizeIs(std::move(matcher));
+    }
+};
+
 }  // namespace detail
 
 static constexpr inline auto equal_to = detail::compare_matcher<std::equal_to<>>{ "equal to" };
@@ -75,5 +84,6 @@ static constexpr inline auto greater_equal = detail::compare_matcher<std::greate
 
 static constexpr inline auto elements_are = detail::elements_are_matcher{};
 static constexpr inline auto is_empty = detail::is_empty_matcher{};
+static constexpr inline auto size_is = detail::size_is_matcher{};
 
 }  // namespace matchers
