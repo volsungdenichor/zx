@@ -2289,7 +2289,7 @@ static constexpr inline struct with_fn
     }
 } with;
 
-static constexpr inline struct deconstruct_fn
+static constexpr inline struct destruct_fn
 {
     template <class Func>
     struct impl
@@ -2308,7 +2308,7 @@ static constexpr inline struct deconstruct_fn
     {
         return { { std::forward<Func>(func) } };
     }
-} deconstruct;
+} destruct;
 
 template <std::size_t N>
 struct get_element_fn
@@ -2463,7 +2463,7 @@ struct let_fn
 
 static constexpr inline auto pipe = detail::pipe_fn{};
 using detail::apply;
-using detail::deconstruct;
+using detail::destruct;
 using detail::do_all;
 using detail::with;
 
@@ -2495,6 +2495,9 @@ using next_function_t = std::function<iteration_result_t<T>()>;
 
 template <class T>
 struct sequence;
+
+namespace detail
+{
 
 template <class T>
 struct inspect_mixin
@@ -3177,47 +3180,6 @@ struct for_each_indexed_mixin
 };
 
 template <class T>
-struct empty_sequence
-{
-    auto operator()() const -> iteration_result_t<T>
-    {
-        return {};
-    }
-};
-
-template <class To, class From>
-struct cast_sequence
-{
-    next_function_t<From> m_from;
-
-    auto operator()() const -> iteration_result_t<To>
-    {
-        iteration_result_t<From> value = m_from();
-        if (value)
-        {
-            return static_cast<To>(*value);
-        }
-        return {};
-    }
-};
-
-template <class Iter, class Out>
-struct view_sequence
-{
-    mutable Iter m_iter;
-    Iter m_end;
-
-    auto operator()() const -> iteration_result_t<Out>
-    {
-        if (m_iter == m_end)
-        {
-            return {};
-        }
-        return *m_iter++;
-    }
-};
-
-template <class T>
 struct sequence_iterator
 {
     using next_function_type = next_function_t<T>;
@@ -3294,26 +3256,89 @@ struct sequence_iterator
 };
 
 template <class T>
-struct sequence : inspect_mixin<T>,
-                  inspect_indexed_mixin<T>,
-                  transform_mixin<T>,
-                  transform_indexed_mixin<T>,
-                  filter_mixin<T>,
-                  filter_indexed_mixin<T>,
-                  transform_maybe_mixin<T>,
-                  transform_maybe_indexed_mixin<T>,
-                  drop_while_mixin<T>,
-                  drop_while_indexed_mixin<T>,
-                  take_while_mixin<T>,
-                  take_while_indexed_mixin<T>,
-                  drop_mixin<T>,
-                  take_mixin<T>,
-                  step_mixin<T>,
-                  join_mixin<T>,
-                  for_each_mixin<T>,
-                  for_each_indexed_mixin<T>
+struct empty_sequence
 {
-    using iterator = sequence_iterator<T>;
+    auto operator()() const -> iteration_result_t<T>
+    {
+        return {};
+    }
+};
+
+template <class To, class From>
+struct cast_sequence
+{
+    next_function_t<From> m_from;
+
+    auto operator()() const -> iteration_result_t<To>
+    {
+        iteration_result_t<From> value = m_from();
+        if (value)
+        {
+            return static_cast<To>(*value);
+        }
+        return {};
+    }
+};
+
+template <class Iter, class Out>
+struct view_sequence
+{
+    mutable Iter m_iter;
+    Iter m_end;
+
+    auto operator()() const -> iteration_result_t<Out>
+    {
+        if (m_iter == m_end)
+        {
+            return {};
+        }
+        return *m_iter++;
+    }
+};
+
+template <class Range, class Iter, class Out>
+struct owning_sequence
+{
+    std::shared_ptr<Range> m_range;
+    mutable Iter m_iter;
+
+    explicit owning_sequence(std::shared_ptr<Range> range) : m_range(range), m_iter(std::begin(*m_range))
+    {
+    }
+
+    auto operator()() const -> iteration_result_t<Out>
+    {
+        if (m_iter == std::end(*m_range))
+        {
+            return {};
+        }
+        return *m_iter++;
+    }
+};
+
+}  // namespace detail
+
+template <class T>
+struct sequence : detail::inspect_mixin<T>,
+                  detail::inspect_indexed_mixin<T>,
+                  detail::transform_mixin<T>,
+                  detail::transform_indexed_mixin<T>,
+                  detail::filter_mixin<T>,
+                  detail::filter_indexed_mixin<T>,
+                  detail::transform_maybe_mixin<T>,
+                  detail::transform_maybe_indexed_mixin<T>,
+                  detail::drop_while_mixin<T>,
+                  detail::drop_while_indexed_mixin<T>,
+                  detail::take_while_mixin<T>,
+                  detail::take_while_indexed_mixin<T>,
+                  detail::drop_mixin<T>,
+                  detail::take_mixin<T>,
+                  detail::step_mixin<T>,
+                  detail::join_mixin<T>,
+                  detail::for_each_mixin<T>,
+                  detail::for_each_indexed_mixin<T>
+{
+    using iterator = detail::sequence_iterator<T>;
     using next_function_type = typename iterator::next_function_type;
     using value_type = typename iterator::value_type;
     using reference = typename iterator::reference;
@@ -3327,17 +3352,17 @@ struct sequence : inspect_mixin<T>,
     }
 
     template <class U, require<std::is_constructible_v<reference, U>> = 0>
-    sequence(const sequence<U>& other) : sequence(cast_sequence<reference, U>{ other.get_next_function() })
+    sequence(const sequence<U>& other) : sequence(detail::cast_sequence<reference, U>{ other.get_next_function() })
     {
     }
 
     template <class U, require<std::is_constructible_v<reference, U>> = 0>
-    sequence(sequence<U>&& other) : sequence(cast_sequence<reference, U>{ std::move(other).get_next_function() })
+    sequence(sequence<U>&& other) : sequence(detail::cast_sequence<reference, U>{ std::move(other).get_next_function() })
     {
     }
 
     template <class Iter, require<std::is_constructible_v<reference, iter_reference_t<Iter>>> = 0>
-    sequence(Iter b, Iter e) : sequence(view_sequence<Iter, reference>{ b, e })
+    sequence(Iter b, Iter e) : sequence(detail::view_sequence<Iter, reference>{ b, e })
     {
     }
 
@@ -3349,7 +3374,16 @@ struct sequence : inspect_mixin<T>,
     {
     }
 
-    sequence() : sequence(empty_sequence<T>{})
+    template <
+        class Range,
+        class Iter = iterator_t<Range>,
+        require<std::is_constructible_v<reference, iter_reference_t<Iter>>> = 0>
+    sequence(Range range, int)
+        : sequence(detail::owning_sequence<Range, Iter, reference>{ std::make_shared<Range>(std::move(range)) })
+    {
+    }
+
+    sequence() : sequence(detail::empty_sequence<T>{})
     {
     }
 
@@ -3389,7 +3423,7 @@ struct sequence : inspect_mixin<T>,
         return std::move(*this).get_next_function()();
     }
 
-    auto maybe_at(difference_type n) && -> maybe<reference>
+    auto maybe_at(difference_type n) const -> maybe<reference>
     {
         return this->drop(n).maybe_front();
     }
@@ -3414,6 +3448,23 @@ struct sequence : inspect_mixin<T>,
             }
         }
         return {};
+    }
+
+    auto slice(slice_t info) const -> sequence<T>
+    {
+        if (info.begin && info.end)
+        {
+            return this->drop(*info.begin).take(std::max(*info.end - *info.begin, difference_type{ 0 }));
+        }
+        if (info.begin)
+        {
+            return this->drop(*info.begin);
+        }
+        if (info.end)
+        {
+            return this->take(*info.end);
+        }
+        return *this;
     }
 };
 
@@ -3505,32 +3556,16 @@ struct unfold_fn
 
 struct view_fn
 {
-    template <class Iter, class Out>
-    struct next_function
-    {
-        mutable Iter m_iter;
-        Iter m_end;
-
-        auto operator()() const -> iteration_result_t<Out>
-        {
-            if (m_iter == m_end)
-            {
-                return {};
-            }
-            return *m_iter++;
-        }
-    };
-
     template <class Range, class Out = range_reference_t<Range>>
     auto operator()(Range&& range) const -> sequence<Out>
     {
-        return sequence<Out>{ next_function<iterator_t<Range>, Out>{ std::begin(range), std::end(range) } };
+        return sequence<Out>{ view_sequence<iterator_t<Range>, Out>{ std::begin(range), std::end(range) } };
     }
 
     template <class Iter, class Out = iter_reference_t<Iter>>
     auto operator()(Iter b, Iter e) const -> sequence<Out>
     {
-        return sequence<Out>{ next_function<Iter, Out>{ b, e } };
+        return sequence<Out>{ view_sequence<Iter, Out>{ b, e } };
     }
 
     template <class T>
@@ -3548,30 +3583,10 @@ struct view_fn
 
 struct owning_fn
 {
-    template <class Range, class Iter, class Out>
-    struct next_function
-    {
-        std::shared_ptr<Range> m_range;
-        mutable Iter m_iter;
-
-        next_function(std::shared_ptr<Range> range) : m_range(range), m_iter(std::begin(*m_range))
-        {
-        }
-
-        auto operator()() const -> maybe<Out>
-        {
-            if (m_iter == std::end(*m_range))
-            {
-                return {};
-            }
-            return *m_iter++;
-        }
-    };
-
     template <class Range, class Out = range_reference_t<Range>>
     auto operator()(Range range) const -> sequence<Out>
     {
-        return sequence<Out>{ next_function<Range, iterator_t<Range>, Out>{ std::make_shared<Range>(std::move(range)) } };
+        return sequence<Out>{ owning_sequence<Range, iterator_t<Range>, Out>{ std::make_shared<Range>(std::move(range)) } };
     }
 
     template <class T>

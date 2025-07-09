@@ -32,7 +32,7 @@ TEST_CASE("reduce - multiple input", "")
 TEST_CASE("deconstruct", "")
 {
     REQUIRE_THAT(
-        (std::tuple{ 2, 3, 4 } |= zx::deconstruct([](int x, int y, int z) { return x * (y + z); })), matchers::equal_to(14));
+        (std::tuple{ 2, 3, 4 } |= zx::destruct([](int x, int y, int z) { return x * (y + z); })), matchers::equal_to(14));
 }
 
 TEST_CASE("let", "")
