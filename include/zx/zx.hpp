@@ -92,7 +92,6 @@ template <template <class...> class Op, class... Args>
 constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 
 #define ZX_DEFINE_IS_DETECTED_1(name, ...)          \
-                                                    \
     template <class T0>                             \
     using name##impl = decltype(__VA_ARGS__);       \
                                                     \
@@ -105,7 +104,6 @@ constexpr bool is_detected_v = is_detected<Op, Args...>::value;
     constexpr bool name##_v = name<T0>::value;
 
 #define ZX_DEFINE_IS_DETECTED_2(name, ...)              \
-                                                        \
     template <class T0, class T1>                       \
     using name##impl = decltype(__VA_ARGS__);           \
                                                         \
@@ -116,6 +114,18 @@ constexpr bool is_detected_v = is_detected<Op, Args...>::value;
                                                         \
     template <class T0, class T1 = T0>                  \
     constexpr bool name##_v = name<T0, T1>::value;
+
+#define ZX_DEFINE_IS_DETECTED_3(name, ...)                  \
+    template <class T0, class T1, class T2>                 \
+    using name##impl = decltype(__VA_ARGS__);               \
+                                                            \
+    template <class T0, class T1 = T0, class T2 = T1>       \
+    struct name : ::zx::is_detected<name##impl, T0, T1, T2> \
+    {                                                       \
+    };                                                      \
+                                                            \
+    template <class T0, class T1 = T0, class T2 = T1>       \
+    constexpr bool name##_v = name<T0, T1, T2>::value;
 
 ZX_DEFINE_IS_DETECTED_1(has_ostream_operator, std::declval<std::ostream>() << std::declval<T0>());
 
@@ -790,6 +800,18 @@ struct result
                    : Result{ error(std::invoke(std::forward<Func>(func), std::move(*this).error())) };
     }
 
+    template <class U>
+    constexpr auto value_or(U&& v) const& -> value_type
+    {
+        return *this ? **this : std::forward<U>(v);
+    }
+
+    template <class U>
+    constexpr auto value_or(U&& v) && -> value_type
+    {
+        return *this ? *std::move(*this) : std::forward<U>(v);
+    }
+
 private:
     std::variant<value_storage, error_storage> m_storage;
 };
@@ -973,6 +995,18 @@ struct result<T&, E>
         return *this  //
                    ? Result{ std::move(*this).value() }
                    : Result{ error(std::invoke(std::forward<Func>(func), std::move(*this).error())) };
+    }
+
+    template <class U>
+    constexpr auto value_or(U&& v) const& -> value_type
+    {
+        return *this ? **this : std::forward<U>(v);
+    }
+
+    template <class U>
+    constexpr auto value_or(U&& v) && -> value_type
+    {
+        return *this ? *std::move(*this) : std::forward<U>(v);
     }
 
 private:
@@ -1417,6 +1451,18 @@ struct maybe
                    : maybe<T>{};
     }
 
+    template <class U>
+    constexpr auto value_or(U&& v) const& -> value_type
+    {
+        return *this ? **this : std::forward<U>(v);
+    }
+
+    template <class U>
+    constexpr auto value_or(U&& v) && -> value_type
+    {
+        return *this ? *std::move(*this) : std::forward<U>(v);
+    }
+
 private:
     std::optional<value_type> m_storage;
 };
@@ -1523,6 +1569,12 @@ struct maybe<T&>
         return std::invoke(std::forward<Pred>(pred), value())  //
                    ? maybe<T>{ *this }
                    : maybe<T>{};
+    }
+
+    template <class U>
+    constexpr auto value_or(U&& v) const -> value_type
+    {
+        return *this ? **this : std::forward<U>(v);
     }
 
 private:
