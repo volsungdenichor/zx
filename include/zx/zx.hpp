@@ -803,13 +803,13 @@ struct result
     template <class U>
     constexpr auto value_or(U&& v) const& -> value_type
     {
-        return *this ? **this : std::forward<U>(v);
+        return *this ? **this : static_cast<value_type>(std::forward<U>(v));
     }
 
     template <class U>
     constexpr auto value_or(U&& v) && -> value_type
     {
-        return *this ? *std::move(*this) : std::forward<U>(v);
+        return *this ? *std::move(*this) : static_cast<value_type>(std::forward<U>(v));
     }
 
 private:
@@ -1000,13 +1000,13 @@ struct result<T&, E>
     template <class U>
     constexpr auto value_or(U&& v) const& -> value_type
     {
-        return *this ? **this : std::forward<U>(v);
+        return *this ? **this : static_cast<value_type>(std::forward<U>(v));
     }
 
     template <class U>
     constexpr auto value_or(U&& v) && -> value_type
     {
-        return *this ? *std::move(*this) : std::forward<U>(v);
+        return *this ? *std::move(*this) : static_cast<value_type>(std::forward<U>(v));
     }
 
 private:
@@ -1454,13 +1454,13 @@ struct maybe
     template <class U>
     constexpr auto value_or(U&& v) const& -> value_type
     {
-        return *this ? **this : std::forward<U>(v);
+        return *this ? **this : static_cast<value_type>(std::forward<U>(v));
     }
 
     template <class U>
     constexpr auto value_or(U&& v) && -> value_type
     {
-        return *this ? *std::move(*this) : std::forward<U>(v);
+        return *this ? *std::move(*this) : static_cast<value_type>(std::forward<U>(v));
     }
 
 private:
@@ -1574,7 +1574,7 @@ struct maybe<T&>
     template <class U>
     constexpr auto value_or(U&& v) const -> value_type
     {
-        return *this ? **this : std::forward<U>(v);
+        return *this ? **this : static_cast<value_type>(std::forward<U>(v));
     }
 
 private:
