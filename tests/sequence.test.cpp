@@ -11,8 +11,7 @@ auto to_roman(int number) -> std::string
                ? zx::seq::zip(values, symbols)
                      .drop_while(zx::pipe(zx::key, zx::gt(number)))
                      .transform(zx::destruct([&](int v, const std::string& s) { return s + to_roman(number - v); }))
-                     .maybe_front()
-                     .value()
+                     .front()
                : "";
 }
 
@@ -49,6 +48,9 @@ TEST_CASE("to_roman", "")
     REQUIRE_THAT(to_roman(99), matchers::equal_to("XCIX"));
     REQUIRE_THAT(to_roman(100), matchers::equal_to("C"));
     REQUIRE_THAT(to_roman(499), matchers::equal_to("CDXCIX"));
+    REQUIRE_THAT(to_roman(1998), matchers::equal_to("MCMXCVIII"));
+    REQUIRE_THAT(to_roman(4000), matchers::equal_to("MMMM"));
+    REQUIRE_THAT(to_roman(9000), matchers::equal_to("MMMMMMMMM"));
 }
 
 TEST_CASE("sequence - create from container", "[sequence]")
@@ -100,10 +102,11 @@ TEST_CASE("sequence - concat", "[sequence]")
 {
     REQUIRE_THAT(
         zx::seq::concat(  //
+            zx::seq::single("^"),
             zx::seq::range(1, 5).transform(to_roman),
             zx::seq::range(100, 105).transform(to_roman),
-            zx::seq::single(".")),
-        matchers::elements_are("I", "II", "III", "IV", "C", "CI", "CII", "CIII", "CIV", "."));
+            zx::seq::single("$")),
+        matchers::elements_are("^", "I", "II", "III", "IV", "C", "CI", "CII", "CIII", "CIV", "$"));
 }
 
 TEST_CASE("sequence - intersperse", "[sequence]")
@@ -112,4 +115,24 @@ TEST_CASE("sequence - intersperse", "[sequence]")
     REQUIRE_THAT(zx::seq::range(100, 101).intersperse(-1), matchers::elements_are(100));
     REQUIRE_THAT(zx::seq::range(100, 105).intersperse(-1), matchers::elements_are(100, -1, 101, -1, 102, -1, 103, -1, 104));
     REQUIRE_THAT(zx::seq::view(std::string_view{ "ABC" }).intersperse(','), matchers::elements_are('A', ',', 'B', ',', 'C'));
+    REQUIRE_THAT(
+        zx::seq::view(std::string_view{ "ABC" })
+            .transform([](char ch) -> std::string { return zx::str(ch, (char)std::tolower(ch)); })
+            .intersperse(std::string{ "," })
+            .transform_join(zx::seq::owning),
+        matchers::elements_are('A', 'a', ',', 'B', 'b', ',', 'C', 'c'));
+
+    REQUIRE_THAT(
+        zx::seq::range(10, 15)
+            .transform([](int x) { return 10 * x + 1; })
+            .transform(to_roman)
+            .intersperse(std::string{ ", " }),
+        matchers::elements_are("CI", ", ", "CXI", ", ", "CXXI", ", ", "CXXXI", ", ", "CXLI"));
+
+    REQUIRE_THAT(
+        zx::reduce(std::string{}, std::plus<>{})(zx::seq::range(10, 15)
+                                                     .transform([](int x) { return 10 * x + 1; })
+                                                     .transform(to_roman)
+                                                     .intersperse(std::string{ ", " })),
+        matchers::equal_to("CI, CXI, CXXI, CXXXI, CXLI"));
 }

@@ -3560,6 +3560,12 @@ struct sequence : detail::inspect_mixin<T>,
         }
         return *this;
     }
+
+    template <class Func>
+    auto transform_join(Func&& func) const -> decltype(this->transform(std::forward<Func>(func)).join())
+    {
+        return this->transform(std::forward<Func>(func)).join();
+    }
 };
 
 namespace detail
