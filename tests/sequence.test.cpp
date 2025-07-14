@@ -105,3 +105,11 @@ TEST_CASE("sequence - concat", "[sequence]")
             zx::seq::single(".")),
         matchers::elements_are("I", "II", "III", "IV", "C", "CI", "CII", "CIII", "CIV", "."));
 }
+
+TEST_CASE("sequence - intersperse", "[sequence]")
+{
+    REQUIRE_THAT(zx::sequence<int>().intersperse(-1), matchers::is_empty());
+    REQUIRE_THAT(zx::seq::range(100, 101).intersperse(-1), matchers::elements_are(100));
+    REQUIRE_THAT(zx::seq::range(100, 105).intersperse(-1), matchers::elements_are(100, -1, 101, -1, 102, -1, 103, -1, 104));
+    REQUIRE_THAT(zx::seq::view(std::string_view{ "ABC" }).intersperse(','), matchers::elements_are('A', ',', 'B', ',', 'C'));
+}

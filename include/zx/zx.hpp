@@ -1243,6 +1243,24 @@ struct maybe
     {
     }
 
+    template <class U>
+    constexpr maybe(const maybe<U>& other) : maybe()
+    {
+        if (other)
+        {
+            m_storage = *other;
+        }
+    }
+
+    template <class U>
+    constexpr maybe(maybe<U>&& other) : maybe()
+    {
+        if (other)
+        {
+            m_storage = *std::move(other);
+        }
+    }
+
     constexpr maybe(const maybe&) = default;
     constexpr maybe(maybe&&) noexcept = default;
 
@@ -3089,6 +3107,70 @@ struct step_mixin
 };
 
 template <class T>
+struct intersperse_mixin
+{
+    enum class state_t
+    {
+        start,
+        yield_item,
+        yield_separator
+    };
+    template <class E, class Out>
+    struct next_function
+    {
+        next_function_t<T> m_next;
+        E m_element;
+        mutable state_t m_state = state_t::start;
+        mutable iteration_result_t<Out> m_next_item = {};
+
+        auto operator()() const -> iteration_result_t<Out>
+        {
+            switch (m_state)
+            {
+                case state_t::start:
+                    m_next_item = m_next();
+                    if (m_next_item)
+                    {
+                        m_state = state_t::yield_separator;
+                        return *m_next_item;
+                    }
+                    else
+                    {
+                        return {};
+                    }
+                case state_t::yield_item: m_state = state_t::yield_separator; return m_next_item;
+                case state_t::yield_separator:
+                    m_state = state_t::yield_item;
+                    m_next_item = m_next();
+                    if (m_next_item)
+                    {
+                        return m_element;
+                    }
+                    else
+                    {
+                        return {};
+                    }
+            }
+            return {};
+        }
+    };
+
+    template <class E, class Out = std::common_type_t<T, E>>
+    auto intersperse(E element) const& -> sequence<Out>
+    {
+        return sequence<Out>{ next_function<E, Out>{ static_cast<const sequence<T>&>(*this).get_next_function(),
+                                                     std::move(element) } };
+    }
+
+    template <class E, class Out = std::common_type_t<T, E>>
+    auto intersperse(E element) && -> sequence<Out>
+    {
+        return sequence<Out>{ next_function<E, Out>{ static_cast<sequence<T>&&>(*this).get_next_function(),
+                                                     std::move(element) } };
+    }
+};
+
+template <class T>
 struct join_mixin
 {
 };
@@ -3335,6 +3417,7 @@ struct sequence : detail::inspect_mixin<T>,
                   detail::drop_mixin<T>,
                   detail::take_mixin<T>,
                   detail::step_mixin<T>,
+                  detail::intersperse_mixin<T>,
                   detail::join_mixin<T>,
                   detail::for_each_mixin<T>,
                   detail::for_each_indexed_mixin<T>
@@ -3432,6 +3515,11 @@ struct sequence : detail::inspect_mixin<T>,
     auto at(difference_type n) const -> reference
     {
         return maybe_at(n).value();
+    }
+
+    bool empty() const
+    {
+        return begin() == end();
     }
 
     template <class Pred>
@@ -4858,7 +4946,6 @@ static constexpr inline auto is_none = detail::is_none_fn{};
 
 namespace std
 {
-
 template <class Impl>
 struct iterator_traits<::zx::iterator_interface<Impl>>
 {
