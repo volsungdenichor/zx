@@ -2,6 +2,20 @@
 
 #include "matchers.hpp"
 
+auto to_roman(int number) -> std::string
+{
+    static const auto symbols = zx::seq::vec("M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I");
+    static const auto values = zx::seq::vec(1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1);
+
+    return number > 0  //
+               ? zx::seq::zip(values, symbols)
+                     .drop_while(zx::pipe(zx::key, zx::gt(number)))
+                     .transform(zx::destruct([&](int v, const std::string& s) { return s + to_roman(number - v); }))
+                     .maybe_front()
+                     .value()
+               : "";
+}
+
 template <class Func>
 constexpr auto associate(Func func)
 {
@@ -10,6 +24,31 @@ constexpr auto associate(Func func)
         auto&& res = std::invoke(func, item);
         return std::pair{ std::forward<decltype(item)>(item), res };
     };
+}
+
+TEST_CASE("to_roman", "")
+{
+    REQUIRE_THAT(to_roman(1), matchers::equal_to("I"));
+    REQUIRE_THAT(to_roman(2), matchers::equal_to("II"));
+    REQUIRE_THAT(to_roman(3), matchers::equal_to("III"));
+    REQUIRE_THAT(to_roman(4), matchers::equal_to("IV"));
+    REQUIRE_THAT(to_roman(5), matchers::equal_to("V"));
+    REQUIRE_THAT(to_roman(6), matchers::equal_to("VI"));
+    REQUIRE_THAT(to_roman(7), matchers::equal_to("VII"));
+    REQUIRE_THAT(to_roman(8), matchers::equal_to("VIII"));
+    REQUIRE_THAT(to_roman(9), matchers::equal_to("IX"));
+    REQUIRE_THAT(to_roman(10), matchers::equal_to("X"));
+    REQUIRE_THAT(to_roman(11), matchers::equal_to("XI"));
+    REQUIRE_THAT(to_roman(12), matchers::equal_to("XII"));
+    REQUIRE_THAT(to_roman(13), matchers::equal_to("XIII"));
+    REQUIRE_THAT(to_roman(14), matchers::equal_to("XIV"));
+    REQUIRE_THAT(to_roman(19), matchers::equal_to("XIX"));
+    REQUIRE_THAT(to_roman(40), matchers::equal_to("XL"));
+    REQUIRE_THAT(to_roman(49), matchers::equal_to("XLIX"));
+    REQUIRE_THAT(to_roman(51), matchers::equal_to("LI"));
+    REQUIRE_THAT(to_roman(99), matchers::equal_to("XCIX"));
+    REQUIRE_THAT(to_roman(100), matchers::equal_to("C"));
+    REQUIRE_THAT(to_roman(499), matchers::equal_to("CDXCIX"));
 }
 
 TEST_CASE("sequence - create from container", "[sequence]")
@@ -55,4 +94,14 @@ TEST_CASE("sequence - associate", "[sequence][transform]")
     REQUIRE_THAT(map.at(2), matchers::equal_to("|8|"));
     REQUIRE_THAT(map.at(3), matchers::equal_to("|15|"));
     REQUIRE_THAT(map.at(4), matchers::equal_to("|24|"));
+}
+
+TEST_CASE("sequence - concat", "[sequence]")
+{
+    REQUIRE_THAT(
+        zx::seq::concat(  //
+            zx::seq::range(1, 5).transform(to_roman),
+            zx::seq::range(100, 105).transform(to_roman),
+            zx::seq::single(".")),
+        matchers::elements_are("I", "II", "III", "IV", "C", "CI", "CII", "CIII", "CIV", "."));
 }

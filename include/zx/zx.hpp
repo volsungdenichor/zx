@@ -1259,6 +1259,7 @@ struct maybe
 
     constexpr const value_type& operator*() const&
     {
+        assert_that<bad_maybe_access>(has_value(), "accessing value of an empty 'maybe' object");
         return *m_storage;
     }
 
@@ -3418,14 +3419,19 @@ struct sequence : detail::inspect_mixin<T>,
         return get_next_function()();
     }
 
-    auto maybe_front() && -> maybe<reference>
+    auto front() const& -> reference
     {
-        return std::move(*this).get_next_function()();
+        return maybe_front().value();
     }
 
     auto maybe_at(difference_type n) const -> maybe<reference>
     {
         return this->drop(n).maybe_front();
+    }
+
+    auto at(difference_type n) const -> reference
+    {
+        return maybe_at(n).value();
     }
 
     template <class Pred>
