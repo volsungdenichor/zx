@@ -1,6 +1,8 @@
 # zx
 
-## zx::result
+A bunch of **C++17** functionality which is always needed for creating expressive code, but lacks in C++ standard or appears so lazily that it's better to write it on one's own than to wait until it appears in C++29/32/35...
+
+## result
   - transform
 
     > result<🍏, 🍅>.**transform**(_func_: (🍏) -> 🍌) -> result<🍌, 🍅>
@@ -15,7 +17,9 @@
 
   - or_else
 
-    > result<🍏, 🍅>.**or_else**(_func_: () -> result<🍏, 🍅>) -> result<🍏, 🍅>
+    > result<🍏, 🍅>.**or_else**(_func_: (🍅) -> result<🍏, 🍅>) -> result<🍏, 🍅>
+
+    > result<🍏, 🍅>.**or_else**(_func_: (🍅) -> void) -> result<🍏, 🍅>
 
   - value_or
 
@@ -25,14 +29,26 @@
 
     > result<🍏, 🍅>.**value**() -> 🍏
 
-## zx::maybe
+  - error
+
+    > result<🍏, 🍅>.**error**() -> 🍅
+
+  - has_value
+
+    > result<🍏, 🍅>.**has_value**() -> bool
+
+  - has_error
+
+    > result<🍏, 🍅>.**has_error**() -> bool
+
+## maybe
   - transform
 
-    > maybe<🍏>.**transform**(_func_: (🍏) -> 🍓) -> maybe<🍓>
+    > maybe<🍏>.**transform**(_func_: (🍏) -> 🍊) -> maybe<🍊>
 
   - and_then
 
-    > maybe<🍏>.**and_then**(_func_: (🍏) -> maybe<🍓>) -> maybe<🍓>
+    > maybe<🍏>.**and_then**(_func_: (🍏) -> maybe<🍊>) -> maybe<🍊>
 
   - filter
 
@@ -40,7 +56,9 @@
 
   - or_else
 
-    > maybe<🍏>.**or_else**(_pred_: () -> maybe<🍏>) -> maybe<🍏>
+    > maybe<🍏>.**or_else**(_func_: () -> maybe<🍏>) -> maybe<🍏>
+
+    > maybe<🍏>.**or_else**(_func_: () -> void) -> maybe<🍏>
 
   - value_or
 
@@ -50,29 +68,11 @@
 
     > maybe<🍏>.**value**() -> 🍏
 
-## zx::iterator_range
-  - empty
-  - size
-  - ssize
-  - at
-  - operator[]
-  - maybe_at
-  - front
-  - maybe_front
-  - back
-  - maybe_back
-  - take
-  - drop
-  - take_while
-  - drop_while
-  - take_back
-  - drop_back
-  - take_back_while
-  - drop_back_while
-  - slice
-  - find_of
+  - has_value
 
-## zx::sequence
+    > maybe<🍏>.**has_value**() -> bool
+
+## sequence
   - maybe_front
   - maybe_at
   - find_if
@@ -97,6 +97,7 @@
   - join
   - for_each
   - for_each_indexed
+  - intersperse
   - seq::iota
   - seq::range
   - seq::unfold
@@ -110,6 +111,28 @@
   - seq::init
   - seq::init_infinite
   - seq::get_lines
+
+## iterator_range
+  - empty
+  - size
+  - ssize
+  - at
+  - operator[]
+  - maybe_at
+  - front
+  - maybe_front
+  - back
+  - maybe_back
+  - take
+  - drop
+  - take_while
+  - drop_while
+  - take_back
+  - drop_back
+  - take_back_while
+  - drop_back_while
+  - slice
+  - find_of
 
 ## functional
   - pipe
