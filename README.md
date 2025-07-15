@@ -2,12 +2,53 @@
 
 ## zx::result
   - transform
+
+    > result<🍏, 🍅>.**transform**(_func_: (🍏) -> 🍌) -> result<🍌, 🍅>
+
+  - transform_error
+
+    > result<🍏, 🍅>.**transform_error**(_func_: (🍅) -> 🍒) -> result<🍏, 🍒>
+
   - and_then
+
+    > result<🍏, 🍅>.**and_then**(_func_: (🍏) -> result<🍌, 🍅>) -> result<🍌, 🍅>
+
+  - or_else
+
+    > result<🍏, 🍅>.**or_else**(_func_: () -> result<🍏, 🍅>) -> result<🍏, 🍅>
+
+  - value_or
+
+    > result<🍏, 🍅>.**value_or**(_fallback_value_: 🍏) -> 🍏
+
+  - value
+
+    > result<🍏, 🍅>.**value**() -> 🍏
 
 ## zx::maybe
   - transform
+
+    > maybe<🍏>.**transform**(_func_: (🍏) -> 🍓) -> maybe<🍓>
+
   - and_then
+
+    > maybe<🍏>.**and_then**(_func_: (🍏) -> maybe<🍓>) -> maybe<🍓>
+
   - filter
+
+    > maybe<🍏>.**filter**(_pred_: (🍏) -> bool) -> maybe<🍏>
+
+  - or_else
+
+    > maybe<🍏>.**or_else**(_pred_: () -> maybe<🍏>) -> maybe<🍏>
+
+  - value_or
+
+    > maybe<🍏>.**value_or**(_fallback_value_: 🍏) -> 🍏
+
+  - value
+
+    > maybe<🍏>.**value**() -> 🍏
 
 ## zx::iterator_range
   - empty
@@ -56,19 +97,19 @@
   - join
   - for_each
   - for_each_indexed
-  - iota
-  - range
-  - unfold
-  - view
-  - owning
-  - repeat
-  - single
-  - concat
-  - vec
-  - zip
-  - init
-  - init_infinite
-  - get_lines
+  - seq::iota
+  - seq::range
+  - seq::unfold
+  - seq::view
+  - seq::owning
+  - seq::repeat
+  - seq::single
+  - seq::concat
+  - seq::vec
+  - seq::zip
+  - seq::init
+  - seq::init_infinite
+  - seq::get_lines
 
 ## functional
   - pipe
