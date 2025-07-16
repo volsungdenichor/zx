@@ -7,19 +7,39 @@ A bunch of **C++17** functionality which is always needed for creating expressiv
 
     > result<🍏, 🍅>.**transform**(_func_: (🍏) -> 🍌) -> result<🍌, 🍅>
 
+    1. if the source object has value 🍏, the _func_ will be called on 🍏, and the result 🍌 will become a new **result<🍌, 🍅>** object containing value 🍌
+    2. if the source object has error 🍅, the result will be a new **result<🍌, 🍅>** object containing error 🍅 copied from the source object
+
+    > result<void, 🍅>.**transform**(_func_: () -> 🍌) -> result<🍌, 🍅>
+
+    1. if the source object has no error, the nullary _func_ would be called and the result 🍌 will be a become a new **result<🍌, 🍅>** object containing value 🍌
+    2. if the source object has error 🍅, the result will be a new **result<🍌, 🍅>** object containing error 🍅 copied from the source object
+
+    > result<🍏, 🍅>.**transform**(_func_: (🍏) -> void) -> result<🍏, 🍅>
+
+    > result<void, 🍅>.**transform**(_func_: () -> void) -> result<void, 🍅>
+
   - transform_error
 
     > result<🍏, 🍅>.**transform_error**(_func_: (🍅) -> 🍒) -> result<🍏, 🍒>
 
+    > result<void, 🍅>.**transform_error**(_func_: (🍅) -> 🍒) -> result<void, 🍒>
+
   - and_then
 
     > result<🍏, 🍅>.**and_then**(_func_: (🍏) -> result<🍌, 🍅>) -> result<🍌, 🍅>
+
+    > result<void, 🍅>.**and_then**(_func_: () -> result<🍌, 🍅>) -> result<🍌, 🍅>
 
   - or_else
 
     > result<🍏, 🍅>.**or_else**(_func_: (🍅) -> result<🍏, 🍅>) -> result<🍏, 🍅>
 
     > result<🍏, 🍅>.**or_else**(_func_: (🍅) -> void) -> result<🍏, 🍅>
+
+    > result<void, 🍅>.**or_else**(_func_: (🍅) -> result<🍏, 🍅>) -> result<🍏, 🍅>
+
+    > result<void, 🍅>.**or_else**(_func_: (🍅) -> void) -> result<void, 🍅>
 
   - value_or
 
@@ -33,13 +53,19 @@ A bunch of **C++17** functionality which is always needed for creating expressiv
 
     > result<🍏, 🍅>.**error**() -> 🍅
 
+    > result<void, 🍅>.**error**() -> 🍅
+
   - has_value
 
     > result<🍏, 🍅>.**has_value**() -> bool
 
+    > result<void, 🍅>.**has_value**() -> bool
+
   - has_error
 
     > result<🍏, 🍅>.**has_error**() -> bool
+
+    > result<void, 🍅>.**has_error**() -> bool
 
 ## maybe
   - transform
@@ -75,6 +101,8 @@ A bunch of **C++17** functionality which is always needed for creating expressiv
 ## sequence
   - maybe_front
   - maybe_at
+  - front
+  - at
   - find_if
   - index_of
   - copy
@@ -95,6 +123,7 @@ A bunch of **C++17** functionality which is always needed for creating expressiv
   - take
   - step
   - join
+  - transform_join
   - for_each
   - for_each_indexed
   - intersperse
@@ -139,6 +168,8 @@ A bunch of **C++17** functionality which is always needed for creating expressiv
   - do_all
   - apply
   - with
+  - reduce
+  - let
 
 ## type traits
 

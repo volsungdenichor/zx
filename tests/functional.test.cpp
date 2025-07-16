@@ -46,23 +46,12 @@ TEST_CASE("let", "")
         matchers::equal_to("5.!.x"));
     REQUIRE_THAT(
         zx::let(
-            std::vector<int>{ 2, 5, 13 },
+            std::vector<int>{ 2, 5, 13, 19 },
             std::tuple{ ", ", "[", "]" },
             [](const auto& vect, const auto& ctrl) -> std::string
             {
                 const auto& [sep, open, close] = ctrl;
-                std::stringstream ss;
-                ss << open;
-                for (std::size_t i = 0; i < vect.size(); ++i)
-                {
-                    if (i != 0)
-                    {
-                        ss << sep;
-                    }
-                    ss << vect[i];
-                }
-                ss << close;
-                return ss.str();
+                return zx::str(open, zx::delimit(vect, sep), close);
             }),
-        matchers::equal_to("[2, 5, 13]"));
+        matchers::equal_to("[2, 5, 13, 19]"));
 }
