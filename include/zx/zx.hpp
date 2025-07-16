@@ -55,6 +55,8 @@ using u64 = std::uint64_t;
 using i64 = std::int64_t;
 using f32 = float;
 using f64 = double;
+using usize = std::size_t;
+using isize = std::ptrdiff_t;
 
 /*
   _                                    _                    _   _
@@ -153,7 +155,7 @@ struct always_false : std::false_type
 };
 
 template <class T>
-using iterator_t = decltype(std::begin(std::declval<T&>()));
+using iterator_t = decltype(std::begin(std::declval<T>()));
 
 template <class T>
 using iter_category_t = typename std::iterator_traits<T>::iterator_category;
@@ -378,6 +380,12 @@ static constexpr inline struct delimit_fn
     {
         return (*this)(std::begin(range), std::end(range), separator);
     }
+
+    template <class T>
+    auto operator()(std::initializer_list<T> range, std::string_view separator) const -> ostream_writer
+    {
+        return (*this)(std::begin(range), std::end(range), separator);
+    }
 } delimit;
 
 }  // namespace detail
@@ -402,25 +410,27 @@ struct formatter<std::exception_ptr>
         {
 #ifdef __GNUG__
             format_to(
-                os, "std::exception_ptr<", demangle(abi::__cxa_current_exception_type()->name()), ">(\"", ex.what(), "\")");
+                os, "std::exception_ptr<", demangle(abi::__cxa_current_exception_type()->name()), ">(", ex.what(), ")");
 #else
-            os << "exception<"
-               << "std::exception"
-               << ">(" << ex.what() << ")";
+            format_to(os, "std::exception_ptr<std::exception>(", ex.what(), ")");
 #endif  // __GNUG__
         }
 
         catch (const std::string& ex)
         {
-            format_to(os, "std::exception_ptr<std::string>(\"", ex, "\")");
+            format_to(os, "std::exception_ptr<std::string>(", ex, ")");
         }
         catch (const char* ex)
         {
-            format_to(os, "std::exception_ptr<const char*>(\"", ex, "\")");
+            format_to(os, "std::exception_ptr<const char*>(", ex, ")");
+        }
+        catch (int ex)
+        {
+            format_to(os, "std::exception_ptr<int>(", ex, ")");
         }
         catch (...)
         {
-            format_to(os, "std::exception_ptr<...>(\"\")");
+            format_to(os, "std::exception_ptr<...>(...)");
         }
     }
 };
@@ -430,7 +440,7 @@ struct formatter<bool>
 {
     void format(std::ostream& os, const bool item) const
     {
-        format_to(os, std::boolalpha, item);
+        os << std::boolalpha << item;
     }
 };
 

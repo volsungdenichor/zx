@@ -31,6 +31,7 @@ using test_iterator = zx::iterator_interface<iter_impl>;
 TEST_CASE("iterator_interface", "[iterator]")
 {
     REQUIRE(std::is_same_v<std::random_access_iterator_tag, zx::iter_category_t<test_iterator>>);
+    REQUIRE(zx::is_random_access_iterator<test_iterator>::value);
 }
 
 TEST_CASE("iterator_interface - advance", "[iterator]")

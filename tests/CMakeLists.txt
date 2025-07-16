@@ -10,6 +10,7 @@ set(UNIT_TEST_SOURCE_LIST
     iterator_interface.test.cpp
     char32.test.cpp
     sequence.test.cpp
+    format.test.cpp
 )
 
 Include(FetchContent)
