@@ -20,6 +20,20 @@ static constexpr inline struct
     }
 } join;
 
+struct arg_t
+{
+    template <class T>
+    constexpr T&& operator=(T&& item) const
+    {
+        return std::forward<T>(item);
+    }
+};
+
+constexpr inline auto operator""_a(const char*, std::size_t) -> arg_t
+{
+    return {};
+}
+
 template <class Func>
 auto transform(Func func)
 {
@@ -66,16 +80,21 @@ TEST_CASE("deconstruct", "")
 TEST_CASE("let", "")
 {
     REQUIRE_THAT(zx::let([]() { return 3; }), matchers::equal_to(3));
-    REQUIRE_THAT(zx::let(2 + 3, [](int x) { return 3 * x; }), matchers::equal_to(15));
+    REQUIRE_THAT(zx::let("x"_a = 2 + 3, [](int x) { return 3 * x; }), matchers::equal_to(15));
     REQUIRE_THAT(
-        zx::let(2 + 3, "!", [](int x, const std::string& y) { return zx::str(x, '.', y); }), matchers::equal_to("5.!"));
+        zx::let("x"_a = 2 + 3, "y"_a = "!", [](int x, const std::string& y) { return zx::str(x, '.', y); }),
+        matchers::equal_to("5.!"));
     REQUIRE_THAT(
-        zx::let(2 + 3, "!", 'x', [](int x, const std::string& y, char z) { return zx::str(x, '.', y, '.', z); }),
+        zx::let(
+            "x"_a = 2 + 3,
+            "y"_a = "!",
+            "z"_a = 'x',
+            [](int x, const std::string& y, char z) { return zx::str(x, '.', y, '.', z); }),
         matchers::equal_to("5.!.x"));
     REQUIRE_THAT(
         zx::let(
-            std::vector<int>{ 2, 5, 13, 19 },
-            std::tuple{ ", ", "[", "]" },
+            "vect"_a = std::vector<int>{ 2, 5, 13, 19 },
+            "ctrl"_a = std::tuple{ ", ", "[", "]" },
             [](const auto& vect, const auto& ctrl) -> std::string
             {
                 const auto& [sep, open, close] = ctrl;

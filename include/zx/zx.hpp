@@ -2195,6 +2195,46 @@ using span = iterator_range<const T*>;
 template <class T>
 using mut_span = iterator_range<T*>;
 
+template <class T>
+struct numeric_iter
+{
+    T m_value;
+
+    numeric_iter(T value = {}) : m_value(value)
+    {
+    }
+
+    T deref() const
+    {
+        return m_value;
+    }
+
+    void advance(std::ptrdiff_t n)
+    {
+        m_value += n;
+    }
+
+    std::ptrdiff_t distance_to(const numeric_iter& other) const
+    {
+        return other.m_value - m_value;
+    }
+};
+
+template <class T>
+using numeric_iterator = iterator_interface<numeric_iter<T>>;
+
+template <class T>
+auto range(T lo, T up) -> iterator_range<numeric_iterator<T>>
+{
+    return { numeric_iterator<T>{ lo }, numeric_iterator<T>{ std::max(lo, up) } };
+}
+
+template <class T>
+auto range(T up) -> iterator_range<numeric_iterator<T>>
+{
+    return range(T{}, up);
+}
+
 /*
    __                          _     _                           _
   / _|  _   _   _ __     ___  | |_  (_)   ___    _ __     __ _  | |
