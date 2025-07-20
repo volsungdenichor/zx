@@ -2235,6 +2235,12 @@ auto range(T up) -> iterator_range<numeric_iterator<T>>
     return range(T{}, up);
 }
 
+template <class T = std::ptrdiff_t>
+auto iota(T init = {}) -> iterator_range<numeric_iterator<T>>
+{
+    return range(init, std::numeric_limits<T>::max());
+}
+
 /*
    __                          _     _                           _
   / _|  _   _   _ __     ___  | |_  (_)   ___    _ __     __ _  | |
@@ -2293,6 +2299,9 @@ public:
     }
 };
 
+template <class... Pipes>
+pipe_t(Pipes&&...) -> pipe_t<std::decay_t<Pipes>...>;
+
 template <class T>
 struct is_pipeline : std::false_type
 {
@@ -2302,26 +2311,6 @@ template <class... Args>
 struct is_pipeline<pipe_t<Args...>> : std::true_type
 {
 };
-
-template <class... L, class... R>
-constexpr auto operator|=(pipe_t<L...> lhs, pipe_t<R...> rhs) -> decltype(pipe(std::move(lhs), std::move(rhs)))
-{
-    return pipe(std::move(lhs), std::move(rhs));
-}
-
-template <class T, class... Pipes, require<!is_pipeline<std::decay_t<T>>{}> = 0>
-constexpr auto operator|=(T&& item, const pipe_t<Pipes...>& p) -> decltype(p(std::forward<T>(item)))
-{
-    return p(std::forward<T>(item));
-}
-
-template <class... Pipes>
-std::ostream& operator<<(std::ostream& os, const pipe_t<Pipes...>& item)
-{
-    format_to(os, "(pipe");
-    std::apply([&os](const auto&... args) { (format_to(os, ' ', args), ...); }, item.m_pipes);
-    return format_to(os, ")");
-}
 
 namespace detail
 {
@@ -2355,6 +2344,28 @@ public:
         return from_tuple(std::tuple_cat(to_tuple(std::forward<Pipes>(pipes))...));
     }
 };
+
+static constexpr inline auto pipe = detail::pipe_fn{};
+
+template <class... L, class... R>
+constexpr auto operator|=(pipe_t<L...> lhs, pipe_t<R...> rhs) -> decltype(pipe(std::move(lhs), std::move(rhs)))
+{
+    return pipe(std::move(lhs), std::move(rhs));
+}
+
+template <class T, class... Pipes, require<!is_pipeline<std::decay_t<T>>{}> = 0>
+constexpr auto operator|=(T&& item, const pipe_t<Pipes...>& p) -> decltype(p(std::forward<T>(item)))
+{
+    return p(std::forward<T>(item));
+}
+
+template <class... Pipes>
+std::ostream& operator<<(std::ostream& os, const pipe_t<Pipes...>& item)
+{
+    format_to(os, "(pipe");
+    std::apply([&os](const auto&... args) { (format_to(os, ' ', args), ...); }, item.m_pipes);
+    return format_to(os, ")");
+}
 
 static constexpr inline struct do_all_fn
 {
@@ -2599,10 +2610,10 @@ struct let_fn
 
 }  // namespace detail
 
-static constexpr inline auto pipe = detail::pipe_fn{};
 using detail::apply;
 using detail::destruct;
 using detail::do_all;
+using detail::pipe;
 using detail::with;
 
 template <std::size_t I>

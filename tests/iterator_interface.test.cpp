@@ -68,6 +68,8 @@ TEST_CASE("iterator_interface - numeric range", "[iterator]")
     REQUIRE_THAT(zx::range(5, 9), matchers::elements_are(5, 6, 7, 8));
     REQUIRE_THAT(zx::range(5), matchers::elements_are(0, 1, 2, 3, 4));
     REQUIRE_THAT(zx::range(5).reverse(), matchers::elements_are(4, 3, 2, 1, 0));
+    REQUIRE_THAT(zx::iota().take(5), matchers::elements_are(0, 1, 2, 3, 4));
+    REQUIRE_THAT(zx::iota(5).take(5), matchers::elements_are(5, 6, 7, 8, 9));
 
     REQUIRE_THAT(zx::range(9, 5), matchers::is_empty());
 

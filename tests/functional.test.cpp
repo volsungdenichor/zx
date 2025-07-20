@@ -2,6 +2,27 @@
 
 #include "matchers.hpp"
 
+template <class Func>
+struct pipeable
+{
+    Func m_func;
+
+    template <class... Args>
+    constexpr auto operator()(Args&&... args) const -> std::invoke_result_t<Func, Args...>
+    {
+        return std::invoke(m_func, std::forward<Args>(args)...);
+    }
+
+    template <class Arg>
+    constexpr friend auto operator>>=(const pipeable& p, Arg&& arg) -> std::invoke_result_t<Func, Arg>
+    {
+        return p(std::forward<Arg>(arg));
+    }
+};
+
+template <class Func>
+pipeable(Func&&) -> pipeable<std::decay_t<Func>>;
+
 static constexpr inline struct
 {
     template <class Head, class... Tail>
@@ -11,14 +32,16 @@ static constexpr inline struct
     }
 } sum;
 
-static constexpr inline struct
+struct join_fn
 {
     template <class... Args>
     auto operator()(std::string acc, const Args&... args) const -> std::string
     {
         return acc + (acc.empty() ? "" : ", ") + zx::str(args...);
     }
-} join;
+};
+
+constexpr inline auto join = pipeable{ join_fn{} };
 
 struct arg_t
 {
@@ -35,10 +58,27 @@ constexpr inline auto operator""_a(const char*, std::size_t) -> arg_t
 }
 
 template <class Func>
-auto transform(Func func)
+constexpr auto transform(Func func)
 {
-    return [=](auto next)
-    { return [=](auto state, auto... args) { return next(std::move(state), std::invoke(func, args...)); }; };
+    return pipeable{ [=](auto next)
+                     {
+                         return [=](auto state, auto&&... args) {  //
+                             return next(std::move(state), std::invoke(func, std::forward<decltype(args)>(args)...));
+                         };
+                     } };
+}
+
+template <class Pred>
+constexpr auto filter(Pred pred)
+{
+    return pipeable{ [=](auto next)
+                     {
+                         return [=](auto state, auto&&... args) {  //
+                             return std::invoke(pred, args...)     //
+                                        ? next(std::move(state), std::forward<decltype(args)>(args)...)
+                                        : state;
+                         };
+                     } };
 }
 
 TEST_CASE("reduce", "")
@@ -47,8 +87,23 @@ TEST_CASE("reduce", "")
     REQUIRE_THAT(zx::reduce(std::string{}, join)(std::vector{ 1, 3, 5, 100 }), matchers::equal_to("1, 3, 5, 100"));
 
     REQUIRE_THAT(
-        zx::reduce(std::string{}, transform([](int x) { return x * 11; })(join))(std::vector{ 1, 3, 5, 100 }),
+        zx::reduce(std::string{}, transform([](int x) { return x * 11; }) >>= join)(std::vector{ 1, 3, 5, 100 }),
         matchers::equal_to("11, 33, 55, 1100"));
+
+    constexpr auto is_even = [](int x) { return x % 2 == 0; };
+    constexpr auto mul_10 = [](int x) { return x * 10; };
+
+    REQUIRE_THAT(
+        zx::reduce(         ///
+            std::string{},  //
+            filter(is_even) >>= transform(mul_10) >>= join)(std::vector{ 1, 2, 3, 4, 5 }),
+        matchers::equal_to("20, 40"));
+
+    REQUIRE_THAT(
+        zx::reduce(         ///
+            std::string{},  //
+            transform(mul_10) >>= filter(is_even) >>= join)(std::vector{ 1, 2, 3, 4, 5 }),
+        matchers::equal_to("10, 20, 30, 40, 50"));
 }
 
 TEST_CASE("reduce - multiple input", "")
@@ -67,11 +122,11 @@ TEST_CASE("reduce - multiple input", "")
         matchers::equal_to(95));
 
     REQUIRE_THAT(
-        zx::reduce(0, transform(std::multiplies<>{})(sum))(std::vector{ 1, 3, 5 }, std::vector{ 10, 20, 5 }),
+        zx::reduce(0, transform(std::multiplies<>{}) >>= sum)(std::vector{ 1, 3, 5 }, std::vector{ 10, 20, 5 }),
         matchers::equal_to(95));
 }
 
-TEST_CASE("deconstruct", "")
+TEST_CASE("destruct", "")
 {
     REQUIRE_THAT(
         (std::tuple{ 2, 3, 4 } |= zx::destruct([](int x, int y, int z) { return x * (y + z); })), matchers::equal_to(14));
