@@ -1949,6 +1949,112 @@ auto make_reverse(std::reverse_iterator<Iter> b, std::reverse_iterator<Iter> e) 
     return { e.base(), b.base() };
 }
 
+template <class Iter>
+struct iterator_range_base
+{
+    using iterator = Iter;
+    using difference_type = typename std::iterator_traits<iterator>::difference_type;
+
+    constexpr iterator_range_base() = default;
+    constexpr iterator_range_base(const iterator_range_base&) = default;
+    constexpr iterator_range_base(iterator_range_base&&) noexcept = default;
+
+    constexpr iterator_range_base(iterator b, iterator e) : m_iterators(b, e)
+    {
+    }
+
+    constexpr iterator_range_base(const std::pair<iterator, iterator>& pair) : m_iterators(pair)
+    {
+    }
+
+    constexpr iterator_range_base(iterator b, difference_type n) : iterator_range_base(b, std::next(b, n))
+    {
+    }
+
+    template <class Range, class It = iterator_t<Range>, require<std::is_constructible_v<iterator, It>> = 0>
+    constexpr iterator_range_base(Range&& range) : iterator_range_base(std::begin(range), std::end(range))
+    {
+    }
+
+    constexpr auto begin() const noexcept -> iterator
+    {
+        return m_iterators.first;
+    }
+
+    constexpr auto end() const noexcept -> iterator
+    {
+        return m_iterators.second;
+    }
+
+    void swap(iterator_range_base& other) noexcept
+    {
+        std::swap(m_iterators, other.m_iterators);
+    }
+
+    std::pair<iterator, iterator> m_iterators;
+};
+
+template <class T>
+struct iterator_range_base<T*>
+{
+    using iterator = T*;
+    using pointer = iterator;
+    using difference_type = typename std::iterator_traits<iterator>::difference_type;
+
+    constexpr iterator_range_base() = default;
+    constexpr iterator_range_base(const iterator_range_base&) = default;
+    constexpr iterator_range_base(iterator_range_base&&) noexcept = default;
+
+    constexpr iterator_range_base(iterator b, iterator e) : m_iterators(b, e)
+    {
+    }
+
+    constexpr iterator_range_base(const std::pair<iterator, iterator>& pair) : m_iterators(pair)
+    {
+    }
+
+    constexpr iterator_range_base(iterator b, difference_type n) : iterator_range_base(b, std::next(b, n))
+    {
+    }
+
+    template <class Range, class It = iterator_t<Range>, require<std::is_constructible_v<iterator, It>> = 0>
+    constexpr iterator_range_base(Range&& range) : iterator_range_base(std::begin(range), std::end(range))
+    {
+    }
+
+    template <
+        class Range,
+        class It = iterator_t<Range>,
+        class Ptr = decltype(std::declval<Range>().data()),
+        require<std::is_constructible_v<iterator, Ptr> && !std::is_constructible_v<iterator, It>> = 0>
+    constexpr iterator_range_base(Range&& range)
+        : iterator_range_base(range.data(), static_cast<difference_type>(range.size()))
+    {
+    }
+
+    constexpr auto begin() const noexcept -> iterator
+    {
+        return m_iterators.first;
+    }
+
+    constexpr auto end() const noexcept -> iterator
+    {
+        return m_iterators.second;
+    }
+
+    constexpr auto data() const noexcept -> pointer
+    {
+        return begin();
+    }
+
+    void swap(iterator_range_base& other) noexcept
+    {
+        std::swap(m_iterators, other.m_iterators);
+    }
+
+    std::pair<iterator, iterator> m_iterators;
+};
+
 }  // namespace detail
 
 struct slice_t
@@ -1958,57 +2064,29 @@ struct slice_t
 };
 
 template <class Iter>
-class iterator_range
+struct iterator_range : detail::iterator_range_base<Iter>
 {
-public:
-    using iterator = Iter;
+    using base_t = detail::iterator_range_base<Iter>;
+
+    using iterator = typename base_t::iterator;
+    using difference_type = typename base_t::difference_type;
+    using size_type = difference_type;
     using const_iterator = iterator;
 
     using reference = typename std::iterator_traits<iterator>::reference;
-    using difference_type = typename std::iterator_traits<iterator>::difference_type;
-    using size_type = difference_type;
 
     using maybe_reference = maybe<reference>;
 
     using reverse_type = iterator_range<detail::reverse_iterator_t<iterator>>;
 
-    constexpr iterator_range() = default;
-    constexpr iterator_range(const iterator_range&) = default;
-    constexpr iterator_range(iterator_range&&) noexcept = default;
-
-    constexpr iterator_range(iterator b, iterator e) : m_begin(b), m_end(e)
-    {
-    }
-
-    constexpr iterator_range(const std::pair<iterator, iterator>& pair)
-        : iterator_range(std::get<0>(pair), std::get<1>(pair))
-    {
-    }
-
-    constexpr iterator_range(iterator b, size_type n) : iterator_range(b, std::next(b, n))
-    {
-    }
-
-    template <class Range, class = iterator_t<Range>>
-    constexpr iterator_range(Range&& range) : iterator_range(std::begin(range), std::end(range))
-    {
-    }
+    using base_t::base_t;
+    using base_t::begin;
+    using base_t::end;
 
     iterator_range& operator=(iterator_range other) noexcept
     {
-        std::swap(m_begin, other.m_begin);
-        std::swap(m_end, other.m_end);
+        base_t::swap(other);
         return *this;
-    }
-
-    constexpr auto begin() const noexcept -> iterator
-    {
-        return m_begin;
-    }
-
-    constexpr auto end() const noexcept -> iterator
-    {
-        return m_end;
     }
 
     template <class Container, require<std::is_constructible_v<Container, iterator, iterator>> = 0>
@@ -2049,21 +2127,13 @@ public:
 
     auto maybe_front() const -> maybe_reference
     {
-        if (empty())
-        {
-            return {};
-        }
-        return *begin();
+        return !empty() ? maybe_reference{ *begin() } : maybe_reference{};
     }
 
     template <class It = iterator, require<is_bidirectional_iterator<It>::value> = 0>
     auto maybe_back() const -> maybe_reference
     {
-        if (empty())
-        {
-            return {};
-        }
-        return *std::prev(end());
+        return !empty() ? maybe_reference{ *std::prev(end()) } : maybe_reference{};
     }
 
     template <class It = iterator, require<is_random_access_iterator<It>::value> = 0>
@@ -2082,11 +2152,7 @@ public:
     template <class It = iterator, require<is_random_access_iterator<It>::value> = 0>
     auto maybe_at(difference_type n) const -> maybe_reference
     {
-        if (!(0 <= n && n < size()))
-        {
-            return {};
-        }
-        return *std::next(begin(), n);
+        return 0 <= n && n < size() ? maybe_reference{ *std::next(begin(), n) } : maybe_reference{};
     }
 
     template <class It = iterator, require<is_bidirectional_iterator<It>::value> = 0>
@@ -2164,26 +2230,23 @@ public:
     }
 
 private:
-    template <class It = iterator, require<is_random_access_iterator<It>::value> = 0>
     auto advance(difference_type n) const -> iterator
     {
-        return begin() + std::min(ssize(), n);
-    }
-
-    template <class It = iterator, require<!is_random_access_iterator<It>::value> = 0>
-    auto advance(difference_type n) const -> iterator
-    {
-        iterator it = begin();
-        while (it != end() && n > 0)
+        if constexpr (is_random_access_iterator<iterator>::value)
         {
-            --n;
-            ++it;
+            return begin() + std::min(ssize(), n);
         }
-        return it;
+        else
+        {
+            iterator it = begin();
+            while (it != end() && n > 0)
+            {
+                --n;
+                ++it;
+            }
+            return it;
+        }
     }
-
-    iterator m_begin;
-    iterator m_end;
 };
 
 template <class Container>
