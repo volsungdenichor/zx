@@ -15,16 +15,6 @@ auto to_roman(int number) -> std::string
                : "";
 }
 
-template <class Func>
-constexpr auto associate(Func func)
-{
-    return [=](auto&& item)
-    {
-        auto&& res = std::invoke(func, item);
-        return std::pair{ std::forward<decltype(item)>(item), res };
-    };
-}
-
 TEST_CASE("to_roman", "")
 {
     REQUIRE_THAT(to_roman(1), matchers::equal_to("I"));
@@ -69,7 +59,7 @@ TEST_CASE("sequence - transform", "[sequence][transform]")
 {
     REQUIRE_THAT(zx::seq::range(5).transform([](int x) { return x * x; }), matchers::elements_are(0, 1, 4, 9, 16));
     REQUIRE_THAT(
-        zx::seq::range(5).transform(associate([](int x) { return x * x; })),
+        zx::seq::range(5).associate([](int x) { return x * x; }),
         matchers::elements_are(
             std::pair{ 0, 0 }, std::pair{ 1, 1 }, std::pair{ 2, 4 }, std::pair{ 3, 9 }, std::pair{ 4, 16 }));
 }
@@ -88,8 +78,15 @@ TEST_CASE("sequence - slice", "[sequence][slicing]")
 
 TEST_CASE("sequence - associate", "[sequence][transform]")
 {
-    const std::map<int, std::string> map
-        = zx::seq::range(5).transform(associate([](int x) { return zx::str('|', x * (x + 2), '|'); }));
+    REQUIRE_THAT(
+        zx::seq::range(5).associate([](int x) { return x * x; }),
+        matchers::elements_are(
+            std::pair{ 0, 0 }, std::pair{ 1, 1 }, std::pair{ 2, 4 }, std::pair{ 3, 9 }, std::pair{ 4, 16 }));
+}
+
+TEST_CASE("sequence - associate to map", "[sequence][transform]")
+{
+    const std::map<int, std::string> map = zx::seq::range(5).associate([](int x) { return zx::str('|', x * (x + 2), '|'); });
     REQUIRE_THAT(map, matchers::size_is(5));
     REQUIRE_THAT(map.at(0), matchers::equal_to("|0|"));
     REQUIRE_THAT(map.at(1), matchers::equal_to("|3|"));

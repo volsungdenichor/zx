@@ -2943,6 +2943,41 @@ struct transform_maybe_indexed_mixin
 };
 
 template <class T>
+struct associate_mixin
+{
+    template <class Func, class Out>
+    struct next_function
+    {
+        Func m_func;
+        next_function_t<T> m_next;
+
+        auto operator()() const -> iteration_result_t<std::pair<T, Out>>
+        {
+            iteration_result_t<T> next = m_next();
+            if (next)
+            {
+                return std::pair<T, Out>{ *next, std::invoke(m_func, *next) };
+            }
+            return {};
+        }
+    };
+
+    template <class Func, class Res = std::invoke_result_t<Func, T>>
+    auto associate(Func&& func) const& -> sequence<std::pair<T, Res>>
+    {
+        return sequence<std::pair<T, Res>>{ next_function<std::decay_t<Func>, Res>{
+            std::forward<Func>(func), static_cast<const sequence<T>&>(*this).get_next_function() } };
+    }
+
+    template <class Func, class Res = std::invoke_result_t<Func, T>>
+    auto associate(Func&& func) && -> sequence<std::pair<T, Res>>
+    {
+        return sequence<std::pair<T, Res>>{ next_function<std::decay_t<Func>, Res>{
+            std::forward<Func>(func), static_cast<sequence<T>&&>(*this).get_next_function() } };
+    }
+};
+
+template <class T>
 struct filter_mixin
 {
     template <class Pred>
@@ -3613,7 +3648,8 @@ struct sequence : detail::inspect_mixin<T>,
                   detail::intersperse_mixin<T>,
                   detail::join_mixin<T>,
                   detail::for_each_mixin<T>,
-                  detail::for_each_indexed_mixin<T>
+                  detail::for_each_indexed_mixin<T>,
+                  detail::associate_mixin<T>
 {
     using iterator = detail::sequence_iterator<T>;
     using next_function_type = typename iterator::next_function_type;
