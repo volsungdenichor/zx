@@ -1,5 +1,6 @@
 #include <zx/zx.hpp>
 
+#include "benchmark.hpp"
 #include "matchers.hpp"
 
 auto to_roman(int number) -> std::string
@@ -133,3 +134,77 @@ TEST_CASE("sequence - intersperse", "[sequence]")
                                                      .intersperse(std::string{ ", " })),
         matchers::equal_to("CI, CXI, CXXI, CXXXI, CXLI"));
 }
+
+#if 0
+TEST_CASE("sequence - benchmark", "[sequence]")
+{
+    static const auto pred = zx::size_is(zx::all(zx::ge(2), zx::le(3)));
+    std::cout << benchmark{}
+                     .add(
+                         "algorithm",
+                         []()
+                         {
+                             volatile int i = 0;
+                             std::vector<std::string> a;
+                             a.reserve(5000);
+                             auto input = zx::range(5000);
+                             std::transform(input.begin(), input.end(), std::back_inserter(a), zx::str);
+                             std::vector<std::string> b;
+                             b.reserve(5000);
+                             std::copy_if(a.begin(), a.end(), std::back_inserter(b), pred);
+                             std::vector<std::ptrdiff_t> c;
+                             c.reserve(5000);
+                             std::transform(b.begin(), b.end(), std::back_inserter(c), zx::size);
+                             for (auto&& v : c)
+                             {
+                                 i += v;
+                             }
+                         })
+                     .add(
+                         "transform-filter",
+                         []()
+                         {
+                             volatile int i = 0;
+                             for (auto&& v : zx::seq::range(5000).transform(zx::str).filter(pred).transform(zx::size))
+                             {
+                                 i += v;
+                             }
+                         })
+                     .add(
+                         "transform_maybe",
+                         []()
+                         {
+                             volatile int i = 0;
+                             for (auto&& v : zx::seq::range(5000).transform_maybe(
+                                      [](int v) -> zx::maybe<std::ptrdiff_t>
+                                      {
+                                          const auto s = zx::str(v);
+                                          if (!pred(s))
+                                          {
+                                              return {};
+                                          }
+                                          return zx::size(s);
+                                      }))
+                             {
+                                 i += v;
+                             }
+                         })
+                     .add(
+                         "standard",
+                         []()
+                         {
+                             volatile int i = 0;
+                             for (int r = 0; r < 5000; ++r)
+                             {
+                                 const auto v = zx::str(r);
+                                 if (!pred(v))
+                                 {
+                                     continue;
+                                 }
+                                 i += zx::size(v);
+                             }
+                         })
+                     .run()
+              << std::endl;
+}
+#endif

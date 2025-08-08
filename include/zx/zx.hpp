@@ -657,22 +657,37 @@ struct result
         return std::holds_alternative<value_storage>(m_storage);
     }
 
+    constexpr const value_type& get() const&
+    {
+        return std::get<value_storage>(m_storage);
+    }
+
+    constexpr value_type& get() &
+    {
+        return std::get<value_storage>(m_storage);
+    }
+
+    constexpr value_type&& get() &&
+    {
+        return std::get<value_storage>(std::move(m_storage));
+    }
+
     constexpr const value_type& operator*() const&
     {
         assert_that<bad_result_access>(has_value(), "accessing the value of an empty 'result' object");
-        return std::get<value_storage>(m_storage);
+        return get();
     }
 
     constexpr value_type& operator*() &
     {
         assert_that<bad_result_access>(has_value(), "accessing the value of an empty 'result' object");
-        return std::get<value_storage>(m_storage);
+        return get();
     }
 
     constexpr value_type&& operator*() &&
     {
         assert_that<bad_result_access>(has_value(), "accessing the value of an empty 'result' object");
-        return std::get<value_storage>(std::move(m_storage));
+        return std::move(*this).get();
     }
 
     constexpr const value_type& value() const&
@@ -734,7 +749,7 @@ struct result
         static_assert(
             detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result<T, E>` type");
         return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), value())
+                   ? detail::to_ok<Result>(std::forward<Func>(func), get())
                    : detail::to_error<Result>(*this);
     }
 
@@ -744,7 +759,7 @@ struct result
         static_assert(
             detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result<T, E>` type");
         return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), std::move(*this).value())
+                   ? detail::to_ok<Result>(std::forward<Func>(func), std::move(*this).get())
                    : detail::to_error<Result>(std::move(*this));
     }
 
@@ -752,7 +767,7 @@ struct result
     constexpr auto transform(Func&& func) const& -> Result
     {
         return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), value())
+                   ? detail::to_ok<Result>(std::forward<Func>(func), get())
                    : detail::to_error<Result>(*this);
     }
 
@@ -760,7 +775,7 @@ struct result
     constexpr auto transform(Func&& func) && -> Result
     {
         return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), std::move(*this).value())
+                   ? detail::to_ok<Result>(std::forward<Func>(func), std::move(*this).get())
                    : detail::to_error<Result>(std::move(*this));
     }
 
@@ -812,7 +827,7 @@ struct result
     constexpr auto transform_error(Func&& func) const& -> Result
     {
         return *this  //
-                   ? Result{ value() }
+                   ? Result{ get() }
                    : Result{ error(std::invoke(std::forward<Func>(func), error())) };
     }
 
@@ -820,20 +835,20 @@ struct result
     constexpr auto transform_error(Func&& func) && -> Result
     {
         return *this  //
-                   ? Result{ std::move(*this).value() }
+                   ? Result{ std::move(*this).get() }
                    : Result{ error(std::invoke(std::forward<Func>(func), std::move(*this).error())) };
     }
 
     template <class U>
     constexpr auto value_or(U&& v) const& -> value_type
     {
-        return *this ? **this : static_cast<value_type>(std::forward<U>(v));
+        return *this ? get() : static_cast<value_type>(std::forward<U>(v));
     }
 
     template <class U>
     constexpr auto value_or(U&& v) && -> value_type
     {
-        return *this ? *std::move(*this) : static_cast<value_type>(std::forward<U>(v));
+        return *this ? std::move(*this).get() : static_cast<value_type>(std::forward<U>(v));
     }
 
 private:
@@ -881,10 +896,15 @@ struct result<T&, E>
         return std::holds_alternative<value_storage>(m_storage);
     }
 
+    constexpr value_type& get() const
+    {
+        return std::get<value_storage>(m_storage);
+    }
+
     constexpr value_type& operator*() const
     {
         assert_that<bad_result_access>(has_value(), "accessing the value of an empty 'result' object");
-        return std::get<value_storage>(m_storage);
+        return get();
     }
 
     constexpr value_type* operator->() const
@@ -931,7 +951,7 @@ struct result<T&, E>
         static_assert(
             detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result<T, E>` type");
         return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), value())
+                   ? detail::to_ok<Result>(std::forward<Func>(func), get())
                    : detail::to_error<Result>(*this);
     }
 
@@ -941,7 +961,7 @@ struct result<T&, E>
         static_assert(
             detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result<T, E>` type");
         return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), std::move(*this).value())
+                   ? detail::to_ok<Result>(std::forward<Func>(func), std::move(*this).get())
                    : detail::to_error<Result>(std::move(*this));
     }
 
@@ -949,7 +969,7 @@ struct result<T&, E>
     constexpr auto transform(Func&& func) const& -> Result
     {
         return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), value())
+                   ? detail::to_ok<Result>(std::forward<Func>(func), get())
                    : detail::to_error<Result>(*this);
     }
 
@@ -957,7 +977,7 @@ struct result<T&, E>
     constexpr auto transform(Func&& func) && -> Result
     {
         return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), value())
+                   ? detail::to_ok<Result>(std::forward<Func>(func), get())
                    : detail::to_error<Result>(std::move(*this));
     }
 
@@ -1009,7 +1029,7 @@ struct result<T&, E>
     constexpr auto transform_error(Func&& func) const& -> Result
     {
         return *this  //
-                   ? Result{ value() }
+                   ? Result{ get() }
                    : Result{ error(std::invoke(std::forward<Func>(func), error())) };
     }
 
@@ -1017,20 +1037,20 @@ struct result<T&, E>
     constexpr auto transform_error(Func&& func) && -> Result
     {
         return *this  //
-                   ? Result{ std::move(*this).value() }
+                   ? Result{ std::move(*this).get() }
                    : Result{ error(std::invoke(std::forward<Func>(func), std::move(*this).error())) };
     }
 
     template <class U>
     constexpr auto value_or(U&& v) const& -> value_type
     {
-        return *this ? **this : static_cast<value_type>(std::forward<U>(v));
+        return *this ? get() : static_cast<value_type>(std::forward<U>(v));
     }
 
     template <class U>
     constexpr auto value_or(U&& v) && -> value_type
     {
-        return *this ? *std::move(*this) : static_cast<value_type>(std::forward<U>(v));
+        return *this ? std::move(*this).get() : static_cast<value_type>(std::forward<U>(v));
     }
 
 private:
@@ -1336,22 +1356,37 @@ struct maybe
         return m_storage.has_value();
     }
 
+    constexpr const value_type& get() const&
+    {
+        return *m_storage;
+    }
+
+    constexpr value_type& get() &
+    {
+        return *m_storage;
+    }
+
+    constexpr value_type&& get() &&
+    {
+        return *std::move(m_storage);
+    }
+
     constexpr const value_type& operator*() const&
     {
         assert_that<bad_maybe_access>(has_value(), "accessing value of an empty 'maybe' object");
-        return *m_storage;
+        return get();
     }
 
     constexpr value_type& operator*() &
     {
         assert_that<bad_maybe_access>(has_value(), "accessing value of an empty 'maybe' object");
-        return *m_storage;
+        return get();
     }
 
     constexpr value_type&& operator*() &&
     {
         assert_that<bad_maybe_access>(has_value(), "accessing value of an empty 'maybe' object");
-        return *std::move(m_storage);
+        return std::move(*this).get();
     }
 
     constexpr const value_type* operator->() const&
@@ -1389,7 +1424,7 @@ struct maybe
     {
         static_assert(detail::is_maybe<FuncResult>::value, "and_then: function result type needs to be of `maybe<T>` type");
         return *this  //
-                   ? Result{ std::invoke(std::forward<Func>(func), value()) }
+                   ? Result{ std::invoke(std::forward<Func>(func), get()) }
                    : Result{};
     }
 
@@ -1398,7 +1433,7 @@ struct maybe
     {
         static_assert(detail::is_maybe<FuncResult>::value, "and_then: function result type needs to be of `maybe<T>` type");
         return *this  //
-                   ? Result{ std::invoke(std::forward<Func>(func), std::move(*this).value()) }
+                   ? Result{ std::invoke(std::forward<Func>(func), std::move(*this).get()) }
                    : Result{};
     }
 
@@ -1406,7 +1441,7 @@ struct maybe
     constexpr auto transform(Func&& func) const& -> Result
     {
         return *this  //
-                   ? Result{ std::invoke(std::forward<Func>(func), value()) }
+                   ? Result{ std::invoke(std::forward<Func>(func), get()) }
                    : Result{};
     }
 
@@ -1414,7 +1449,7 @@ struct maybe
     constexpr auto transform(Func&& func) && -> Result
     {
         return *this  //
-                   ? Result{ std::invoke(std::forward<Func>(func), std::move(*this).value()) }
+                   ? Result{ std::invoke(std::forward<Func>(func), std::move(*this).get()) }
                    : Result{};
     }
 
@@ -1465,7 +1500,7 @@ struct maybe
     template <class Pred>
     constexpr auto filter(Pred&& pred) const& -> maybe<T>
     {
-        return std::invoke(std::forward<Pred>(pred), value())  //
+        return *this && std::invoke(std::forward<Pred>(pred), get())  //
                    ? maybe<T>{ *this }
                    : maybe<T>{};
     }
@@ -1473,7 +1508,7 @@ struct maybe
     template <class Pred>
     constexpr auto filter(Pred&& pred) && -> maybe<T>
     {
-        return std::invoke(std::forward<Pred>(pred), value())  //
+        return *this && std::invoke(std::forward<Pred>(pred), get())  //
                    ? maybe<T>{ std::move(*this) }
                    : maybe<T>{};
     }
@@ -1481,13 +1516,13 @@ struct maybe
     template <class U>
     constexpr auto value_or(U&& v) const& -> value_type
     {
-        return *this ? **this : static_cast<value_type>(std::forward<U>(v));
+        return *this ? get() : static_cast<value_type>(std::forward<U>(v));
     }
 
     template <class U>
     constexpr auto value_or(U&& v) && -> value_type
     {
-        return *this ? *std::move(*this) : static_cast<value_type>(std::forward<U>(v));
+        return *this ? std::move(*this).get() : static_cast<value_type>(std::forward<U>(v));
     }
 
 private:
@@ -1530,10 +1565,15 @@ struct maybe<T&>
         return static_cast<bool>(m_storage);
     }
 
+    constexpr value_type& get() const
+    {
+        return *m_storage;
+    }
+
     constexpr value_type& operator*() const
     {
         assert_that<bad_maybe_access>(has_value(), "accessing value of an empty 'maybe' object");
-        return *m_storage;
+        return get();
     }
 
     constexpr value_type* operator->() const
@@ -1556,7 +1596,7 @@ struct maybe<T&>
     {
         static_assert(detail::is_maybe<FuncResult>::value, "and_then: function result type needs to be of `maybe<T>` type");
         return *this  //
-                   ? Result{ std::invoke(std::forward<Func>(func), value()) }
+                   ? Result{ std::invoke(std::forward<Func>(func), get()) }
                    : Result{};
     }
 
@@ -1564,7 +1604,7 @@ struct maybe<T&>
     constexpr auto transform(Func&& func) const -> Result
     {
         return *this  //
-                   ? Result{ std::invoke(std::forward<Func>(func), value()) }
+                   ? Result{ std::invoke(std::forward<Func>(func), get()) }
                    : Result{};
     }
 
@@ -1593,7 +1633,7 @@ struct maybe<T&>
     template <class Pred>
     constexpr auto filter(Pred&& pred) const -> maybe<T&>
     {
-        return std::invoke(std::forward<Pred>(pred), value())  //
+        return *this && std::invoke(std::forward<Pred>(pred), get())  //
                    ? maybe<T>{ *this }
                    : maybe<T>{};
     }
@@ -1601,7 +1641,7 @@ struct maybe<T&>
     template <class U>
     constexpr auto value_or(U&& v) const -> value_type
     {
-        return *this ? **this : static_cast<value_type>(std::forward<U>(v));
+        return *this ? get() : static_cast<value_type>(std::forward<U>(v));
     }
 
 private:
@@ -1633,6 +1673,7 @@ struct convertible_to
     operator T() const;
 };
 
+ZX_DEFINE_IS_DETECTED_1(range_has_size, std::declval<T0>().size());
 ZX_DEFINE_IS_DETECTED_1(iter_has_deref, std::declval<T0>().deref());
 ZX_DEFINE_IS_DETECTED_1(iter_has_inc, std::declval<T0>().inc());
 ZX_DEFINE_IS_DETECTED_1(iter_has_dec, std::declval<T0>().dec());
@@ -2671,6 +2712,22 @@ struct let_fn
     }
 };
 
+struct size_fn
+{
+    template <class Range>
+    constexpr std::ptrdiff_t operator()(Range&& range) const
+    {
+        if constexpr (range_has_size_v<Range>)
+        {
+            return static_cast<std::ptrdiff_t>(range.size());
+        }
+        else
+        {
+            return std::distance(std::begin(range), std::end(range));
+        }
+    }
+};
+
 }  // namespace detail
 
 using detail::apply;
@@ -2689,6 +2746,8 @@ static constexpr inline auto value = get_element<1>;
 
 static constexpr inline auto reduce = detail::reduce_fn{};
 static constexpr inline auto let = detail::let_fn{};
+
+static constexpr inline auto size = detail::size_fn{};
 
 /*
                                                              __  _____  __
