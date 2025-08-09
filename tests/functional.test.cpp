@@ -157,3 +157,17 @@ TEST_CASE("let", "")
             }),
         matchers::equal_to("[2, 5, 13, 19]"));
 }
+
+TEST_CASE("proj", "")
+{
+    REQUIRE_THAT(zx::proj(zx::size, std::plus<>{})(std::vector{ 1, 2, 3 }, std::array{ 1, 2, 3, 4 }), matchers::equal_to(7));
+    REQUIRE_THAT(
+        zx::proj(zx::size, std::equal_to<>{})(std::vector{ 1, 2, 3 }, std::array{ 1, 2, 3 }), matchers::equal_to(true));
+    REQUIRE_THAT(
+        zx::proj(
+            [](const std::vector<int>& v) {
+                return std::tuple{ v.front(), v.back(), v.size() };
+            },
+            zx::str)(std::vector{ 3, 5, 7 }, std::vector{ 9, 10, 11 }),
+        matchers::equal_to("(3, 7, 3)(9, 11, 3)"));
+}

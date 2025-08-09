@@ -2728,6 +2728,49 @@ struct size_fn
     }
 };
 
+struct associate_fn
+{
+    template <class Func>
+    struct impl
+    {
+        Func m_func;
+
+        template <class T>
+        constexpr auto operator()(T&& item) const -> std::pair<T, std::invoke_result_t<Func, T>>
+        {
+            return { std::forward<T>(item), std::invoke(m_func, item) };
+        }
+    };
+
+    template <class Func>
+    constexpr auto operator()(Func&& func) const -> impl<std::decay_t<Func>>
+    {
+        return { std::forward<Func>(func) };
+    }
+};
+
+struct proj_fn
+{
+    template <class Proj, class Func>
+    struct impl
+    {
+        Proj m_proj;
+        Func m_func;
+
+        template <class... Args>
+        constexpr decltype(auto) operator()(Args&&... args) const
+        {
+            return std::invoke(m_func, std::invoke(m_proj, std::forward<Args>(args))...);
+        }
+    };
+
+    template <class Proj, class Func>
+    constexpr auto operator()(Proj&& proj, Func&& func) const -> impl<std::decay_t<Proj>, std::decay_t<Func>>
+    {
+        return { std::forward<Proj>(proj), std::forward<Func>(func) };
+    }
+};
+
 }  // namespace detail
 
 using detail::apply;
@@ -2748,6 +2791,8 @@ static constexpr inline auto reduce = detail::reduce_fn{};
 static constexpr inline auto let = detail::let_fn{};
 
 static constexpr inline auto size = detail::size_fn{};
+static constexpr inline auto associate = detail::associate_fn{};
+static constexpr inline auto proj = detail::proj_fn{};
 
 /*
                                                              __  _____  __
@@ -2997,41 +3042,6 @@ struct transform_maybe_indexed_mixin
     auto transform_maybe_indexed(Func&& func) && -> sequence<Res>
     {
         return sequence<Res>{ next_function<std::decay_t<Func>, Res>{
-            std::forward<Func>(func), static_cast<sequence<T>&&>(*this).get_next_function() } };
-    }
-};
-
-template <class T>
-struct associate_mixin
-{
-    template <class Func, class Out>
-    struct next_function
-    {
-        Func m_func;
-        next_function_t<T> m_next;
-
-        auto operator()() const -> iteration_result_t<std::pair<T, Out>>
-        {
-            iteration_result_t<T> next = m_next();
-            if (next)
-            {
-                return std::pair<T, Out>{ *next, std::invoke(m_func, *next) };
-            }
-            return {};
-        }
-    };
-
-    template <class Func, class Res = std::invoke_result_t<Func, T>>
-    auto associate(Func&& func) const& -> sequence<std::pair<T, Res>>
-    {
-        return sequence<std::pair<T, Res>>{ next_function<std::decay_t<Func>, Res>{
-            std::forward<Func>(func), static_cast<const sequence<T>&>(*this).get_next_function() } };
-    }
-
-    template <class Func, class Res = std::invoke_result_t<Func, T>>
-    auto associate(Func&& func) && -> sequence<std::pair<T, Res>>
-    {
-        return sequence<std::pair<T, Res>>{ next_function<std::decay_t<Func>, Res>{
             std::forward<Func>(func), static_cast<sequence<T>&&>(*this).get_next_function() } };
     }
 };
@@ -3707,8 +3717,7 @@ struct sequence : detail::inspect_mixin<T>,
                   detail::intersperse_mixin<T>,
                   detail::join_mixin<T>,
                   detail::for_each_mixin<T>,
-                  detail::for_each_indexed_mixin<T>,
-                  detail::associate_mixin<T>
+                  detail::for_each_indexed_mixin<T>
 {
     using iterator = detail::sequence_iterator<T>;
     using next_function_type = typename iterator::next_function_type;
