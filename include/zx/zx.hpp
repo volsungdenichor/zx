@@ -2640,9 +2640,9 @@ struct reduce_fn
     };
 
     template <class State, class Reducer>
-    constexpr auto operator()(State state, Reducer&& reducer) const -> proxy_t<State, std::decay_t<Reducer>>
+    constexpr auto operator()(State state, Reducer&& reducer) const -> pipe_t<proxy_t<State, std::decay_t<Reducer>>>
     {
-        return { std::move(state), std::forward<Reducer>(reducer) };
+        return { { std::move(state), std::forward<Reducer>(reducer) } };
     }
 };
 

@@ -90,19 +90,33 @@ TEST_CASE("reduce", "")
         zx::reduce(std::string{}, transform([](int x) { return x * 11; }) >>= join)(std::vector{ 1, 3, 5, 100 }),
         matchers::equal_to("11, 33, 55, 1100"));
 
+    REQUIRE_THAT(
+        (std::vector{ 1, 3, 5, 100 } |= zx::reduce(std::string{}, transform([](int x) { return x * 11; }) >>= join)),
+        matchers::equal_to("11, 33, 55, 1100"));
+
     constexpr auto is_even = [](int x) { return x % 2 == 0; };
     constexpr auto mul_10 = [](int x) { return x * 10; };
 
     REQUIRE_THAT(
-        zx::reduce(         ///
+        zx::reduce(         //
             std::string{},  //
             filter(is_even) >>= transform(mul_10) >>= join)(std::vector{ 1, 2, 3, 4, 5 }),
+        matchers::equal_to("20, 40"));
+
+    REQUIRE_THAT(
+        (std::vector{ 1, 2, 3, 4, 5 } |= zx::reduce(  //
+             std::string{},                           //
+             filter(is_even) >>= transform(mul_10) >>= join)),
         matchers::equal_to("20, 40"));
 
     REQUIRE_THAT(
         zx::reduce(         ///
             std::string{},  //
             transform(mul_10) >>= filter(is_even) >>= join)(std::vector{ 1, 2, 3, 4, 5 }),
+        matchers::equal_to("10, 20, 30, 40, 50"));
+
+    REQUIRE_THAT(
+        (std::vector{ 1, 2, 3, 4, 5 } |= zx::reduce(std::string{}, transform(mul_10) >>= filter(is_even) >>= join)),
         matchers::equal_to("10, 20, 30, 40, 50"));
 }
 
