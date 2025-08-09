@@ -2,6 +2,8 @@
 
 #include "matchers.hpp"
 
+#define L(...) [](auto&& it) -> decltype((__VA_ARGS__)) { return (__VA_ARGS__); }
+
 template <class Func>
 struct pipeable
 {
@@ -57,41 +59,17 @@ constexpr inline auto operator""_a(const char*, std::size_t) -> arg_t
     return {};
 }
 
-template <class Func>
-constexpr auto transform(Func func)
-{
-    return pipeable{ [=](auto next)
-                     {
-                         return [=](auto state, auto&&... args) {  //
-                             return next(std::move(state), std::invoke(func, std::forward<decltype(args)>(args)...));
-                         };
-                     } };
-}
-
-template <class Pred>
-constexpr auto filter(Pred pred)
-{
-    return pipeable{ [=](auto next)
-                     {
-                         return [=](auto state, auto&&... args) {  //
-                             return std::invoke(pred, args...)     //
-                                        ? next(std::move(state), std::forward<decltype(args)>(args)...)
-                                        : state;
-                         };
-                     } };
-}
-
 TEST_CASE("reduce", "")
 {
     REQUIRE_THAT(zx::reduce(0, std::plus<>{})(std::vector{ 1, 3, 5, 100 }), matchers::equal_to(109));
     REQUIRE_THAT(zx::reduce(std::string{}, join)(std::vector{ 1, 3, 5, 100 }), matchers::equal_to("1, 3, 5, 100"));
 
     REQUIRE_THAT(
-        zx::reduce(std::string{}, transform([](int x) { return x * 11; }) >>= join)(std::vector{ 1, 3, 5, 100 }),
+        zx::reduce(std::string{}, zx::transform([](int x) { return x * 11; }) >>= join)(std::vector{ 1, 3, 5, 100 }),
         matchers::equal_to("11, 33, 55, 1100"));
 
     REQUIRE_THAT(
-        (std::vector{ 1, 3, 5, 100 } |= zx::reduce(std::string{}, transform([](int x) { return x * 11; }) >>= join)),
+        (std::vector{ 1, 3, 5, 100 } |= zx::reduce(std::string{}, zx::transform([](int x) { return x * 11; }) >>= join)),
         matchers::equal_to("11, 33, 55, 1100"));
 
     constexpr auto is_even = [](int x) { return x % 2 == 0; };
@@ -100,24 +78,55 @@ TEST_CASE("reduce", "")
     REQUIRE_THAT(
         zx::reduce(         //
             std::string{},  //
-            filter(is_even) >>= transform(mul_10) >>= join)(std::vector{ 1, 2, 3, 4, 5 }),
+            zx::filter(is_even) >>= zx::transform(mul_10) >>= join)(std::vector{ 1, 2, 3, 4, 5 }),
         matchers::equal_to("20, 40"));
 
     REQUIRE_THAT(
         (std::vector{ 1, 2, 3, 4, 5 } |= zx::reduce(  //
              std::string{},                           //
-             filter(is_even) >>= transform(mul_10) >>= join)),
+             zx::filter(is_even) >>= zx::transform(mul_10) >>= join)),
         matchers::equal_to("20, 40"));
 
     REQUIRE_THAT(
-        zx::reduce(         ///
+        zx::reduce(         //
             std::string{},  //
-            transform(mul_10) >>= filter(is_even) >>= join)(std::vector{ 1, 2, 3, 4, 5 }),
+            zx::transform(mul_10) >>= zx::filter(is_even) >>= join)(std::vector{ 1, 2, 3, 4, 5 }),
         matchers::equal_to("10, 20, 30, 40, 50"));
 
     REQUIRE_THAT(
-        (std::vector{ 1, 2, 3, 4, 5 } |= zx::reduce(std::string{}, transform(mul_10) >>= filter(is_even) >>= join)),
+        (std::vector{ 1, 2, 3, 4, 5 } |= zx::reduce(std::string{}, zx::transform(mul_10) >>= zx::filter(is_even) >>= join)),
         matchers::equal_to("10, 20, 30, 40, 50"));
+
+    REQUIRE_THAT(
+        zx::reduce(  //
+            0,       //
+            zx::transform(std::multiplies<>{}) >>= std::plus<>{})(std::vector{ 1, 2, 3, 4, 5 }, std::vector{ 2, 5, 9 }),
+        matchers::equal_to(39));
+
+    {
+        std::vector<int> out;
+        zx::reduce(std::back_inserter(out), zx::transform(L(it * 10)) >>= zx::yield)(std::vector{ 1, 2, 3 });
+        REQUIRE_THAT(out, matchers::elements_are(10, 20, 30));
+    }
+
+    {
+        std::vector<int> out;
+        zx::reduce(std::back_inserter(out), zx::transform_indexed(std::plus<>{}) >>= zx::yield)(std::vector{ 1, 2, 3 });
+        REQUIRE_THAT(out, matchers::elements_are(1, 3, 5));
+    }
+
+    {
+        std::vector<int> out;
+        zx::reduce(std::back_inserter(out), zx::filter(L(it % 2 == 0)) >>= zx::yield)(std::vector{ 1, 2, 3, 4, 5, 6 });
+        REQUIRE_THAT(out, matchers::elements_are(2, 4, 6));
+    }
+
+    {
+        std::vector<int> out;
+        zx::reduce(std::back_inserter(out), zx::filter_indexed([](auto i, int v) { return i % 2 == 0; }) >>= zx::yield)(
+            std::vector{ 1, 2, 3, 4, 5, 6 });
+        REQUIRE_THAT(out, matchers::elements_are(1, 3, 5));
+    }
 }
 
 TEST_CASE("reduce - multiple input", "")
@@ -136,7 +145,7 @@ TEST_CASE("reduce - multiple input", "")
         matchers::equal_to(95));
 
     REQUIRE_THAT(
-        zx::reduce(0, transform(std::multiplies<>{}) >>= sum)(std::vector{ 1, 3, 5 }, std::vector{ 10, 20, 5 }),
+        zx::reduce(0, zx::transform(std::multiplies<>{}) >>= sum)(std::vector{ 1, 3, 5 }, std::vector{ 10, 20, 5 }),
         matchers::equal_to(95));
 }
 
