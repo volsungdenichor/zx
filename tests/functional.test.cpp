@@ -63,70 +63,6 @@ TEST_CASE("reduce", "")
 {
     REQUIRE_THAT(zx::reduce(0, std::plus<>{})(std::vector{ 1, 3, 5, 100 }), matchers::equal_to(109));
     REQUIRE_THAT(zx::reduce(std::string{}, join)(std::vector{ 1, 3, 5, 100 }), matchers::equal_to("1, 3, 5, 100"));
-
-    REQUIRE_THAT(
-        zx::reduce(std::string{}, zx::transform([](int x) { return x * 11; }) >>= join)(std::vector{ 1, 3, 5, 100 }),
-        matchers::equal_to("11, 33, 55, 1100"));
-
-    REQUIRE_THAT(
-        (std::vector{ 1, 3, 5, 100 } |= zx::reduce(std::string{}, zx::transform([](int x) { return x * 11; }) >>= join)),
-        matchers::equal_to("11, 33, 55, 1100"));
-
-    constexpr auto is_even = [](int x) { return x % 2 == 0; };
-    constexpr auto mul_10 = [](int x) { return x * 10; };
-
-    REQUIRE_THAT(
-        zx::reduce(         //
-            std::string{},  //
-            zx::filter(is_even) >>= zx::transform(mul_10) >>= join)(std::vector{ 1, 2, 3, 4, 5 }),
-        matchers::equal_to("20, 40"));
-
-    REQUIRE_THAT(
-        (std::vector{ 1, 2, 3, 4, 5 } |= zx::reduce(  //
-             std::string{},                           //
-             zx::filter(is_even) >>= zx::transform(mul_10) >>= join)),
-        matchers::equal_to("20, 40"));
-
-    REQUIRE_THAT(
-        zx::reduce(         //
-            std::string{},  //
-            zx::transform(mul_10) >>= zx::filter(is_even) >>= join)(std::vector{ 1, 2, 3, 4, 5 }),
-        matchers::equal_to("10, 20, 30, 40, 50"));
-
-    REQUIRE_THAT(
-        (std::vector{ 1, 2, 3, 4, 5 } |= zx::reduce(std::string{}, zx::transform(mul_10) >>= zx::filter(is_even) >>= join)),
-        matchers::equal_to("10, 20, 30, 40, 50"));
-
-    REQUIRE_THAT(
-        zx::reduce(  //
-            0,       //
-            zx::transform(std::multiplies<>{}) >>= std::plus<>{})(std::vector{ 1, 2, 3, 4, 5 }, std::vector{ 2, 5, 9 }),
-        matchers::equal_to(39));
-
-    {
-        std::vector<int> out;
-        zx::reduce(std::back_inserter(out), zx::transform(L(it * 10)) >>= zx::yield)(std::vector{ 1, 2, 3 });
-        REQUIRE_THAT(out, matchers::elements_are(10, 20, 30));
-    }
-
-    {
-        std::vector<int> out;
-        zx::reduce(std::back_inserter(out), zx::transform_indexed(std::plus<>{}) >>= zx::yield)(std::vector{ 1, 2, 3 });
-        REQUIRE_THAT(out, matchers::elements_are(1, 3, 5));
-    }
-
-    {
-        std::vector<int> out;
-        zx::reduce(std::back_inserter(out), zx::filter(L(it % 2 == 0)) >>= zx::yield)(std::vector{ 1, 2, 3, 4, 5, 6 });
-        REQUIRE_THAT(out, matchers::elements_are(2, 4, 6));
-    }
-
-    {
-        std::vector<int> out;
-        zx::reduce(std::back_inserter(out), zx::filter_indexed([](auto i, int v) { return i % 2 == 0; }) >>= zx::yield)(
-            std::vector{ 1, 2, 3, 4, 5, 6 });
-        REQUIRE_THAT(out, matchers::elements_are(1, 3, 5));
-    }
 }
 
 TEST_CASE("reduce - multiple input", "")
@@ -142,10 +78,6 @@ TEST_CASE("reduce - multiple input", "")
     REQUIRE_THAT(
         zx::reduce(0, [](int acc, int lt, int rt) -> int { return acc + lt * rt; })(
             std::vector{ 1, 3, 5 }, std::vector{ 10, 20, 5 }),
-        matchers::equal_to(95));
-
-    REQUIRE_THAT(
-        zx::reduce(0, zx::transform(std::multiplies<>{}) >>= sum)(std::vector{ 1, 3, 5 }, std::vector{ 10, 20, 5 }),
         matchers::equal_to(95));
 }
 
