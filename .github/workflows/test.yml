@@ -34,8 +34,14 @@ jobs:
               cc: gcc
               cxx: g++
         include:
-          # Add MSVC for Windows
+          # Add MSVC for Windows (both Debug and Release)
           - os: windows-latest
+            build_type: Debug
+            compiler:
+              cc: cl
+              cxx: cl
+          - os: windows-latest
+            build_type: Release
             compiler:
               cc: cl
               cxx: cl
@@ -43,6 +49,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
 
       - name: Set up compiler (Linux/macOS)
         if: runner.os != 'Windows'
