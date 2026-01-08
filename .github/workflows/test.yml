@@ -1,0 +1,67 @@
+name: Unit Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        build_type: [Debug, Release]
+        compiler:
+          - cc: gcc
+            cxx: g++
+          - cc: clang
+            cxx: clang++
+        exclude:
+          # Exclude gcc and clang on Windows
+          - os: windows-latest
+            compiler:
+              cc: gcc
+              cxx: g++
+          - os: windows-latest
+            compiler:
+              cc: clang
+              cxx: clang++
+          # Exclude gcc on macOS
+          - os: macos-latest
+            compiler:
+              cc: gcc
+              cxx: g++
+        include:
+          # Add MSVC for Windows (both Debug and Release)
+          - os: windows-latest
+            build_type: Debug
+            compiler:
+              cc: cl
+              cxx: cl
+          - os: windows-latest
+            build_type: Release
+            compiler:
+              cc: cl
+              cxx: cl
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up compiler (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          echo "CC=${{ matrix.compiler.cc }}" >> $GITHUB_ENV
+          echo "CXX=${{ matrix.compiler.cxx }}" >> $GITHUB_ENV
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DZX_BUILD_TESTS=ON -DZX_BUILD_CORE=ON -DZX_BUILD_ITERATOR=ON -DZX_BUILD_FUNCTIONAL=ON
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }}
+
+      - name: Run tests
+        run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure --verbose
