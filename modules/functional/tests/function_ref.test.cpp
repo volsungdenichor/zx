@@ -20,12 +20,3 @@ TEST(function_ref, lambda_with_captured_value)
     EXPECT_THAT(add(2, 3), 105);
     EXPECT_THAT(multiply(2, 3), 16);
 }
-
-TEST(function_ref, assignment_of_different_lambdas)
-{
-    zx::function_ref<int(int, int)> add = [](int a, int b) { return a + b; };
-    EXPECT_THAT(add(2, 3), 5);
-    add = [c = 100](int a, int b) { return a + b + c; };
-
-    EXPECT_THAT(add(2, 3), 105);
-}

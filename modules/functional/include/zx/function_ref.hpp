@@ -28,16 +28,7 @@ struct function_ref<Ret(Args...)>
     {
     }
 
-    constexpr function_ref& operator=(const function_ref&) = default;
-
-    template <class Func>
-    constexpr function_ref& operator=(Func&& func)
-    {
-        m_obj = const_cast<void*>(reinterpret_cast<const void*>(std::addressof(func)));
-        m_func = [](void* obj, Args... args) -> return_type
-        { return std::invoke(*static_cast<std::add_pointer_t<Func>>(obj), std::forward<Args>(args)...); };
-        return *this;
-    }
+    constexpr function_ref& operator=(const function_ref&) = delete;
 
     constexpr auto operator()(Args... args) const -> return_type
     {
