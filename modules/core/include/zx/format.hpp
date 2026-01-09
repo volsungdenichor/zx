@@ -160,7 +160,7 @@ struct formatter<bool>
 {
     void format(std::ostream& os, const bool item) const
     {
-        os << std::boolalpha << item;
+        os << (item ? "true" : "false");
     }
 };
 
