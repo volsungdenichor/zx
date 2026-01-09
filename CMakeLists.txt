@@ -7,6 +7,9 @@ else()
     set(ZX_IS_TOPLEVEL FALSE)
 endif()
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(ZxHelpers)
+
 set(ZX_MODULES_DIR "modules")
 
 option(ZX_BUILD_ALL "Build all zx modules" OFF)
@@ -23,6 +26,8 @@ endif()
 
 if(ZX_BUILD_TESTS)
     enable_testing()
+    find_package(GTest REQUIRED)
+    include(GoogleTest)
 endif()
 
 if(ZX_BUILD_CORE)
