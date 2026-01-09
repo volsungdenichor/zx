@@ -7,33 +7,42 @@ else()
     set(ZX_IS_TOPLEVEL FALSE)
 endif()
 
+set(ZX_MODULES_DIR "modules")
+
+option(ZX_BUILD_ALL "Build all zx modules" OFF)
 option(ZX_BUILD_CORE "Build zx core module" ON)
 option(ZX_BUILD_ITERATOR "Build zx iterator module" OFF)
 option(ZX_BUILD_FUNCTIONAL "Build zx functional module" OFF)
 option(ZX_BUILD_TESTS "Build zx tests" ${ZX_IS_TOPLEVEL})
+
+if(ZX_BUILD_ALL)
+    set(ZX_BUILD_CORE ON CACHE BOOL "Build zx core module" FORCE)
+    set(ZX_BUILD_ITERATOR ON CACHE BOOL "Build zx iterator module" FORCE)
+    set(ZX_BUILD_FUNCTIONAL ON CACHE BOOL "Build zx functional module" FORCE)
+endif()
 
 if(ZX_BUILD_TESTS)
     enable_testing()
 endif()
 
 if(ZX_BUILD_CORE)
-    add_subdirectory(core)
+    add_subdirectory(${ZX_MODULES_DIR}/core)
 endif()
 
 if(ZX_BUILD_ITERATOR)
     if(NOT TARGET zx::core)
-        add_subdirectory(core)
+        add_subdirectory(${ZX_MODULES_DIR}/core)
     endif()
 
-    add_subdirectory(iterator)
+    add_subdirectory(${ZX_MODULES_DIR}/iterator)
 endif()
 
 if(ZX_BUILD_FUNCTIONAL)
     if(NOT TARGET zx::core)
-        add_subdirectory(core)
+        add_subdirectory(${ZX_MODULES_DIR}/core)
     endif()
 
-    add_subdirectory(functional)
+    add_subdirectory(${ZX_MODULES_DIR}/functional)
 endif()
 
 if(ZX_BUILD_CORE OR ZX_BUILD_ITERATOR OR ZX_BUILD_FUNCTIONAL)
