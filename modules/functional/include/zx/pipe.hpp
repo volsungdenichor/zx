@@ -15,34 +15,24 @@ struct pipeline
     {
     }
 
-    constexpr pipeline(Pipes... pipes) : pipeline{ std::tuple<Pipes...>{ std::move(pipes)... } }
-    {
-    }
-
 private:
-    template <std::size_t I, class... Args>
-    constexpr auto invoke(Args&&... args) const -> decltype(std::invoke(std::get<I>(m_pipes), std::forward<Args>(args)...))
+    template <std::size_t I, std::size_t S, class Funcs, class... Args, std::enable_if_t<(I == S - 1), int> = 0>
+    static constexpr auto call_impl(const Funcs& funcs, Args&&... args) -> decltype(auto)
     {
-        return std::invoke(std::get<I>(m_pipes), std::forward<Args>(args)...);
+        return std::invoke(std::get<I>(funcs), std::forward<Args>(args)...);
     }
 
-    template <std::size_t I, class... Args, std::enable_if_t<(I + 1) == sizeof...(Pipes), int> = 0>
-    constexpr auto call(Args&&... args) const -> decltype(invoke<I>(std::forward<Args>(args)...))
+    template <std::size_t I, std::size_t S, class Funcs, class... Args, std::enable_if_t<(I < S - 1), int> = 0>
+    static constexpr auto call_impl(const Funcs& funcs, Args&&... args) -> decltype(auto)
     {
-        return invoke<I>(std::forward<Args>(args)...);
-    }
-
-    template <std::size_t I, class... Args, std::enable_if_t<(I + 1) < sizeof...(Pipes), int> = 0>
-    constexpr auto call(Args&&... args) const -> decltype(call<I + 1>(invoke<I>(std::forward<Args>(args)...)))
-    {
-        return call<I + 1>(invoke<I>(std::forward<Args>(args)...));
+        return call_impl<I + 1, S>(funcs, std::invoke(std::get<I>(funcs), std::forward<Args>(args)...));
     }
 
 public:
     template <class... Args>
-    constexpr auto operator()(Args&&... args) const -> decltype(call<0>(std::forward<Args>(args)...))
+    constexpr auto operator()(Args&&... args) const -> decltype(auto)
     {
-        return call<0>(std::forward<Args>(args)...);
+        return call_impl<0, sizeof...(Pipes)>(m_pipes, std::forward<Args>(args)...);
     }
 };
 
@@ -63,19 +53,19 @@ struct pipe_fn
 {
 private:
     template <class Pipe>
-    constexpr auto to_tuple(Pipe pipe) const -> std::tuple<Pipe>
+    static constexpr auto to_tuple(Pipe pipe) -> std::tuple<Pipe>
     {
         return std::tuple<Pipe>{ std::move(pipe) };
     }
 
     template <class... Pipes>
-    constexpr auto to_tuple(pipeline<Pipes...> pipe) const -> std::tuple<Pipes...>
+    static constexpr auto to_tuple(pipeline<Pipes...> pipe) -> std::tuple<Pipes...>
     {
         return pipe.m_pipes;
     }
 
     template <class... Pipes>
-    constexpr auto from_tuple(std::tuple<Pipes...> tuple) const -> pipeline<Pipes...>
+    static constexpr auto from_tuple(std::tuple<Pipes...> tuple) -> pipeline<Pipes...>
     {
         return pipeline<Pipes...>{ std::move(tuple) };
     }
@@ -92,5 +82,6 @@ public:
 }  // namespace detail
 
 static constexpr inline auto pipe = detail::pipe_fn{};
+static constexpr inline auto fn = pipe;
 
 }  // namespace zx
