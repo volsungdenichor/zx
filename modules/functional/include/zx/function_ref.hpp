@@ -28,8 +28,6 @@ struct function_ref<Ret(Args...)>
     {
     }
 
-    constexpr function_ref& operator=(const function_ref&) = delete;
-
     constexpr auto operator()(Args... args) const -> return_type
     {
         return m_func(m_obj, std::forward<Args>(args)...);
