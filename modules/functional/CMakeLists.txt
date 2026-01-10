@@ -9,4 +9,5 @@ zx_add_module(
     tests/function_ref.test.cpp
     tests/pipe.test.cpp
     tests/functional.test.cpp
+    tests/let.test.cpp
 )
