@@ -40,6 +40,10 @@ static constexpr struct apply_fn
     {
         Func m_func;
 
+        constexpr impl(Func func) : m_func(std::move(func))
+        {
+        }
+
         template <class T>
         T& operator()(T& item) const
         {
@@ -49,10 +53,9 @@ static constexpr struct apply_fn
     };
 
     template <class... Funcs>
-    constexpr auto operator()(Funcs&&... funcs) const -> pipeline<impl<decltype(do_all(std::forward<Funcs>(funcs)...))>>
+    constexpr auto operator()(Funcs&&... funcs) const
     {
-        return pipeline<impl<decltype(do_all(std::forward<Funcs>(funcs)...))>>{ std::make_tuple(
-            impl<decltype(do_all(std::forward<Funcs>(funcs)...))>{ do_all(std::forward<Funcs>(funcs)...) }) };
+        return pipe(impl{ do_all(std::forward<Funcs>(funcs)...) });
     }
 } apply;
 
@@ -63,6 +66,10 @@ static constexpr struct with_fn
     {
         Func m_func;
 
+        constexpr impl(Func func) : m_func(std::move(func))
+        {
+        }
+
         template <class T>
         T operator()(T item) const
         {
@@ -72,10 +79,9 @@ static constexpr struct with_fn
     };
 
     template <class... Funcs>
-    constexpr auto operator()(Funcs&&... funcs) const -> pipeline<impl<decltype(do_all(std::forward<Funcs>(funcs)...))>>
+    constexpr auto operator()(Funcs&&... funcs) const
     {
-        return pipeline<impl<decltype(do_all(std::forward<Funcs>(funcs)...))>>{ std::make_tuple(
-            impl<decltype(do_all(std::forward<Funcs>(funcs)...))>{ do_all(std::forward<Funcs>(funcs)...) }) };
+        return pipe(impl{ do_all(std::forward<Funcs>(funcs)...) });
     }
 } with;
 
