@@ -22,3 +22,13 @@ TEST(pipe, appending_pipe_to_existing_pipe)
     EXPECT_THAT(extended_pipe(3, 4), testing::Eq("[7]..."));
     EXPECT_THAT(extended_pipe(2, 10), testing::Eq("[12]..."));
 }
+
+TEST(pipe, pipeline_operator)
+{
+    const auto pipe = zx::fn(std::plus<>{})                 //
+        |= zx::fn([](int x) { return std::to_string(x); })  //
+        |= zx::fn([](const std::string& s) { return "[" + s + "]"; });
+
+    EXPECT_THAT(pipe(3, 4), testing::Eq("[7]"));
+    EXPECT_THAT(pipe(2, 10), testing::Eq("[12]"));
+}

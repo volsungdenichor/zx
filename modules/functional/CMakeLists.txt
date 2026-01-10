@@ -8,4 +8,5 @@ zx_add_module(
     TEST_SOURCES
     tests/function_ref.test.cpp
     tests/pipe.test.cpp
+    tests/functional.test.cpp
 )

@@ -6,33 +6,32 @@
 namespace zx
 {
 
+namespace detail
+{
+
+template <std::size_t I, std::size_t S, class Funcs, class... Args, std::enable_if_t<(I == S - 1), int> = 0>
+constexpr auto pipeline_impl(const Funcs& funcs, Args&&... args) -> decltype(auto)
+{
+    return std::invoke(std::get<I>(funcs), std::forward<Args>(args)...);
+}
+
+template <std::size_t I, std::size_t S, class Funcs, class... Args, std::enable_if_t<(I < S - 1), int> = 0>
+constexpr auto pipeline_impl(const Funcs& funcs, Args&&... args) -> decltype(auto)
+{
+    return pipeline_impl<I + 1, S>(funcs, std::invoke(std::get<I>(funcs), std::forward<Args>(args)...));
+}
+
+}  // namespace detail
 template <class... Pipes>
 struct pipeline
 {
     std::tuple<Pipes...> m_pipes;
 
-    constexpr pipeline(std::tuple<Pipes...> pipes) : m_pipes{ std::move(pipes) }
-    {
-    }
-
-private:
-    template <std::size_t I, std::size_t S, class Funcs, class... Args, std::enable_if_t<(I == S - 1), int> = 0>
-    static constexpr auto call_impl(const Funcs& funcs, Args&&... args) -> decltype(auto)
-    {
-        return std::invoke(std::get<I>(funcs), std::forward<Args>(args)...);
-    }
-
-    template <std::size_t I, std::size_t S, class Funcs, class... Args, std::enable_if_t<(I < S - 1), int> = 0>
-    static constexpr auto call_impl(const Funcs& funcs, Args&&... args) -> decltype(auto)
-    {
-        return call_impl<I + 1, S>(funcs, std::invoke(std::get<I>(funcs), std::forward<Args>(args)...));
-    }
-
-public:
     template <class... Args>
-    constexpr auto operator()(Args&&... args) const -> decltype(auto)
+    constexpr auto operator()(Args&&... args) const
+        -> decltype(detail::pipeline_impl<0, sizeof...(Pipes)>(m_pipes, std::forward<Args>(args)...))
     {
-        return call_impl<0, sizeof...(Pipes)>(m_pipes, std::forward<Args>(args)...);
+        return detail::pipeline_impl<0, sizeof...(Pipes)>(m_pipes, std::forward<Args>(args)...);
     }
 };
 
@@ -83,5 +82,17 @@ public:
 
 static constexpr inline auto pipe = detail::pipe_fn{};
 static constexpr inline auto fn = pipe;
+
+template <class T, class... Pipes, std::enable_if_t<!is_pipeline<std::decay_t<T>>::value, int> = 0>
+constexpr auto operator|=(T&& item, const pipeline<Pipes...>& p)
+{
+    return p(std::forward<T>(item));
+}
+
+template <class... L, class... R>
+constexpr auto operator|=(pipeline<L...> lhs, pipeline<R...> rhs)
+{
+    return pipe(std::move(lhs), std::move(rhs));
+}
 
 }  // namespace zx

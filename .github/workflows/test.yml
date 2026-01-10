@@ -64,7 +64,7 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DZX_BUILD_TESTS=ON -DZX_BUILD_CORE=ON -DZX_BUILD_ITERATOR=ON -DZX_BUILD_FUNCTIONAL=ON
+          cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DZX_BUILD_TESTS=ON -DZX_BUILD_ALL=ON
 
       - name: Build
         run: cmake --build build --config ${{ matrix.build_type }}
