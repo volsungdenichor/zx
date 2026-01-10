@@ -17,6 +17,7 @@ option(ZX_BUILD_CORE "Build zx core module" ON)
 option(ZX_BUILD_ITERATOR "Build zx iterator module" OFF)
 option(ZX_BUILD_FUNCTIONAL "Build zx functional module" OFF)
 option(ZX_BUILD_MAYBE "Build zx maybe module" OFF)
+option(ZX_BUILD_RESULT "Build zx result module" OFF)
 option(ZX_BUILD_TESTS "Build zx tests" ${ZX_IS_TOPLEVEL})
 
 if(ZX_BUILD_ALL)
@@ -24,6 +25,7 @@ if(ZX_BUILD_ALL)
     set(ZX_BUILD_ITERATOR ON CACHE BOOL "Build zx iterator module" FORCE)
     set(ZX_BUILD_FUNCTIONAL ON CACHE BOOL "Build zx functional module" FORCE)
     set(ZX_BUILD_MAYBE ON CACHE BOOL "Build zx maybe module" FORCE)
+    set(ZX_BUILD_RESULT ON CACHE BOOL "Build zx result module" FORCE)
 endif()
 
 if(ZX_BUILD_TESTS)
@@ -69,7 +71,15 @@ if(ZX_BUILD_MAYBE)
     add_subdirectory(${ZX_MODULES_DIR}/maybe)
 endif()
 
-if(ZX_BUILD_CORE OR ZX_BUILD_ITERATOR OR ZX_BUILD_FUNCTIONAL OR ZX_BUILD_MAYBE)
+if(ZX_BUILD_RESULT)
+    if(NOT TARGET zx::core)
+        add_subdirectory(${ZX_MODULES_DIR}/core)
+    endif()
+
+    add_subdirectory(${ZX_MODULES_DIR}/result)
+endif()
+
+if(ZX_BUILD_CORE OR ZX_BUILD_ITERATOR OR ZX_BUILD_FUNCTIONAL OR ZX_BUILD_MAYBE OR ZX_BUILD_RESULT)
     add_library(zx INTERFACE)
     add_library(zx::zx ALIAS zx)
 
@@ -87,5 +97,9 @@ if(ZX_BUILD_CORE OR ZX_BUILD_ITERATOR OR ZX_BUILD_FUNCTIONAL OR ZX_BUILD_MAYBE)
 
     if(TARGET zx::maybe)
         target_link_libraries(zx INTERFACE zx::maybe)
+    endif()
+
+    if(TARGET zx::result)
+        target_link_libraries(zx INTERFACE zx::result)
     endif()
 endif()
