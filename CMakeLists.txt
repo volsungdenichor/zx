@@ -51,7 +51,7 @@ set(ZX_MODULE_DEPENDENCIES_iterator "core")
 set(ZX_MODULE_DEPENDENCIES_functional "core")
 set(ZX_MODULE_DEPENDENCIES_maybe "")
 set(ZX_MODULE_DEPENDENCIES_result "")
-set(ZX_MODULE_DEPENDENCIES_sequence "core;iterator")
+set(ZX_MODULE_DEPENDENCIES_sequence "maybe;iterator")
 
 # List of all modules
 set(ZX_ALL_MODULES core iterator functional maybe result sequence)
