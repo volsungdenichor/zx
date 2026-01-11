@@ -54,32 +54,42 @@ set(ZX_MODULE_DEPENDENCIES_sequence "maybe;iterator")
 
 set(ZX_ALL_MODULES core iterator functional maybe result sequence)
 
+# Helper function to add module with dependencies
+# Optional second argument: pass "IS_DEPENDENCY" if building as a dependency
 function(zx_process_module MODULE_NAME)
+    # Skip if already processed
     if(TARGET zx::${MODULE_NAME})
         return()
     endif()
 
+    # Check if called as a dependency (ARGV1 would be "IS_DEPENDENCY")
+    set(IS_DEPENDENCY FALSE)
+    if(ARGC GREATER 1)
+        if("${ARGV1}" STREQUAL "IS_DEPENDENCY")
+            set(IS_DEPENDENCY TRUE)
+        endif()
+    endif()
+
+    # Check if this module should be built
     string(TOUPPER ${MODULE_NAME} MODULE_UPPER)
-    if(NOT ZX_BUILD_${MODULE_UPPER})
-        get_property(_is_dependency GLOBAL PROPERTY ZX_BUILDING_AS_DEPENDENCY)
-        if(NOT _is_dependency)
+    if(NOT IS_DEPENDENCY)
+        if(NOT ZX_BUILD_${MODULE_UPPER})
             return()
         endif()
     endif()
 
-    set_property(GLOBAL PROPERTY ZX_BUILDING_AS_DEPENDENCY TRUE)
-
+    # First, ensure all dependencies are added
     foreach(DEP ${ZX_MODULE_DEPENDENCIES_${MODULE_NAME}})
         if(NOT TARGET zx::${DEP})
-            zx_process_module(${DEP})
+            zx_process_module(${DEP} IS_DEPENDENCY)
         endif()
     endforeach()
 
-    set_property(GLOBAL PROPERTY ZX_BUILDING_AS_DEPENDENCY FALSE)
-
+    # Then add this module
     add_subdirectory(${ZX_MODULES_DIR}/${MODULE_NAME})
 endfunction()
 
+# Add all requested modules
 foreach(MODULE ${ZX_ALL_MODULES})
     zx_process_module(${MODULE})
 endforeach()
