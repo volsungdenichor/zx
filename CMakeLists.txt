@@ -18,6 +18,7 @@ option(ZX_BUILD_ITERATOR "Build zx iterator module" OFF)
 option(ZX_BUILD_FUNCTIONAL "Build zx functional module" OFF)
 option(ZX_BUILD_MAYBE "Build zx maybe module" OFF)
 option(ZX_BUILD_RESULT "Build zx result module" OFF)
+option(ZX_BUILD_SEQUENCE "Build zx sequence module" OFF)
 option(ZX_BUILD_TESTS "Build zx tests" ${ZX_IS_TOPLEVEL})
 
 if(ZX_BUILD_ALL)
@@ -26,6 +27,7 @@ if(ZX_BUILD_ALL)
     set(ZX_BUILD_FUNCTIONAL ON CACHE BOOL "Build zx functional module" FORCE)
     set(ZX_BUILD_MAYBE ON CACHE BOOL "Build zx maybe module" FORCE)
     set(ZX_BUILD_RESULT ON CACHE BOOL "Build zx result module" FORCE)
+    set(ZX_BUILD_SEQUENCE ON CACHE BOOL "Build zx sequence module" FORCE)
 endif()
 
 if(ZX_BUILD_TESTS)
@@ -64,22 +66,29 @@ if(ZX_BUILD_FUNCTIONAL)
 endif()
 
 if(ZX_BUILD_MAYBE)
-    if(NOT TARGET zx::core)
-        add_subdirectory(${ZX_MODULES_DIR}/core)
-    endif()
-
+    # if(NOT TARGET zx::core)
+    # add_subdirectory(${ZX_MODULES_DIR}/core)
+    # endif()
     add_subdirectory(${ZX_MODULES_DIR}/maybe)
 endif()
 
 if(ZX_BUILD_RESULT)
-    if(NOT TARGET zx::core)
-        add_subdirectory(${ZX_MODULES_DIR}/core)
-    endif()
-
+    # if(NOT TARGET zx::core)
+    # add_subdirectory(${ZX_MODULES_DIR}/core)
+    # endif()
     add_subdirectory(${ZX_MODULES_DIR}/result)
 endif()
 
-if(ZX_BUILD_CORE OR ZX_BUILD_ITERATOR OR ZX_BUILD_FUNCTIONAL OR ZX_BUILD_MAYBE OR ZX_BUILD_RESULT)
+if(ZX_BUILD_SEQUENCE)
+    if(NOT TARGET zx::core)
+        add_subdirectory(${ZX_MODULES_DIR}/core)
+        add_subdirectory(${ZX_MODULES_DIR}/iterator)
+    endif()
+
+    add_subdirectory(${ZX_MODULES_DIR}/sequence)
+endif()
+
+if(ZX_BUILD_CORE OR ZX_BUILD_ITERATOR OR ZX_BUILD_FUNCTIONAL OR ZX_BUILD_MAYBE OR ZX_BUILD_RESULT OR ZX_BUILD_SEQUENCE)
     add_library(zx INTERFACE)
     add_library(zx::zx ALIAS zx)
 
@@ -101,5 +110,9 @@ if(ZX_BUILD_CORE OR ZX_BUILD_ITERATOR OR ZX_BUILD_FUNCTIONAL OR ZX_BUILD_MAYBE O
 
     if(TARGET zx::result)
         target_link_libraries(zx INTERFACE zx::result)
+    endif()
+
+    if(TARGET zx::sequence)
+        target_link_libraries(zx INTERFACE zx::sequence)
     endif()
 endif()

@@ -3,7 +3,7 @@ zx_add_module(
     INTERFACE
 
     DEPS
-    zx::core
+    # zx::core
 
     TEST_SOURCES
     tests/result.test.cpp
