@@ -45,7 +45,6 @@ if(ZX_BUILD_TESTS)
     include(GoogleTest)
 endif()
 
-# Define module dependencies in one place
 set(ZX_MODULE_DEPENDENCIES_core "")
 set(ZX_MODULE_DEPENDENCIES_iterator "core")
 set(ZX_MODULE_DEPENDENCIES_functional "core")
@@ -53,35 +52,38 @@ set(ZX_MODULE_DEPENDENCIES_maybe "")
 set(ZX_MODULE_DEPENDENCIES_result "")
 set(ZX_MODULE_DEPENDENCIES_sequence "maybe;iterator")
 
-# List of all modules
 set(ZX_ALL_MODULES core iterator functional maybe result sequence)
 
-# Helper function to add module with dependencies
 function(zx_process_module MODULE_NAME)
-    string(TOUPPER ${MODULE_NAME} MODULE_UPPER)
-    if(NOT ZX_BUILD_${MODULE_UPPER})
+    if(TARGET zx::${MODULE_NAME})
         return()
     endif()
 
-    # First, ensure all dependencies are added
+    string(TOUPPER ${MODULE_NAME} MODULE_UPPER)
+    if(NOT ZX_BUILD_${MODULE_UPPER})
+        get_property(_is_dependency GLOBAL PROPERTY ZX_BUILDING_AS_DEPENDENCY)
+        if(NOT _is_dependency)
+            return()
+        endif()
+    endif()
+
+    set_property(GLOBAL PROPERTY ZX_BUILDING_AS_DEPENDENCY TRUE)
+
     foreach(DEP ${ZX_MODULE_DEPENDENCIES_${MODULE_NAME}})
         if(NOT TARGET zx::${DEP})
             zx_process_module(${DEP})
         endif()
     endforeach()
 
-    # Then add this module
-    if(NOT TARGET zx::${MODULE_NAME})
-        add_subdirectory(${ZX_MODULES_DIR}/${MODULE_NAME})
-    endif()
+    set_property(GLOBAL PROPERTY ZX_BUILDING_AS_DEPENDENCY FALSE)
+
+    add_subdirectory(${ZX_MODULES_DIR}/${MODULE_NAME})
 endfunction()
 
-# Add all requested modules
 foreach(MODULE ${ZX_ALL_MODULES})
     zx_process_module(${MODULE})
 endforeach()
 
-# Create main zx interface library if any module is built
 if(ZX_BUILD_CORE OR ZX_BUILD_ITERATOR OR ZX_BUILD_FUNCTIONAL OR ZX_BUILD_MAYBE OR ZX_BUILD_RESULT OR ZX_BUILD_SEQUENCE)
     add_library(zx INTERFACE)
     add_library(zx::zx ALIAS zx)
