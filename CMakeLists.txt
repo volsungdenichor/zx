@@ -12,22 +12,46 @@ include(ZxHelpers)
 
 set(ZX_MODULES_DIR "modules")
 
+set(ZX_MODULE_DEPENDENCIES "
+    [
+        ['core', []],
+        ['iterator', ['core']],
+        ['functional', ['core']],
+        ['maybe', []],
+        ['result', []],
+        ['sequence', ['maybe', 'iterator']]
+    ]
+")
+
+string(REGEX REPLACE "[ \t\n\r]+" "" DEPS_COMPACT "${ZX_MODULE_DEPENDENCIES}")
+string(REGEX MATCHALL "\\['([^']+)',[^]]*\\]" MODULE_MATCHES "${DEPS_COMPACT}")
+
+set(ZX_ALL_MODULES "")
+
+foreach(MATCH ${MODULE_MATCHES})
+    string(REGEX MATCH "\\['([^']+)'" _ "${MATCH}")
+    list(APPEND ZX_ALL_MODULES "${CMAKE_MATCH_1}")
+endforeach()
+
 option(ZX_BUILD_ALL "Build all zx modules" OFF)
-option(ZX_BUILD_CORE "Build zx core module" ON)
-option(ZX_BUILD_ITERATOR "Build zx iterator module" OFF)
-option(ZX_BUILD_FUNCTIONAL "Build zx functional module" OFF)
-option(ZX_BUILD_MAYBE "Build zx maybe module" OFF)
-option(ZX_BUILD_RESULT "Build zx result module" OFF)
-option(ZX_BUILD_SEQUENCE "Build zx sequence module" OFF)
+
+foreach(MODULE ${ZX_ALL_MODULES})
+    string(TOUPPER ${MODULE} MODULE_UPPER)
+
+    if(MODULE STREQUAL "core")
+        option(ZX_BUILD_${MODULE_UPPER} "Build zx ${MODULE} module" ON)
+    else()
+        option(ZX_BUILD_${MODULE_UPPER} "Build zx ${MODULE} module" OFF)
+    endif()
+endforeach()
+
 option(ZX_BUILD_TESTS "Build zx tests" ${ZX_IS_TOPLEVEL})
 
 if(ZX_BUILD_ALL)
-    set(ZX_BUILD_CORE ON CACHE BOOL "Build zx core module" FORCE)
-    set(ZX_BUILD_ITERATOR ON CACHE BOOL "Build zx iterator module" FORCE)
-    set(ZX_BUILD_FUNCTIONAL ON CACHE BOOL "Build zx functional module" FORCE)
-    set(ZX_BUILD_MAYBE ON CACHE BOOL "Build zx maybe module" FORCE)
-    set(ZX_BUILD_RESULT ON CACHE BOOL "Build zx result module" FORCE)
-    set(ZX_BUILD_SEQUENCE ON CACHE BOOL "Build zx sequence module" FORCE)
+    foreach(MODULE ${ZX_ALL_MODULES})
+        string(TOUPPER ${MODULE} MODULE_UPPER)
+        set(ZX_BUILD_${MODULE_UPPER} ON CACHE BOOL "Build zx ${MODULE} module" FORCE)
+    endforeach()
 endif()
 
 if(ZX_BUILD_TESTS)
@@ -45,18 +69,12 @@ if(ZX_BUILD_TESTS)
     include(GoogleTest)
 endif()
 
-set(ZX_MODULE_DEPENDENCIES "
-    [
-        ['core', []],
-        ['iterator', ['core']],
-        ['functional', ['core']],
-        ['maybe', []],
-        ['result', []],
-        ['sequence', ['maybe', 'iterator']]
-    ]
-")
+set(ZX_ALL_MODULES "")
 
-set(ZX_ALL_MODULES core iterator functional maybe result sequence)
+foreach(MATCH ${MODULE_MATCHES})
+    string(REGEX MATCH "\\['([^']+)'" _ "${MATCH}")
+    list(APPEND ZX_ALL_MODULES "${CMAKE_MATCH_1}")
+endforeach()
 
 function(zx_get_module_dependencies MODULE_NAME OUT_VAR)
     string(REGEX REPLACE "[ \t\n\r]+" "" DEPS_COMPACT "${ZX_MODULE_DEPENDENCIES}")
