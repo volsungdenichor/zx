@@ -54,47 +54,52 @@ set(ZX_MODULE_DEPENDENCIES_sequence "maybe;iterator")
 
 set(ZX_ALL_MODULES core iterator functional maybe result sequence)
 
-# Helper function to add module with dependencies
-# Optional second argument: pass "IS_DEPENDENCY" if building as a dependency
 function(zx_process_module MODULE_NAME)
-    # Skip if already processed
     if(TARGET zx::${MODULE_NAME})
         return()
     endif()
 
-    # Check if called as a dependency (ARGV1 would be "IS_DEPENDENCY")
     set(IS_DEPENDENCY FALSE)
+
     if(ARGC GREATER 1)
         if("${ARGV1}" STREQUAL "IS_DEPENDENCY")
             set(IS_DEPENDENCY TRUE)
         endif()
     endif()
 
-    # Check if this module should be built
     string(TOUPPER ${MODULE_NAME} MODULE_UPPER)
+
     if(NOT IS_DEPENDENCY)
         if(NOT ZX_BUILD_${MODULE_UPPER})
             return()
         endif()
     endif()
 
-    # First, ensure all dependencies are added
     foreach(DEP ${ZX_MODULE_DEPENDENCIES_${MODULE_NAME}})
         if(NOT TARGET zx::${DEP})
             zx_process_module(${DEP} IS_DEPENDENCY)
         endif()
     endforeach()
 
-    # Then add this module
     add_subdirectory(${ZX_MODULES_DIR}/${MODULE_NAME})
 endfunction()
 
-# Add all requested modules
 foreach(MODULE ${ZX_ALL_MODULES})
     zx_process_module(${MODULE})
 endforeach()
 
-if(ZX_BUILD_CORE OR ZX_BUILD_ITERATOR OR ZX_BUILD_FUNCTIONAL OR ZX_BUILD_MAYBE OR ZX_BUILD_RESULT OR ZX_BUILD_SEQUENCE)
+set(ZX_ANY_MODULE_BUILT FALSE)
+
+foreach(MODULE ${ZX_ALL_MODULES})
+    string(TOUPPER ${MODULE} MODULE_UPPER)
+
+    if(ZX_BUILD_${MODULE_UPPER})
+        set(ZX_ANY_MODULE_BUILT TRUE)
+        break()
+    endif()
+endforeach()
+
+if(ZX_ANY_MODULE_BUILT)
     add_library(zx INTERFACE)
     add_library(zx::zx ALIAS zx)
 
