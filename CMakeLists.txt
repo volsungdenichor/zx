@@ -45,14 +45,33 @@ if(ZX_BUILD_TESTS)
     include(GoogleTest)
 endif()
 
-set(ZX_MODULE_DEPENDENCIES_core "")
-set(ZX_MODULE_DEPENDENCIES_iterator "core")
-set(ZX_MODULE_DEPENDENCIES_functional "core")
-set(ZX_MODULE_DEPENDENCIES_maybe "")
-set(ZX_MODULE_DEPENDENCIES_result "")
-set(ZX_MODULE_DEPENDENCIES_sequence "maybe;iterator")
+set(ZX_MODULE_DEPENDENCIES "
+    [
+        ['core', []],
+        ['iterator', ['core']],
+        ['functional', ['core']],
+        ['maybe', []],
+        ['result', []],
+        ['sequence', ['maybe', 'iterator']]
+    ]
+")
 
 set(ZX_ALL_MODULES core iterator functional maybe result sequence)
+
+function(zx_get_module_dependencies MODULE_NAME OUT_VAR)
+    string(REGEX REPLACE "[ \t\n\r]+" "" DEPS_COMPACT "${ZX_MODULE_DEPENDENCIES}")
+
+    string(REGEX MATCH "\\['${MODULE_NAME}',\\[([^]]*)\\]\\]" MATCH_RESULT "${DEPS_COMPACT}")
+
+    if(MATCH_RESULT)
+        set(DEPS_STR "${CMAKE_MATCH_1}")
+        string(REGEX REPLACE "'" "" DEPS_STR "${DEPS_STR}")
+        string(REGEX REPLACE "," ";" DEPS_LIST "${DEPS_STR}")
+        set(${OUT_VAR} "${DEPS_LIST}" PARENT_SCOPE)
+    else()
+        set(${OUT_VAR} "" PARENT_SCOPE)
+    endif()
+endfunction()
 
 function(zx_process_module MODULE_NAME)
     if(TARGET zx::${MODULE_NAME})
@@ -75,7 +94,9 @@ function(zx_process_module MODULE_NAME)
         endif()
     endif()
 
-    foreach(DEP ${ZX_MODULE_DEPENDENCIES_${MODULE_NAME}})
+    zx_get_module_dependencies(${MODULE_NAME} MODULE_DEPS)
+
+    foreach(DEP ${MODULE_DEPS})
         if(NOT TARGET zx::${DEP})
             zx_process_module(${DEP} IS_DEPENDENCY)
         endif()
