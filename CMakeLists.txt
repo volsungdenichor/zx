@@ -14,21 +14,21 @@ set(ZX_MODULES_DIR "modules")
 
 set(ZX_MODULE_DEPENDENCIES "
     [
-        ['core', []],
-        ['iterator', ['core']],
-        ['functional', ['core']],
-        ['maybe', []],
-        ['result', []],
-        ['sequence', ['maybe', 'iterator']]
+        [core []]
+        [iterator [core]]
+        [functional [core]]
+        [maybe []]
+        [result []]
+        [sequence [maybe iterator]]
     ]
 ")
 
-string(REGEX REPLACE "[ \t\n\r]+" "" DEPS_COMPACT "${ZX_MODULE_DEPENDENCIES}")
-string(REGEX MATCHALL "\\['([^']+)',\\[[^]]*\\]\\]" MODULE_ENTRIES "${DEPS_COMPACT}")
+string(REGEX REPLACE "[ \t\n\r]+" " " DEPS_NORMALIZED "${ZX_MODULE_DEPENDENCIES}")
+string(REGEX MATCHALL "\\[([a-z_]+) \\[[^]]*\\]\\]" MODULE_ENTRIES "${DEPS_NORMALIZED}")
 
 set(ZX_ALL_MODULES "")
 foreach(ENTRY ${MODULE_ENTRIES})
-    if(ENTRY MATCHES "\\['([^']+)',")
+    if(ENTRY MATCHES "\\[([a-z_]+) ")
         list(APPEND ZX_ALL_MODULES "${CMAKE_MATCH_1}")
     endif()
 endforeach()
@@ -77,14 +77,14 @@ if(ZX_BUILD_TESTS)
 endif()
 
 function(zx_get_module_dependencies MODULE_NAME OUT_VAR)
-    string(REGEX REPLACE "[ \t\n\r]+" "" DEPS_COMPACT "${ZX_MODULE_DEPENDENCIES}")
+    string(REGEX REPLACE "[ \t\n\r]+" " " DEPS_NORMALIZED "${ZX_MODULE_DEPENDENCIES}")
 
-    string(REGEX MATCH "\\['${MODULE_NAME}',\\[([^]]*)\\]\\]" MATCH_RESULT "${DEPS_COMPACT}")
+    string(REGEX MATCH "\\[${MODULE_NAME} \\[([^]]*)\\]\\]" MATCH_RESULT "${DEPS_NORMALIZED}")
 
     if(MATCH_RESULT)
         set(DEPS_STR "${CMAKE_MATCH_1}")
-        string(REGEX REPLACE "'" "" DEPS_STR "${DEPS_STR}")
-        string(REGEX REPLACE "," ";" DEPS_LIST "${DEPS_STR}")
+        string(STRIP "${DEPS_STR}" DEPS_STR)
+        string(REGEX REPLACE " +" ";" DEPS_LIST "${DEPS_STR}")
         set(${OUT_VAR} "${DEPS_LIST}" PARENT_SCOPE)
     else()
         set(${OUT_VAR} "" PARENT_SCOPE)
