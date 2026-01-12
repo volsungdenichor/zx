@@ -24,13 +24,13 @@ set(ZX_MODULE_DEPENDENCIES "
 ")
 
 string(REGEX REPLACE "[ \t\n\r]+" "" DEPS_COMPACT "${ZX_MODULE_DEPENDENCIES}")
-string(REGEX MATCHALL "\\['([^']+)',[^]]*\\]" MODULE_MATCHES "${DEPS_COMPACT}")
+string(REGEX MATCHALL "\\['([^']+)',\\[[^]]*\\]\\]" MODULE_ENTRIES "${DEPS_COMPACT}")
 
 set(ZX_ALL_MODULES "")
-
-foreach(MATCH ${MODULE_MATCHES})
-    string(REGEX MATCH "\\['([^']+)'" _ "${MATCH}")
-    list(APPEND ZX_ALL_MODULES "${CMAKE_MATCH_1}")
+foreach(ENTRY ${MODULE_ENTRIES})
+    if(ENTRY MATCHES "\\['([^']+)',")
+        list(APPEND ZX_ALL_MODULES "${CMAKE_MATCH_1}")
+    endif()
 endforeach()
 
 option(ZX_BUILD_ALL "Build all zx modules" OFF)
@@ -54,6 +54,13 @@ if(ZX_BUILD_ALL)
     endforeach()
 endif()
 
+message(STATUS "ZX Module Build Configuration:")
+foreach(MODULE ${ZX_ALL_MODULES})
+    string(TOUPPER ${MODULE} MODULE_UPPER)
+    message(STATUS "  ZX_BUILD_${MODULE_UPPER} = ${ZX_BUILD_${MODULE_UPPER}}")
+endforeach()
+message(STATUS "  ZX_BUILD_TESTS = ${ZX_BUILD_TESTS}")
+
 if(ZX_BUILD_TESTS)
     enable_testing()
 
@@ -68,13 +75,6 @@ if(ZX_BUILD_TESTS)
     FetchContent_MakeAvailable(googletest)
     include(GoogleTest)
 endif()
-
-set(ZX_ALL_MODULES "")
-
-foreach(MATCH ${MODULE_MATCHES})
-    string(REGEX MATCH "\\['([^']+)'" _ "${MATCH}")
-    list(APPEND ZX_ALL_MODULES "${CMAKE_MATCH_1}")
-endforeach()
 
 function(zx_get_module_dependencies MODULE_NAME OUT_VAR)
     string(REGEX REPLACE "[ \t\n\r]+" "" DEPS_COMPACT "${ZX_MODULE_DEPENDENCIES}")
