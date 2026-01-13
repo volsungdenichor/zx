@@ -2,8 +2,17 @@
 function(zx_add_module)
     set(options INTERFACE)
     set(oneValueArgs NAME)
-    set(multiValueArgs HEADERS SOURCES DEPS TEST_SOURCES)
+    set(multiValueArgs HEADERS SOURCES TEST_SOURCES)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    # Get dependencies from ZX_MODULE_DEPENDENCIES
+    zx_get_module_dependencies(${ARG_NAME} MODULE_DEPS)
+
+    # Convert module names to targets (e.g., "core" -> "zx::core")
+    set(MODULE_TARGETS "")
+    foreach(DEP ${MODULE_DEPS})
+        list(APPEND MODULE_TARGETS "zx::${DEP}")
+    endforeach()
 
     if(ARG_INTERFACE)
         add_library(${ARG_NAME} INTERFACE)
@@ -16,8 +25,8 @@ function(zx_add_module)
             target_sources(${ARG_NAME} INTERFACE ${ARG_HEADERS})
         endif()
 
-        if(ARG_DEPS)
-            target_link_libraries(${ARG_NAME} INTERFACE ${ARG_DEPS})
+        if(MODULE_TARGETS)
+            target_link_libraries(${ARG_NAME} INTERFACE ${MODULE_TARGETS})
         endif()
     else()
         add_library(${ARG_NAME} ${ARG_SOURCES})
@@ -26,8 +35,8 @@ function(zx_add_module)
             $<INSTALL_INTERFACE:include>
         )
 
-        if(ARG_DEPS)
-            target_link_libraries(${ARG_NAME} PUBLIC ${ARG_DEPS})
+        if(MODULE_TARGETS)
+            target_link_libraries(${ARG_NAME} PUBLIC ${MODULE_TARGETS})
         endif()
     endif()
 
