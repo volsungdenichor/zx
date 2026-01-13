@@ -20,6 +20,7 @@ set(ZX_MODULE_DEPENDENCIES "
         [maybe []]
         [result []]
         [sequence [maybe iterator]]
+        [mat [iterator]]
     ]
 ")
 
