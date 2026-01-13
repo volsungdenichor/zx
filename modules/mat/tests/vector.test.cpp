@@ -1,6 +1,6 @@
 #include <gmock/gmock.h>
 
-#include <zx/vector.hpp>
+#include <zx/mat/vector.hpp>
 
 TEST(vector, default_construction)
 {
