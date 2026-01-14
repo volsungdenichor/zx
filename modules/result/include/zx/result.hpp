@@ -345,10 +345,10 @@ struct result<T&, E>
 {
     using value_type = T;
     using error_type = E;
-    using value_storage = std::reference_wrapper<value_type>;
+    using value_storage = T*;
     using error_storage = error_wrapper<error_type>;
 
-    constexpr result(value_type& value) : m_storage(std::in_place_type<value_storage>, value)
+    constexpr result(value_type& value) : m_storage(std::in_place_type<value_storage>, &value)
     {
     }
 
@@ -380,7 +380,7 @@ struct result<T&, E>
 
     constexpr value_type& get() const
     {
-        return std::get<value_storage>(m_storage);
+        return *std::get<value_storage>(m_storage);
     }
 
     constexpr value_type& operator*() const
