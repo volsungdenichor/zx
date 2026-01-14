@@ -534,7 +534,7 @@ TEST(result_ref, and_then_with_reference)
 {
     int value = 42;
     zx::result<int&, std::string> r{ value };
-    auto result = r.and_then([](int& v) { return zx::result<int, std::string>{ v * 2 }; });
+    auto result = r.and_then([](int v) { return zx::result<int, std::string>{ v * 2 }; });
     EXPECT_TRUE(result.has_value());
     EXPECT_THAT(*result, 84);
 }
@@ -542,7 +542,7 @@ TEST(result_ref, and_then_with_reference)
 TEST(result_ref, and_then_with_error)
 {
     zx::result<int&, std::string> r{ zx::error("failed") };
-    auto result = r.and_then([](int& v) { return zx::result<int, std::string>{ v * 2 }; });
+    auto result = r.and_then([](int v) { return zx::result<int, std::string>{ v * 2 }; });
     EXPECT_TRUE(result.has_error());
     EXPECT_THAT(result.error(), "failed");
 }
@@ -551,7 +551,7 @@ TEST(result_ref, and_then_returns_error)
 {
     int value = 42;
     zx::result<int&, std::string> r{ value };
-    auto result = r.and_then([](int&) { return zx::result<int, std::string>{ zx::error("new error") }; });
+    auto result = r.and_then([](int) { return zx::result<int, std::string>{ zx::error("new error") }; });
     EXPECT_TRUE(result.has_error());
     EXPECT_THAT(result.error(), "new error");
 }
@@ -560,7 +560,7 @@ TEST(result_ref, and_then_chain)
 {
     int value = 10;
     zx::result<int&, std::string> r{ value };
-    auto result = r.and_then([](int& v) { return zx::result<int, std::string>{ v + 5 }; })
+    auto result = r.and_then([](int v) { return zx::result<int, std::string>{ v + 5 }; })
                       .and_then([](int v) { return zx::result<int, std::string>{ v * 2 }; });
     EXPECT_TRUE(result.has_value());
     EXPECT_THAT(*result, 30);
