@@ -189,7 +189,7 @@ TEST(result, assign_error_over_error)
     EXPECT_THAT(r.error(), "new error");
 }
 
-TEST(result_ref, constructed_with_reference)
+TEST(result, ref_constructed_with_reference)
 {
     int value = 42;
     zx::result<int&, std::string> r{ value };
@@ -198,7 +198,7 @@ TEST(result_ref, constructed_with_reference)
     EXPECT_FALSE(r.has_error());
 }
 
-TEST(result_ref, constructed_with_error)
+TEST(result, ref_constructed_with_error)
 {
     zx::result<int&, std::string> r{ zx::error("failed") };
     EXPECT_FALSE(r.has_value());
@@ -206,7 +206,7 @@ TEST(result_ref, constructed_with_error)
     EXPECT_THAT(r.error(), "failed");
 }
 
-TEST(result_ref, reference_modification)
+TEST(result, ref_reference_modification)
 {
     int value = 42;
     zx::result<int&, std::string> r{ value };
@@ -215,7 +215,7 @@ TEST(result_ref, reference_modification)
     EXPECT_THAT(*r, 100);
 }
 
-TEST(result_ref, copy_constructor_with_reference)
+TEST(result, ref_copy_constructor_with_reference)
 {
     int value = 42;
     zx::result<int&, std::string> r1{ value };
@@ -226,7 +226,7 @@ TEST(result_ref, copy_constructor_with_reference)
     EXPECT_THAT(value, 50);
 }
 
-TEST(result_ref, copy_constructor_with_error)
+TEST(result, ref_copy_constructor_with_error)
 {
     zx::result<int&, std::string> r1{ zx::error("failed") };
     zx::result<int&, std::string> r2{ r1 };
@@ -234,7 +234,7 @@ TEST(result_ref, copy_constructor_with_error)
     EXPECT_THAT(r2.error(), "failed");
 }
 
-TEST(result_ref, move_constructor_with_reference)
+TEST(result, ref_move_constructor_with_reference)
 {
     int value = 42;
     zx::result<int&, std::string> r1{ value };
@@ -243,7 +243,7 @@ TEST(result_ref, move_constructor_with_reference)
     EXPECT_THAT(*r2, 42);
 }
 
-TEST(result_ref, move_constructor_with_error)
+TEST(result, ref_move_constructor_with_error)
 {
     zx::result<int&, std::string> r1{ zx::error("failed") };
     zx::result<int&, std::string> r2{ std::move(r1) };
@@ -251,7 +251,7 @@ TEST(result_ref, move_constructor_with_error)
     EXPECT_THAT(r2.error(), "failed");
 }
 
-TEST(result_ref, copy_assignment_with_reference)
+TEST(result, ref_copy_assignment_with_reference)
 {
     int value1 = 42;
     int value2 = 10;
@@ -264,7 +264,7 @@ TEST(result_ref, copy_assignment_with_reference)
     EXPECT_THAT(value1, 99);
 }
 
-TEST(result_ref, copy_assignment_with_error)
+TEST(result, ref_copy_assignment_with_error)
 {
     int value = 10;
     zx::result<int&, std::string> r1{ zx::error("failed") };
@@ -274,7 +274,7 @@ TEST(result_ref, copy_assignment_with_error)
     EXPECT_THAT(r2.error(), "failed");
 }
 
-TEST(result_ref, move_assignment_with_reference)
+TEST(result, ref_move_assignment_with_reference)
 {
     int value1 = 42;
     int value2 = 10;
@@ -285,7 +285,7 @@ TEST(result_ref, move_assignment_with_reference)
     EXPECT_THAT(*r2, 42);
 }
 
-TEST(result_ref, move_assignment_with_error)
+TEST(result, ref_move_assignment_with_error)
 {
     int value = 10;
     zx::result<int&, std::string> r1{ zx::error("failed") };
@@ -295,21 +295,21 @@ TEST(result_ref, move_assignment_with_error)
     EXPECT_THAT(r2.error(), "failed");
 }
 
-TEST(result_ref, arrow_operator_access)
+TEST(result, ref_arrow_operator_access)
 {
     std::string str = "hello";
     zx::result<std::string&, int> r{ str };
     EXPECT_THAT(r->size(), 5);
 }
 
-TEST(result_ref, const_dereference)
+TEST(result, ref_const_dereference)
 {
     int value = 42;
     const zx::result<int&, std::string> r{ value };
     EXPECT_THAT(*r, 42);
 }
 
-TEST(result_ref, value_method)
+TEST(result, ref_value_method)
 {
     int value = 42;
     zx::result<int&, std::string> r{ value };
@@ -318,27 +318,27 @@ TEST(result_ref, value_method)
     EXPECT_THAT(value, 100);
 }
 
-TEST(result_ref, const_value_method)
+TEST(result, ref_const_value_method)
 {
     int value = 42;
     const zx::result<int&, std::string> r{ value };
     EXPECT_THAT(r.value(), 42);
 }
 
-TEST(result_ref, bool_conversion_with_reference)
+TEST(result, ref_bool_conversion_with_reference)
 {
     int value = 42;
     zx::result<int&, std::string> r{ value };
     EXPECT_TRUE(static_cast<bool>(r));
 }
 
-TEST(result_ref, bool_conversion_with_error)
+TEST(result, ref_bool_conversion_with_error)
 {
     zx::result<int&, std::string> r{ zx::error("failed") };
     EXPECT_FALSE(static_cast<bool>(r));
 }
 
-TEST(result_ref, assign_reference_over_reference)
+TEST(result, ref_assign_reference_over_reference)
 {
     int value1 = 42;
     int value2 = 100;
@@ -350,7 +350,7 @@ TEST(result_ref, assign_reference_over_reference)
     EXPECT_THAT(value2, 200);
 }
 
-TEST(result_ref, assign_reference_over_error)
+TEST(result, ref_assign_reference_over_error)
 {
     int value = 42;
     zx::result<int&, std::string> r{ zx::error("failed") };
@@ -359,7 +359,7 @@ TEST(result_ref, assign_reference_over_error)
     EXPECT_THAT(*r, 42);
 }
 
-TEST(result_ref, assign_error_over_reference)
+TEST(result, ref_assign_error_over_reference)
 {
     int value = 42;
     zx::result<int&, std::string> r{ value };
@@ -368,7 +368,7 @@ TEST(result_ref, assign_error_over_reference)
     EXPECT_THAT(r.error(), "new error");
 }
 
-TEST(result_ref, assign_error_over_error)
+TEST(result, ref_assign_error_over_error)
 {
     zx::result<int&, std::string> r{ zx::error("old error") };
     r = zx::error("new error");
@@ -530,7 +530,7 @@ TEST(result, and_then_different_type)
     EXPECT_THAT(*result, "42");
 }
 
-TEST(result_ref, and_then_with_reference)
+TEST(result, ref_and_then_with_reference)
 {
     int value = 42;
     zx::result<int&, std::string> r{ value };
@@ -539,7 +539,7 @@ TEST(result_ref, and_then_with_reference)
     EXPECT_THAT(*result, 84);
 }
 
-TEST(result_ref, and_then_with_error)
+TEST(result, ref_and_then_with_error)
 {
     zx::result<int&, std::string> r{ zx::error("failed") };
     auto result = r.and_then([](int v) { return zx::result<int, std::string>{ v * 2 }; });
@@ -547,7 +547,7 @@ TEST(result_ref, and_then_with_error)
     EXPECT_THAT(result.error(), "failed");
 }
 
-TEST(result_ref, and_then_returns_error)
+TEST(result, ref_and_then_returns_error)
 {
     int value = 42;
     zx::result<int&, std::string> r{ value };
@@ -556,7 +556,7 @@ TEST(result_ref, and_then_returns_error)
     EXPECT_THAT(result.error(), "new error");
 }
 
-TEST(result_ref, and_then_chain)
+TEST(result, ref_and_then_chain)
 {
     int value = 10;
     zx::result<int&, std::string> r{ value };
@@ -696,7 +696,7 @@ TEST(result, or_else_chain)
     EXPECT_THAT(*result, 50);
 }
 
-TEST(result_ref, transform_chain)
+TEST(result, ref_transform_chain)
 {
     int value = 10;
     zx::result<int&, std::string> r{ value };
@@ -705,7 +705,7 @@ TEST(result_ref, transform_chain)
     EXPECT_THAT(*result, 30);
 }
 
-TEST(result_ref, transform_different_type)
+TEST(result, ref_transform_different_type)
 {
     int value = 42;
     zx::result<int&, std::string> r{ value };
@@ -714,7 +714,7 @@ TEST(result_ref, transform_different_type)
     EXPECT_THAT(*result, "42");
 }
 
-TEST(result_ref, or_else_with_reference)
+TEST(result, ref_or_else_with_reference)
 {
     int value = 42;
     zx::result<int&, std::string> r{ value };
@@ -728,7 +728,7 @@ TEST(result_ref, or_else_with_reference)
     EXPECT_THAT(*result, 42);
 }
 
-TEST(result_ref, or_else_with_error)
+TEST(result, ref_or_else_with_error)
 {
     zx::result<int&, std::string> r{ zx::error("failed") };
     auto result = r.or_else(
@@ -741,7 +741,7 @@ TEST(result_ref, or_else_with_error)
     EXPECT_THAT(*result, 100);
 }
 
-TEST(result_ref, or_else_returns_error)
+TEST(result, ref_or_else_returns_error)
 {
     zx::result<int&, std::string> r{ zx::error("failed") };
     auto result = r.or_else([](const std::string&) { return zx::result<int&, std::string>{ zx::error("new error") }; });
@@ -837,7 +837,7 @@ TEST(result, transform_error_different_type)
     EXPECT_THAT(result.error(), 6);
 }
 
-TEST(result_ref, transform_error_with_reference)
+TEST(result, ref_transform_error_with_reference)
 {
     int value = 42;
     zx::result<int&, std::string> r{ value };
@@ -846,7 +846,7 @@ TEST(result_ref, transform_error_with_reference)
     EXPECT_THAT(*result, 42);
 }
 
-TEST(result_ref, transform_error_with_error)
+TEST(result, ref_transform_error_with_error)
 {
     zx::result<int&, std::string> r{ zx::error("failed") };
     auto result = r.transform_error([](const std::string& err) { return err + " transformed"; });
@@ -854,7 +854,7 @@ TEST(result_ref, transform_error_with_error)
     EXPECT_THAT(result.error(), "failed transformed");
 }
 
-TEST(result_ref, transform_error_chain)
+TEST(result, ref_transform_error_chain)
 {
     zx::result<int&, std::string> r{ zx::error("error") };
     auto result = r.transform_error([](const std::string& err) { return err + " step1"; })
@@ -863,7 +863,7 @@ TEST(result_ref, transform_error_chain)
     EXPECT_THAT(result.error(), "error step1 step2");
 }
 
-TEST(result_ref, transform_error_different_type)
+TEST(result, ref_transform_error_different_type)
 {
     zx::result<int&, std::string> r{ zx::error("failed") };
     auto result = r.transform_error([](const std::string& err) { return static_cast<int>(err.size()); });
@@ -937,7 +937,7 @@ TEST(result, value_or_rvalue_with_error)
     EXPECT_THAT((zx::result<int, std::string>{ zx::error("failed") }.value_or(100)), 100);
 }
 
-TEST(result_ref, value_or_with_reference)
+TEST(result, ref_value_or_with_reference)
 {
     int value = 42;
     int fallback = 100;
@@ -945,14 +945,14 @@ TEST(result_ref, value_or_with_reference)
     EXPECT_THAT(r.value_or(fallback), 42);
 }
 
-TEST(result_ref, value_or_with_error)
+TEST(result, ref_value_or_with_error)
 {
     int fallback = 100;
     zx::result<int&, std::string> r{ zx::error("failed") };
     EXPECT_THAT(r.value_or(fallback), 100);
 }
 
-TEST(result_ref, value_or_const_with_reference)
+TEST(result, ref_value_or_const_with_reference)
 {
     int value = 42;
     int fallback = 100;
@@ -960,7 +960,7 @@ TEST(result_ref, value_or_const_with_reference)
     EXPECT_THAT(r.value_or(fallback), 42);
 }
 
-TEST(result_ref, value_or_const_with_error)
+TEST(result, ref_value_or_const_with_error)
 {
     int fallback = 100;
     const zx::result<int&, std::string> r{ zx::error("failed") };
@@ -1015,7 +1015,7 @@ TEST(result, equality_error_vs_value)
     EXPECT_TRUE(r1 != r2);
 }
 
-TEST(result_ref, equality_both_references_same_value)
+TEST(result, ref_equality_both_references_same_value)
 {
     int value1 = 42;
     int value2 = 42;
@@ -1025,7 +1025,7 @@ TEST(result_ref, equality_both_references_same_value)
     EXPECT_FALSE(r1 != r2);
 }
 
-TEST(result_ref, equality_both_references_different_values)
+TEST(result, ref_equality_both_references_different_values)
 {
     int value1 = 42;
     int value2 = 100;
@@ -1035,7 +1035,7 @@ TEST(result_ref, equality_both_references_different_values)
     EXPECT_TRUE(r1 != r2);
 }
 
-TEST(result_ref, equality_both_errors_equal)
+TEST(result, ref_equality_both_errors_equal)
 {
     zx::result<int&, std::string> r1{ zx::error("failed") };
     zx::result<int&, std::string> r2{ zx::error("failed") };
@@ -1043,7 +1043,7 @@ TEST(result_ref, equality_both_errors_equal)
     EXPECT_FALSE(r1 != r2);
 }
 
-TEST(result_ref, equality_both_errors_not_equal)
+TEST(result, ref_equality_both_errors_not_equal)
 {
     zx::result<int&, std::string> r1{ zx::error("failed") };
     zx::result<int&, std::string> r2{ zx::error("other error") };
@@ -1051,7 +1051,7 @@ TEST(result_ref, equality_both_errors_not_equal)
     EXPECT_TRUE(r1 != r2);
 }
 
-TEST(result_ref, equality_reference_vs_error)
+TEST(result, ref_equality_reference_vs_error)
 {
     int value = 42;
     zx::result<int&, std::string> r1{ value };
@@ -1060,7 +1060,7 @@ TEST(result_ref, equality_reference_vs_error)
     EXPECT_TRUE(r1 != r2);
 }
 
-TEST(result_ref, equality_error_vs_reference)
+TEST(result, ref_equality_error_vs_reference)
 {
     int value = 42;
     zx::result<int&, std::string> r1{ zx::error("failed") };

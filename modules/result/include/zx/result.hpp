@@ -733,7 +733,7 @@ constexpr bool operator==(const result<L, LE>& lhs, const result<R, RE>& rhs)
 {
     if (lhs.has_value() && rhs.has_value())
     {
-        return lhs.get() == rhs.get();
+        return *lhs == *rhs;
     }
     else if (lhs.has_error() && rhs.has_error())
     {
@@ -779,7 +779,7 @@ constexpr bool operator!=(const result<void, LE>& lhs, const result<void, RE>& r
 template <class L, class LE, class R, class = std::invoke_result_t<std::equal_to<>, L, R>>
 constexpr bool operator==(const result<L, LE>& lhs, const R& rhs)
 {
-    return lhs && lhs.get() == rhs;
+    return lhs && *lhs == rhs;
 }
 
 template <class L, class LE, class R, class = std::invoke_result_t<std::equal_to<>, L, R>>
@@ -791,7 +791,7 @@ constexpr bool operator!=(const result<L, LE>& lhs, const R& rhs)
 template <class L, class R, class RE, class = std::invoke_result_t<std::equal_to<>, L, R>>
 constexpr bool operator==(const L& lhs, const result<R, RE>& rhs)
 {
-    return rhs && lhs == rhs.get();
+    return rhs && lhs == *rhs;
 }
 
 template <class L, class R, class RE, class = std::invoke_result_t<std::equal_to<>, L, R>>
