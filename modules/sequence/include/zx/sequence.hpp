@@ -946,7 +946,7 @@ struct sequence : detail::inspect_mixin<T>,
     }
 
     template <class Iter, std::enable_if_t<std::is_constructible_v<reference, iter_reference_t<Iter>>, int> = 0>
-    sequence(Iter b, Iter e) : sequence(detail::view_sequence<Iter, reference>{ b, e })
+    explicit sequence(Iter b, Iter e) : sequence(detail::view_sequence<Iter, reference>{ b, e })
     {
     }
 
