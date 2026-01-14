@@ -1193,7 +1193,7 @@ struct single_fn
         T m_value;
         mutable bool m_init = true;
 
-        auto operator()() const -> iteration_result_t<const T&>
+        auto operator()() const -> iteration_result_t<T>
         {
             if (m_init)
             {
@@ -1205,9 +1205,9 @@ struct single_fn
     };
 
     template <class T>
-    auto operator()(T value) const -> sequence<const T&>
+    auto operator()(T value) const -> sequence<T>
     {
-        return sequence<const T&>{ next_function<T>{ std::move(value) } };
+        return sequence<T>{ next_function<T>{ std::move(value) } };
     }
 };
 
@@ -1218,16 +1218,16 @@ struct repeat_fn
     {
         T m_value;
 
-        auto operator()() const -> iteration_result_t<const T&>
+        auto operator()() const -> iteration_result_t<T>
         {
             return m_value;
         }
     };
 
     template <class T>
-    auto operator()(T value) const -> sequence<const T&>
+    auto operator()(T value) const -> sequence<T>
     {
-        return sequence<const T&>{ next_function<T>{ std::move(value) } };
+        return sequence<T>{ next_function<T>{ std::move(value) } };
     }
 };
 
