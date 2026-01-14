@@ -20,7 +20,7 @@ struct random_access_iter_impl
 
     void advance(std::ptrdiff_t offset)
     {
-        m_value += 10 * offset;
+        m_value += static_cast<int>(10 * offset);
     }
 
     auto distance_to(const random_access_iter_impl& other) const -> std::ptrdiff_t
