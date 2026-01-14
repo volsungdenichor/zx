@@ -124,7 +124,7 @@ struct matrix_view
     using pointer = T*;
     using reference = T&;
     using row_type = iterator_range<pointer>;
-    using column_type = iterator_range<strided_iterator<T, C>>;
+    using column_type = iterator_range<strided_iterator<T, std::ptrdiff_t(C)>>;
     using data_type = iterator_range<pointer>;
 
     pointer m_data;

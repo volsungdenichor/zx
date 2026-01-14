@@ -899,6 +899,16 @@ struct owning_sequence
     }
 };
 
+template <class T>
+struct is_sequence : std::false_type
+{
+};
+
+template <class T>
+struct is_sequence<sequence<T>> : std::true_type
+{
+};
+
 }  // namespace detail
 
 template <class T>
@@ -971,7 +981,11 @@ struct sequence : detail::inspect_mixin<T>,
     {
     }
 
-    template <class Container, std::enable_if_t<std::is_constructible_v<Container, iterator, iterator>, int> = 0>
+    template <
+        class Container,
+        std::enable_if_t<
+            std::is_constructible_v<Container, iterator, iterator> && !detail::is_sequence<Container>::value,
+            int> = 0>
     operator Container() const
     {
         return Container{ begin(), end() };
