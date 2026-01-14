@@ -674,7 +674,7 @@ TEST(result, or_else_with_value)
 TEST(result, or_else_with_error)
 {
     zx::result<int, std::string> r{ zx::error("failed") };
-    auto result = r.or_else([](const std::string& err) { return zx::result<int, std::string>{ 100 }; });
+    auto result = r.or_else([](const std::string&) { return zx::result<int, std::string>{ 100 }; });
     EXPECT_TRUE(result.has_value());
     EXPECT_THAT(*result, 100);
 }
@@ -732,7 +732,7 @@ TEST(result_ref, or_else_with_error)
 {
     zx::result<int&, std::string> r{ zx::error("failed") };
     auto result = r.or_else(
-        [](const std::string& err)
+        [](const std::string&)
         {
             static int fallback = 100;
             return zx::result<int&, std::string>{ fallback };
@@ -792,7 +792,7 @@ TEST(result_void, or_else_with_value)
 TEST(result_void, or_else_with_error)
 {
     zx::result<void, std::string> r{ zx::error("failed") };
-    auto result = r.or_else([](const std::string& err) { return zx::result<void, std::string>{}; });
+    auto result = r.or_else([](const std::string&) { return zx::result<void, std::string>{}; });
     EXPECT_TRUE(result.has_value());
 }
 
@@ -1135,7 +1135,7 @@ TEST(result, try_invoke_with_args)
 
 TEST(result, try_invoke_with_args_throws)
 {
-    auto func = [](int a, int b) -> int { throw std::runtime_error("addition failed"); };
+    auto func = [](int, int) -> int { throw std::runtime_error("addition failed"); };
     auto result = zx::try_invoke(func, 10, 32);
     EXPECT_TRUE(result.has_error());
     EXPECT_THAT(result.transform_error(get_error_message).error(), "addition failed");

@@ -170,12 +170,13 @@ struct matrix_view
 
     constexpr row_type row(size_type n) const
     {
-        return row_type(typename row_type::iterator{ m_data + n * column_count() }, column_count());
+        return row_type(
+            typename row_type::iterator{ m_data + n * column_count() }, static_cast<std::ptrdiff_t>(column_count()));
     }
 
     constexpr column_type column(size_type n) const
     {
-        return column_type(typename column_type::iterator{ m_data + n }, row_count());
+        return column_type(typename column_type::iterator{ m_data + n }, static_cast<std::ptrdiff_t>(row_count()));
     }
 };
 
@@ -309,7 +310,7 @@ std::ostream& operator<<(std::ostream& os, const matrix_view<T, R, C>& item)
             {
                 os << " ";
             }
-            os << row[c];
+            os << row[static_cast<std::ptrdiff_t>(c)];
         }
         os << "]";
     }

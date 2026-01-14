@@ -212,7 +212,7 @@ struct transform_maybe_indexed_mixin
     {
         Func m_func;
         next_function_t<T> m_next;
-        mutable std::ptrdiff_t m_index;
+        mutable std::ptrdiff_t m_index = 0;
 
         auto operator()() const -> iteration_result_t<Out>
         {
@@ -792,7 +792,7 @@ struct sequence_iterator
 
     sequence_iterator& operator=(sequence_iterator other)
     {
-        std::swap(m_next_fn, m_next_fn);
+        std::swap(m_next_fn, other.m_next_fn);
         return *this;
     }
 

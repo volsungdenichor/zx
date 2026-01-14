@@ -17,9 +17,6 @@ struct function_ref<Ret(Args...)>
     void* m_obj;
     func_type m_func;
 
-    constexpr function_ref() = delete;
-    constexpr function_ref(const function_ref&) = default;
-
     template <class Func>
     constexpr function_ref(Func&& func)
         : m_obj{ const_cast<void*>(reinterpret_cast<const void*>(std::addressof(func))) }

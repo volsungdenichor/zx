@@ -104,7 +104,7 @@ TEST(sequence, filter_indexed)
     std::vector<int> vec = { 10, 20, 30, 40, 50 };
     zx::sequence<int> seq = zx::sequence<int>(vec);
 
-    const std::vector<int> result = seq.filter_indexed([](std::ptrdiff_t index, int value) { return index % 2 == 0; });
+    const std::vector<int> result = seq.filter_indexed([](std::ptrdiff_t index, int) { return index % 2 == 0; });
 
     EXPECT_THAT(result, testing::ElementsAre(10, 30, 50));
 }

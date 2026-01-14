@@ -103,7 +103,8 @@ struct iterator_range_base<T*>
     {
     }
 
-    constexpr iterator_range_base(iterator b, difference_type n) : iterator_range_base(b, std::next(b, n))
+    template <class D = difference_type, std::enable_if_t<std::is_integral_v<D>, int> = 0>
+    constexpr iterator_range_base(iterator b, D n) : iterator_range_base(b, std::next(b, static_cast<difference_type>(n)))
     {
     }
 
