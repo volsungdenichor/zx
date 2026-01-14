@@ -90,11 +90,7 @@ struct result
     using value_storage = value_type;
     using error_storage = error_wrapper<error_type>;
 
-    constexpr result()
-    {
-    }
-
-    constexpr result(value_type value) : m_storage(std::in_place_type<value_storage>, std::move(value))
+    constexpr result(value_type value = {}) : m_storage(std::in_place_type<value_storage>, std::move(value))
     {
     }
 
