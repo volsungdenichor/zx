@@ -21,18 +21,19 @@ function(zx_set_strict_warnings TARGET_NAME)
             -Woverloaded-virtual  # Warn on overloaded virtual functions
             -Wunused      # Warn on unused entities
         )
-        
+
         if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
             target_compile_options(${TARGET_NAME} PRIVATE
                 -Wmost  # Most warnings (Clang-specific)
             )
         endif()
-        
+
         if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
             target_compile_options(${TARGET_NAME} PRIVATE
                 -Wduplicated-cond      # Warn on duplicated if-else conditions
                 -Wduplicated-branches  # Warn on duplicated branches
                 -Wlogical-op           # Warn on suspicious logical operations
+                -Wno-maybe-uninitialized  # Disable false positives in std::variant
             )
         endif()
     endif()
