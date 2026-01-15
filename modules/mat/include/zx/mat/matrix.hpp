@@ -590,12 +590,18 @@ static constexpr inline auto determinant = determinant_fn{};
 
 struct invert_fn
 {
+    template <class T>
+    static constexpr bool approx_zero(T v)
+    {
+        return math::abs(v) < T(1e-10);
+    }
+
     template <class T, std::size_t D>
     auto operator()(const matrix<T, D>& value) const -> std::optional<matrix<T, D>>
     {
         const auto det = determinant(value);
 
-        if (!det)
+        if (approx_zero(det))
         {
             return {};
         }
