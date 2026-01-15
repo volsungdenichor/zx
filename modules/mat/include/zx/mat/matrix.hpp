@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include <numeric>
 #include <optional>
 #include <zx/iterator_interface.hpp>
@@ -509,9 +510,9 @@ struct minor_fn
 
         matrix<T, R - 1, C - 1> result{};
 
-        for (std::size_t r = 0; r < R; ++r)
+        for (std::size_t r = 0; r + 1 < R; ++r)
         {
-            for (std::size_t c = 0; c < C; ++c)
+            for (std::size_t c = 0; c + 1 < C; ++c)
             {
                 result[{ r, c }] = item[{ r + (r < loc[0] ? 0 : 1), c + (c < loc[1] ? 0 : 1) }];
             }
@@ -552,14 +553,13 @@ struct determinant_fn
     }
 
     template <class T>
-    constexpr auto operator()(const matrix<T, 2>& item) const -> decltype(std::declval<T>() * std::declval<T>())
+    constexpr auto operator()(const matrix<T, 2>& item) const -> T
     {
         return item[{ 0, 0 }] * item[{ 1, 1 }] - item[{ 0, 1 }] * item[{ 1, 0 }];
     }
 
     template <class T>
-    constexpr auto operator()(const matrix<T, 3>& item) const
-        -> decltype(std::declval<T>() * std::declval<T>() * std::declval<T>())
+    constexpr auto operator()(const matrix<T, 3>& item) const -> T
     {
         // clang-format off
         return
@@ -573,7 +573,7 @@ struct determinant_fn
     }
 
     template <class T, std::size_t D>
-    constexpr auto operator()(const matrix<T, D>& item) const
+    constexpr auto operator()(const matrix<T, D>& item) const -> T
     {
         auto sum = T{};
 
@@ -593,7 +593,7 @@ struct invert_fn
     template <class T>
     static constexpr bool approx_zero(T v)
     {
-        return math::abs(v) < T(1e-10);
+        return math::abs(v) < std::numeric_limits<T>::epsilon();
     }
 
     template <class T, std::size_t D>
