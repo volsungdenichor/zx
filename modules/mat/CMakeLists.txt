@@ -9,4 +9,6 @@ zx_add_module(
     tests/linear_shape.test.cpp
     tests/interval.test.cpp
     tests/polygonal_shape.test.cpp
+    tests/spherical_shape.test.cpp
+    tests/mat.test.cpp
 )
