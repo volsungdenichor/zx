@@ -1,8 +1,10 @@
 #pragma once
 
 #include <numeric>
+#include <optional>
 #include <zx/iterator_interface.hpp>
 #include <zx/iterator_range.hpp>
+#include <zx/mat/math.hpp>
 #include <zx/mat/vector.hpp>
 
 namespace zx
@@ -180,7 +182,7 @@ struct matrix_view
     }
 };
 
-template <class T, std::size_t R, std::size_t C>
+template <class T, std::size_t R, std::size_t C = R>
 struct matrix
 {
     using view_type = matrix_view<T, R, C>;
@@ -303,6 +305,10 @@ std::ostream& operator<<(std::ostream& os, const matrix_view<T, R, C>& item)
     for (std::size_t r = 0; r < item.row_count(); ++r)
     {
         const auto row = item.row(r);
+        if (r != 0)
+        {
+            os << " ";
+        }
         os << "[";
         for (std::size_t c = 0; c < item.column_count(); ++c)
         {
@@ -461,7 +467,7 @@ constexpr auto operator*(const matrix<T, R, D>& lhs, const matrix<U, D, C>& rhs)
 }
 
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const vector<T, D>& lhs, const matrix<U, D + 1, D + 1>& rhs) -> vector<Res, D>
+constexpr auto operator*(const vector<T, D>& lhs, const matrix<U, D + 1>& rhs) -> vector<Res, D>
 {
     vector<Res, D> result;
 
@@ -474,16 +480,249 @@ constexpr auto operator*(const vector<T, D>& lhs, const matrix<U, D + 1, D + 1>&
 }
 
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const matrix<T, D + 1, D + 1>& lhs, const vector<U, D>& rhs) -> vector<Res, D>
+constexpr auto operator*(const matrix<T, D + 1>& lhs, const vector<U, D>& rhs) -> vector<Res, D>
 {
     return rhs * lhs;
 }
 
 template <class T, class U, std::size_t D, class = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*=(vector<T, D>& lhs, const matrix<U, D + 1, D + 1>& rhs) -> vector<T, D>&
+constexpr auto operator*=(vector<T, D>& lhs, const matrix<U, D + 1>& rhs) -> vector<T, D>&
 {
     return lhs = lhs * rhs;
 }
+
+namespace detail
+{
+
+struct minor_fn
+{
+    template <class T, std::size_t R, std::size_t C>
+    auto operator()(const matrix<T, R, C>& item, const vector<std::size_t, 2>& loc) const -> matrix<T, R - 1, C - 1>
+    {
+        static_assert(R > 1, "minor: invalid row.");
+        static_assert(C > 1, "minor: invalid col.");
+
+        if (loc[0] >= R || loc[1] >= C)
+        {
+            throw std::runtime_error{ "minor: invalid row or column" };
+        }
+
+        matrix<T, R - 1, C - 1> result{};
+
+        for (std::size_t r = 0; r < R; ++r)
+        {
+            for (std::size_t c = 0; c < C; ++c)
+            {
+                result[{ r, c }] = item[{ r + (r < loc[0] ? 0 : 1), c + (c < loc[1] ? 0 : 1) }];
+            }
+        }
+
+        return result;
+    }
+};
+
+static constexpr inline auto minor = minor_fn{};
+
+struct transpose_fn
+{
+    template <class T, std::size_t R, std::size_t C>
+    auto operator()(const matrix<T, R, C>& item) const -> matrix<T, C, R>
+    {
+        matrix<T, C, R> result{};
+
+        for (std::size_t r = 0; r < R; ++r)
+        {
+            const auto row = item.row(r);
+            const auto col = result.column(r);
+            std::copy(std::begin(row), std::end(row), std::begin(col));
+        }
+
+        return result;
+    }
+};
+
+static constexpr inline auto transpose = transpose_fn{};
+
+struct determinant_fn
+{
+    template <class T>
+    constexpr auto operator()(const matrix<T, 1>& item) const -> T
+    {
+        return item[{ 0, 0 }];
+    }
+
+    template <class T>
+    constexpr auto operator()(const matrix<T, 2>& item) const -> decltype(std::declval<T>() * std::declval<T>())
+    {
+        return item[{ 0, 0 }] * item[{ 1, 1 }] - item[{ 0, 1 }] * item[{ 1, 0 }];
+    }
+
+    template <class T>
+    constexpr auto operator()(const matrix<T, 3>& item) const
+        -> decltype(std::declval<T>() * std::declval<T>() * std::declval<T>())
+    {
+        // clang-format off
+        return
+            + item[{ 0, 0 }] * item[{ 1, 1 }] * item[{ 2, 2 }]
+            + item[{ 0, 1 }] * item[{ 1, 2 }] * item[{ 2, 0 }]
+            + item[{ 0, 2 }] * item[{ 1, 0 }] * item[{ 2, 1 }]
+            - item[{ 0, 2 }] * item[{ 1, 1 }] * item[{ 2, 0 }]
+            - item[{ 0, 0 }] * item[{ 1, 2 }] * item[{ 2, 1 }]
+            - item[{ 0, 1 }] * item[{ 1, 0 }] * item[{ 2, 2 }];
+        // clang-format on
+    }
+
+    template <class T, std::size_t D>
+    constexpr auto operator()(const matrix<T, D>& item) const
+    {
+        auto sum = T{};
+
+        for (std::size_t i = 0; i < D; ++i)
+        {
+            sum += (i % 2 == 0 ? +1 : -1) * item[{ 0, i }] * (*this)(minor(item, { 0, i }));
+        }
+
+        return sum;
+    }
+};
+
+static constexpr inline auto determinant = determinant_fn{};
+
+struct invert_fn
+{
+    template <class T, std::size_t D>
+    auto operator()(const matrix<T, D>& value) const -> std::optional<matrix<T, D>>
+    {
+        const auto det = determinant(value);
+
+        if (!det)
+        {
+            return {};
+        }
+
+        matrix<T, D> result{};
+        for (std::size_t r = 0; r < D; ++r)
+        {
+            for (std::size_t c = 0; c < D; ++c)
+            {
+                result[{ c, r }] = T((r + c) % 2 == 0 ? 1 : -1) * determinant(minor(value, { r, c })) / det;
+            }
+        }
+
+        return result;
+    }
+};
+
+static constexpr inline auto invert = invert_fn{};
+
+struct identity_fn
+{
+    template <size_t D, class T = double>
+    static constexpr matrix<T, D> create()
+    {
+        matrix<T, D> result;
+
+        for (std::size_t r = 0; r < D; ++r)
+        {
+            for (std::size_t c = 0; c < D; ++c)
+            {
+                result[{ r, c }] = r == c ? T(1) : T(0);
+            }
+        }
+
+        return result;
+    }
+
+    template <class T, std::size_t D>
+    constexpr operator matrix<T, D>() const
+    {
+        return create<D, T>();
+    }
+};
+
+static constexpr inline auto identity = identity_fn{};
+
+struct scale_fn
+{
+    template <class T>
+    matrix<T, 3> operator()(const vector<T, 2>& scale) const
+    {
+        matrix<T, 3> result = identity;
+
+        result[{ 0, 0 }] = scale[0];
+        result[{ 1, 1 }] = scale[1];
+
+        return result;
+    }
+
+    template <class T>
+    matrix<T, 4> operator()(const vector<T, 3>& scale) const
+    {
+        matrix<T, 4> result = identity;
+
+        result[{ 0, 0 }] = scale[0];
+        result[{ 1, 1 }] = scale[1];
+        result[{ 2, 2 }] = scale[2];
+
+        return result;
+    }
+};
+
+struct rotation_fn
+{
+    template <class T>
+    matrix<T, 3> operator()(T angle) const
+    {
+        matrix<T, 3> result = identity;
+
+        const auto c = math::cos(angle);
+        const auto s = math::sin(angle);
+
+        result[{ 0, 0 }] = c;
+        result[{ 0, 1 }] = s;
+        result[{ 1, 0 }] = -s;
+        result[{ 1, 1 }] = c;
+
+        return result;
+    }
+};
+
+struct translation_fn
+{
+    template <class T>
+    matrix<T, 3> operator()(const vector<T, 2>& offset) const
+    {
+        matrix<T, 3> result = identity;
+
+        result[{ 2, 0 }] = offset[0];
+        result[{ 2, 1 }] = offset[1];
+
+        return result;
+    }
+
+    template <class T>
+    matrix<T, 4> operator()(const vector<T, 3>& offset) const
+    {
+        matrix<T, 4> result = identity;
+
+        result[{ 3, 0 }] = offset[0];
+        result[{ 3, 1 }] = offset[1];
+        result[{ 3, 2 }] = offset[2];
+
+        return result;
+    }
+};
+
+}  // namespace detail
+
+using detail::determinant;
+using detail::invert;
+using detail::minor;
+using detail::transpose;
+
+static constexpr inline auto scale = detail::scale_fn{};
+static constexpr inline auto translation = detail::translation_fn{};
+static constexpr inline auto rotation = detail::rotation_fn{};
 
 }  // namespace mat
 
