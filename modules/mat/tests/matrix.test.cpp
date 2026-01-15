@@ -2,6 +2,8 @@
 
 #include <zx/mat.hpp>
 
+#include "matchers.hpp"
+
 TEST(matrix, default_construction)
 {
     zx::mat::matrix<int, 2, 3> mat;
@@ -135,7 +137,5 @@ TEST(matrix, translation)
 TEST(matrix, rotation)
 {
     zx::mat::matrix<double, 3> rotation2d = zx::mat::rotation(zx::mat::math::pi<double> / 2.0);
-    EXPECT_THAT(
-        (rotation2d - (zx::mat::matrix<double, 3>{ 0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0 })).data(),
-        testing::Each(testing::AllOf(testing::Gt(-1e-10), testing::Lt(1e-10))));
+    EXPECT_THAT(rotation2d, ApproxEqual(zx::mat::matrix<double, 3>{ 0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 1.0 }));
 }
