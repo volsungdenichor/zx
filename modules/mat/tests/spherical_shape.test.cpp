@@ -20,7 +20,7 @@ TEST(circle, add_vector)
     zx::mat::spherical_shape<double, 2> result = circle + vec;
 
     EXPECT_THAT(result.center, (zx::mat::vector<double, 2>{ 11.0, 22.0 }));
-    EXPECT_DOUBLE_EQ(result.radius, 3.0);
+    EXPECT_THAT(result.radius, 3.0);
 }
 
 TEST(circle, subtract_vector)
@@ -31,7 +31,7 @@ TEST(circle, subtract_vector)
     zx::mat::spherical_shape<int, 2> result = circle - vec;
 
     EXPECT_THAT(result.center, (zx::mat::vector<int, 2>{ 9, 18 }));
-    EXPECT_EQ(result.radius, 7);
+    EXPECT_THAT(result.radius, 7);
 }
 
 TEST(sphere, ostream)

@@ -2,6 +2,8 @@
 
 #include <zx/mat.hpp>
 
+#include "matchers.hpp"
+
 TEST(triangle, construct_with_arguments)
 {
     zx::mat::triangle<int, 2> tri(
