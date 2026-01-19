@@ -579,20 +579,23 @@ struct incenter_fn
     template <typename T>
     constexpr auto operator()(const triangle<T, 2>& value) const -> vector<T, 2>
     {
-        T sum = T(0);
-
-        vector<T, 2> result;
-
-        for (size_t i = 0; i < 3; ++i)
+        T perimeter = T(0);
+        std::array<T, 3> sides = {};
+        for (std::size_t i = 0; i < 3; ++i)
         {
-            const auto side_length = length(segment<T, 2>{ value[(i + 0) % 3], value[(i + 1) % 3] });
-
-            result += side_length * value[(i + 2) % 3];
-
-            sum += side_length;
+            sides[i] = length(segment<T, 2>{ value[(i + 1) % 3], value[(i + 2) % 3] });
+            perimeter += sides[i];
         }
 
-        return result / sum;
+        vector<T, 2> result = {};
+
+        for (std::size_t i = 0; i < 3; ++i)
+        {
+            result += sides[i] * value[i];
+        }
+        result /= perimeter;
+
+        return result;
     }
 };
 
