@@ -40,9 +40,7 @@ static constexpr struct apply_fn
     {
         Func m_func;
 
-        constexpr impl(Func func) : m_func(std::move(func))
-        {
-        }
+        constexpr impl(Func func) : m_func(std::move(func)) { }
 
         template <class T>
         T& operator()(T& item) const
@@ -66,9 +64,7 @@ static constexpr struct with_fn
     {
         Func m_func;
 
-        constexpr impl(Func func) : m_func(std::move(func))
-        {
-        }
+        constexpr impl(Func func) : m_func(std::move(func)) { }
 
         template <class T>
         T operator()(T item) const

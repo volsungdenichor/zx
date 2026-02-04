@@ -48,14 +48,9 @@ TEST(let, forwarding)
 {
     struct move_only
     {
-        move_only(int v) : value(v)
-        {
-        }
+        move_only(int v) : value(v) { }
         move_only(const move_only&) = delete;
-        move_only(move_only&& other) noexcept : value(other.value)
-        {
-            other.value = 0;
-        }
+        move_only(move_only&& other) noexcept : value(other.value) { other.value = 0; }
         int value;
     };
 

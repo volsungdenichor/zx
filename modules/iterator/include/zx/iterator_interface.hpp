@@ -111,10 +111,7 @@ struct pointer_proxy
 {
     T item;
 
-    constexpr T* operator->()
-    {
-        return std::addressof(item);
-    }
+    constexpr T* operator->() { return std::addressof(item); }
 };
 
 template <class Impl>
@@ -210,15 +207,9 @@ private:
     }
 
 public:
-    constexpr reference operator*() const
-    {
-        return m_impl.deref();
-    }
+    constexpr reference operator*() const { return m_impl.deref(); }
 
-    constexpr auto operator->() const -> decltype(get_pointer())
-    {
-        return get_pointer();
-    }
+    constexpr auto operator->() const -> decltype(get_pointer()) { return get_pointer(); }
 
     template <class Impl_ = Impl, std::enable_if_t<iter_is_incrementable<Impl_>::value, int> = 0>
     iterator_interface& operator++()
@@ -305,15 +296,9 @@ public:
         return *(*this + offset);
     }
 
-    friend bool operator==(const iterator_interface& lhs, const iterator_interface& rhs)
-    {
-        return lhs.is_equal(rhs.m_impl);
-    }
+    friend bool operator==(const iterator_interface& lhs, const iterator_interface& rhs) { return lhs.is_equal(rhs.m_impl); }
 
-    friend bool operator!=(const iterator_interface& lhs, const iterator_interface& rhs)
-    {
-        return !(lhs == rhs);
-    }
+    friend bool operator!=(const iterator_interface& lhs, const iterator_interface& rhs) { return !(lhs == rhs); }
 
     template <class Impl_ = Impl, std::enable_if_t<iter_is_less_than_comparable<Impl_>::value, int> = 0>
     friend bool operator<(const iterator_interface& lhs, const iterator_interface& rhs)

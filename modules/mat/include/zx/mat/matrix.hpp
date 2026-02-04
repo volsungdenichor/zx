@@ -21,44 +21,24 @@ struct strided_iterator_impl
 {
     T* m_ptr;
 
-    explicit strided_iterator_impl(T* ptr = {}) : m_ptr{ ptr }
-    {
-    }
+    explicit strided_iterator_impl(T* ptr = {}) : m_ptr{ ptr } { }
 
-    constexpr T& deref() const
-    {
-        return *m_ptr;
-    }
+    constexpr T& deref() const { return *m_ptr; }
 
-    constexpr void inc()
-    {
-        m_ptr += N;
-    }
+    constexpr void inc() { m_ptr += N; }
 
-    constexpr void dec()
-    {
-        m_ptr -= N;
-    }
+    constexpr void dec() { m_ptr -= N; }
 
-    constexpr void advance(std::ptrdiff_t n)
-    {
-        m_ptr += n * N;
-    }
+    constexpr void advance(std::ptrdiff_t n) { m_ptr += n * N; }
 
-    constexpr bool is_equal(const strided_iterator_impl& other) const
-    {
-        return m_ptr == other.m_ptr;
-    }
+    constexpr bool is_equal(const strided_iterator_impl& other) const { return m_ptr == other.m_ptr; }
 
     constexpr bool is_less(const strided_iterator_impl& other) const
     {
         return N > 0 ? m_ptr < other.m_ptr : m_ptr > other.m_ptr;
     }
 
-    constexpr std::ptrdiff_t distance_to(const strided_iterator_impl& other) const
-    {
-        return (other.m_ptr - m_ptr) / N;
-    }
+    constexpr std::ptrdiff_t distance_to(const strided_iterator_impl& other) const { return (other.m_ptr - m_ptr) / N; }
 };
 
 template <class T>
@@ -68,34 +48,17 @@ struct strided_iterator_impl<T, 0>
 
     std::ptrdiff_t m_stride;
 
-    strided_iterator_impl(T* ptr = {}, std::ptrdiff_t stride = 0) : m_ptr{ ptr }, m_stride{ stride }
-    {
-    }
+    strided_iterator_impl(T* ptr = {}, std::ptrdiff_t stride = 0) : m_ptr{ ptr }, m_stride{ stride } { }
 
-    constexpr T& deref() const
-    {
-        return *m_ptr;
-    }
+    constexpr T& deref() const { return *m_ptr; }
 
-    constexpr void inc()
-    {
-        m_ptr += m_stride;
-    }
+    constexpr void inc() { m_ptr += m_stride; }
 
-    constexpr void dec()
-    {
-        m_ptr -= m_stride;
-    }
+    constexpr void dec() { m_ptr -= m_stride; }
 
-    constexpr void advance(std::ptrdiff_t n)
-    {
-        m_ptr += n * m_stride;
-    }
+    constexpr void advance(std::ptrdiff_t n) { m_ptr += n * m_stride; }
 
-    constexpr bool is_equal(const strided_iterator_impl& other) const
-    {
-        return m_ptr == other.m_ptr;
-    }
+    constexpr bool is_equal(const strided_iterator_impl& other) const { return m_ptr == other.m_ptr; }
 
     constexpr bool is_less(const strided_iterator_impl& other) const
     {
@@ -132,44 +95,21 @@ struct matrix_view
 
     pointer m_data;
 
-    constexpr matrix_view(pointer data) : m_data(data)
-    {
-    }
+    constexpr matrix_view(pointer data) : m_data(data) { }
 
-    constexpr size_type row_count() const
-    {
-        return R;
-    }
+    constexpr size_type row_count() const { return R; }
 
-    constexpr size_type column_count() const
-    {
-        return C;
-    }
+    constexpr size_type column_count() const { return C; }
 
-    constexpr extents_type extents() const
-    {
-        return extents_type{ row_count(), column_count() };
-    }
+    constexpr extents_type extents() const { return extents_type{ row_count(), column_count() }; }
 
-    constexpr volume_type volume() const
-    {
-        return row_count() * column_count();
-    }
+    constexpr volume_type volume() const { return row_count() * column_count(); }
 
-    constexpr data_type data() const
-    {
-        return data_type(m_data, volume());
-    }
+    constexpr data_type data() const { return data_type(m_data, volume()); }
 
-    constexpr reference operator[](size_type n) const
-    {
-        return data()[n];
-    }
+    constexpr reference operator[](size_type n) const { return data()[n]; }
 
-    constexpr reference operator[](const location_type& loc) const
-    {
-        return *(m_data + loc[0] * column_count() + loc[1]);
-    }
+    constexpr reference operator[](const location_type& loc) const { return *(m_data + loc[0] * column_count() + loc[1]); }
 
     constexpr row_type row(size_type n) const
     {
@@ -209,94 +149,44 @@ struct matrix
 
     std::array<T, R * C> m_data;
 
-    constexpr matrix() : m_data{}
-    {
-    }
+    constexpr matrix() : m_data{} { }
 
     constexpr matrix(std::initializer_list<T> init) : matrix{}
     {
         std::copy(std::begin(init), std::end(init), std::begin(m_data));
     }
 
-    constexpr view_type view()
-    {
-        return view_type{ m_data.data() };
-    }
+    constexpr view_type view() { return view_type{ m_data.data() }; }
 
-    constexpr const_view_type view() const
-    {
-        return const_view_type{ m_data.data() };
-    }
+    constexpr const_view_type view() const { return const_view_type{ m_data.data() }; }
 
-    constexpr size_type row_count() const
-    {
-        return view().row_count();
-    }
+    constexpr size_type row_count() const { return view().row_count(); }
 
-    constexpr size_type column_count() const
-    {
-        return view().column_count();
-    }
+    constexpr size_type column_count() const { return view().column_count(); }
 
-    constexpr volume_type volume() const
-    {
-        return view().volume();
-    }
+    constexpr volume_type volume() const { return view().volume(); }
 
-    constexpr extents_type extents() const
-    {
-        return view().extents();
-    }
+    constexpr extents_type extents() const { return view().extents(); }
 
-    constexpr data_type data()
-    {
-        return view().data();
-    }
+    constexpr data_type data() { return view().data(); }
 
-    constexpr const_data_type data() const
-    {
-        return view().data();
-    }
+    constexpr const_data_type data() const { return view().data(); }
 
-    constexpr reference operator[](size_type n)
-    {
-        return view()[n];
-    }
+    constexpr reference operator[](size_type n) { return view()[n]; }
 
-    constexpr const_reference operator[](size_type n) const
-    {
-        return view()[n];
-    }
+    constexpr const_reference operator[](size_type n) const { return view()[n]; }
 
-    constexpr reference operator[](const location_type& loc)
-    {
-        return view()[loc];
-    }
+    constexpr reference operator[](const location_type& loc) { return view()[loc]; }
 
-    constexpr const_reference operator[](const location_type& loc) const
-    {
-        return view()[loc];
-    }
+    constexpr const_reference operator[](const location_type& loc) const { return view()[loc]; }
 
-    constexpr row_type row(size_type n)
-    {
-        return view().row(n);
-    }
+    constexpr row_type row(size_type n) { return view().row(n); }
 
-    constexpr const_row_type row(size_type n) const
-    {
-        return view().row(n);
-    }
+    constexpr const_row_type row(size_type n) const { return view().row(n); }
 
-    constexpr column_type column(size_type n)
-    {
-        return view().column(n);
-    }
+    constexpr column_type column(size_type n) { return view().column(n); }
 
-    constexpr const_column_type column(size_type n) const
-    {
-        return view().column(n);
-    }
+    constexpr const_column_type column(size_type n) const { return view().column(n); }
 };
 
 template <class T, std::size_t R, std::size_t C>

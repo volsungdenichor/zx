@@ -55,10 +55,7 @@ TEST(type_traits, is_detected_with_incrementable)
 {
     struct incrementable
     {
-        incrementable& operator++()
-        {
-            return *this;
-        }
+        incrementable& operator++() { return *this; }
     };
 
     struct non_incrementable
@@ -73,23 +70,14 @@ TEST(type_traits, is_detected_with_incrementable_decrementable)
 {
     struct incrementable_decrementable
     {
-        incrementable_decrementable& operator++()
-        {
-            return *this;
-        }
+        incrementable_decrementable& operator++() { return *this; }
 
-        incrementable_decrementable& operator--()
-        {
-            return *this;
-        }
+        incrementable_decrementable& operator--() { return *this; }
     };
 
     struct incrementable_only
     {
-        incrementable_only& operator++()
-        {
-            return *this;
-        }
+        incrementable_only& operator++() { return *this; }
     };
 
     EXPECT_THAT((is_incrementable_decrementable<incrementable_decrementable>::value), testing::IsTrue());

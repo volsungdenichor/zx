@@ -77,9 +77,7 @@ using detail::error_wrapper;
 
 struct bad_result_access : std::runtime_error
 {
-    explicit bad_result_access(const std::string& msg) : std::runtime_error{ msg }
-    {
-    }
+    explicit bad_result_access(const std::string& msg) : std::runtime_error{ msg } { }
 };
 
 template <class T, class E>
@@ -90,9 +88,7 @@ struct result
     using value_storage = value_type;
     using error_storage = error_wrapper<error_type>;
 
-    constexpr result(value_type value = {}) : m_storage(std::in_place_type<value_storage>, std::move(value))
-    {
-    }
+    constexpr result(value_type value = {}) : m_storage(std::in_place_type<value_storage>, std::move(value)) { }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
     constexpr result(const error_wrapper<Err>& error)
@@ -115,25 +111,13 @@ struct result
         return *this;
     }
 
-    constexpr explicit operator bool() const
-    {
-        return std::holds_alternative<value_storage>(m_storage);
-    }
+    constexpr explicit operator bool() const { return std::holds_alternative<value_storage>(m_storage); }
 
-    constexpr const value_type& get() const&
-    {
-        return std::get<value_storage>(m_storage);
-    }
+    constexpr const value_type& get() const& { return std::get<value_storage>(m_storage); }
 
-    constexpr value_type& get() &
-    {
-        return std::get<value_storage>(m_storage);
-    }
+    constexpr value_type& get() & { return std::get<value_storage>(m_storage); }
 
-    constexpr value_type&& get() &&
-    {
-        return std::get<value_storage>(std::move(m_storage));
-    }
+    constexpr value_type&& get() && { return std::get<value_storage>(std::move(m_storage)); }
 
     constexpr const value_type& operator*() const&
     {
@@ -162,30 +146,15 @@ struct result
         return std::move(*this).get();
     }
 
-    constexpr const value_type& value() const&
-    {
-        return **this;
-    }
+    constexpr const value_type& value() const& { return **this; }
 
-    constexpr value_type& value() &
-    {
-        return **this;
-    }
+    constexpr value_type& value() & { return **this; }
 
-    constexpr value_type&& value() &&
-    {
-        return *std::move(*this);
-    }
+    constexpr value_type&& value() && { return *std::move(*this); }
 
-    constexpr const value_type* operator->() const&
-    {
-        return &**this;
-    }
+    constexpr const value_type* operator->() const& { return &**this; }
 
-    constexpr value_type* operator->() &
-    {
-        return &**this;
-    }
+    constexpr value_type* operator->() & { return &**this; }
 
     constexpr const error_type& error() const&
     {
@@ -214,15 +183,9 @@ struct result
         return std::get<error_storage>(std::move(m_storage)).m_error;
     }
 
-    constexpr bool has_value() const noexcept
-    {
-        return static_cast<bool>(*this);
-    }
+    constexpr bool has_value() const noexcept { return static_cast<bool>(*this); }
 
-    constexpr bool has_error() const noexcept
-    {
-        return !has_value();
-    }
+    constexpr bool has_error() const noexcept { return !has_value(); }
 
     template <class Func, class FuncResult = std::invoke_result_t<Func, const T&>, class Result = FuncResult>
     constexpr auto and_then(Func&& func) const& -> Result
@@ -344,9 +307,7 @@ struct result<T&, E>
     using value_storage = T*;
     using error_storage = error_wrapper<error_type>;
 
-    constexpr result(value_type& value) : m_storage(std::in_place_type<value_storage>, &value)
-    {
-    }
+    constexpr result(value_type& value) : m_storage(std::in_place_type<value_storage>, &value) { }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
     constexpr result(const error_wrapper<Err>& error)
@@ -369,15 +330,9 @@ struct result<T&, E>
         return *this;
     }
 
-    constexpr explicit operator bool() const
-    {
-        return std::holds_alternative<value_storage>(m_storage);
-    }
+    constexpr explicit operator bool() const { return std::holds_alternative<value_storage>(m_storage); }
 
-    constexpr value_type& get() const
-    {
-        return *std::get<value_storage>(m_storage);
-    }
+    constexpr value_type& get() const { return *std::get<value_storage>(m_storage); }
 
     constexpr value_type& operator*() const
     {
@@ -388,15 +343,9 @@ struct result<T&, E>
         return get();
     }
 
-    constexpr value_type* operator->() const
-    {
-        return &**this;
-    }
+    constexpr value_type* operator->() const { return &**this; }
 
-    constexpr value_type& value() const
-    {
-        return **this;
-    }
+    constexpr value_type& value() const { return **this; }
 
     constexpr const error_type& error() const&
     {
@@ -425,15 +374,9 @@ struct result<T&, E>
         return std::get<error_storage>(std::move(m_storage)).m_error;
     }
 
-    constexpr bool has_value() const noexcept
-    {
-        return static_cast<bool>(*this);
-    }
+    constexpr bool has_value() const noexcept { return static_cast<bool>(*this); }
 
-    constexpr bool has_error() const noexcept
-    {
-        return !has_value();
-    }
+    constexpr bool has_error() const noexcept { return !has_value(); }
 
     template <class Func, class FuncResult = std::invoke_result_t<Func, T&>, class Result = FuncResult>
     constexpr auto and_then(Func&& func) const& -> Result
@@ -553,9 +496,7 @@ struct result<void, E>
     using value_type = void;
     using error_type = E;
 
-    constexpr result() : m_storage{}
-    {
-    }
+    constexpr result() : m_storage{} { }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
     constexpr result(const error_wrapper<Err>& error) : m_storage(error.m_error)
@@ -576,10 +517,7 @@ struct result<void, E>
         return *this;
     }
 
-    constexpr explicit operator bool() const
-    {
-        return !m_storage.has_value();
-    }
+    constexpr explicit operator bool() const { return !m_storage.has_value(); }
 
     constexpr const error_type& error() const&
     {
@@ -608,15 +546,9 @@ struct result<void, E>
         return *std::move(m_storage);
     }
 
-    constexpr bool has_value() const noexcept
-    {
-        return static_cast<bool>(*this);
-    }
+    constexpr bool has_value() const noexcept { return static_cast<bool>(*this); }
 
-    constexpr bool has_error() const noexcept
-    {
-        return !has_value();
-    }
+    constexpr bool has_error() const noexcept { return !has_value(); }
 
     template <class Func, class FuncResult = std::invoke_result_t<Func>, class Result = FuncResult>
     constexpr auto and_then(Func&& func) const& -> Result

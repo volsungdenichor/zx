@@ -9,24 +9,13 @@ struct random_access_iter_impl
 {
     int m_value;
 
-    explicit random_access_iter_impl(int value = 0) : m_value(value)
-    {
-    }
+    explicit random_access_iter_impl(int value = 0) : m_value(value) { }
 
-    auto deref() const -> int
-    {
-        return m_value;
-    }
+    auto deref() const -> int { return m_value; }
 
-    void advance(std::ptrdiff_t offset)
-    {
-        m_value += static_cast<int>(10 * offset);
-    }
+    void advance(std::ptrdiff_t offset) { m_value += static_cast<int>(10 * offset); }
 
-    auto distance_to(const random_access_iter_impl& other) const -> std::ptrdiff_t
-    {
-        return (other.m_value - m_value) / 10;
-    }
+    auto distance_to(const random_access_iter_impl& other) const -> std::ptrdiff_t { return (other.m_value - m_value) / 10; }
 };
 
 using random_access_iter = zx::iterator_interface<random_access_iter_impl>;
@@ -35,24 +24,13 @@ struct forward_iter_impl
 {
     int m_value;
 
-    explicit forward_iter_impl(int value = 0) : m_value(value)
-    {
-    }
+    explicit forward_iter_impl(int value = 0) : m_value(value) { }
 
-    auto deref() const -> int
-    {
-        return m_value;
-    }
+    auto deref() const -> int { return m_value; }
 
-    void inc()
-    {
-        m_value += 1;
-    }
+    void inc() { m_value += 1; }
 
-    bool is_equal(const forward_iter_impl& other) const
-    {
-        return m_value == other.m_value;
-    }
+    bool is_equal(const forward_iter_impl& other) const { return m_value == other.m_value; }
 };
 
 using forward_iter = zx::iterator_interface<forward_iter_impl>;

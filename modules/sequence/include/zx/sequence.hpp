@@ -779,13 +779,9 @@ struct sequence_iterator
     iteration_result_t<reference> m_current;
     difference_type m_index;
 
-    sequence_iterator() : m_next_fn{}, m_current{}, m_index{ std::numeric_limits<difference_type>::max() }
-    {
-    }
+    sequence_iterator() : m_next_fn{}, m_current{}, m_index{ std::numeric_limits<difference_type>::max() } { }
 
-    sequence_iterator(const next_function_type& next_fn) : m_next_fn{ next_fn }, m_current{ m_next_fn() }, m_index{ 0 }
-    {
-    }
+    sequence_iterator(const next_function_type& next_fn) : m_next_fn{ next_fn }, m_current{ m_next_fn() }, m_index{ 0 } { }
 
     sequence_iterator(const sequence_iterator&) = default;
     sequence_iterator(sequence_iterator&&) noexcept = default;
@@ -796,10 +792,7 @@ struct sequence_iterator
         return *this;
     }
 
-    reference operator*() const
-    {
-        return *m_current;
-    }
+    reference operator*() const { return *m_current; }
 
     pointer operator->() const
     {
@@ -832,19 +825,13 @@ struct sequence_iterator
         return (!lhs.m_current && !rhs.m_current) || (lhs.m_current && rhs.m_current && lhs.m_index == rhs.m_index);
     }
 
-    friend bool operator!=(const sequence_iterator& lhs, const sequence_iterator& rhs)
-    {
-        return !(lhs == rhs);
-    }
+    friend bool operator!=(const sequence_iterator& lhs, const sequence_iterator& rhs) { return !(lhs == rhs); }
 };
 
 template <class T>
 struct empty_sequence
 {
-    auto operator()() const -> iteration_result_t<T>
-    {
-        return {};
-    }
+    auto operator()() const -> iteration_result_t<T> { return {}; }
 };
 
 template <class To, class From>
@@ -885,9 +872,7 @@ struct owning_sequence
     std::shared_ptr<Range> m_range;
     mutable Iter m_iter;
 
-    explicit owning_sequence(std::shared_ptr<Range> range) : m_range(range), m_iter(std::begin(*m_range))
-    {
-    }
+    explicit owning_sequence(std::shared_ptr<Range> range) : m_range(range), m_iter(std::begin(*m_range)) { }
 
     auto operator()() const -> iteration_result_t<Out>
     {
@@ -941,9 +926,7 @@ struct sequence : detail::inspect_mixin<T>,
 
     next_function_type m_next_fn;
 
-    explicit sequence(next_function_type next_fn) : m_next_fn(std::move(next_fn))
-    {
-    }
+    explicit sequence(next_function_type next_fn) : m_next_fn(std::move(next_fn)) { }
 
     template <class U, std::enable_if_t<std::is_constructible_v<reference, U>, int> = 0>
     sequence(const sequence<U>& other) : sequence(detail::cast_sequence<reference, U>{ other.get_next_function() })
@@ -977,9 +960,7 @@ struct sequence : detail::inspect_mixin<T>,
     {
     }
 
-    sequence() : sequence(detail::empty_sequence<T>{})
-    {
-    }
+    sequence() : sequence(detail::empty_sequence<T>{}) { }
 
     template <
         class Container,
@@ -991,50 +972,23 @@ struct sequence : detail::inspect_mixin<T>,
         return Container{ begin(), end() };
     }
 
-    auto begin() const -> iterator
-    {
-        return iterator{ m_next_fn };
-    }
+    auto begin() const -> iterator { return iterator{ m_next_fn }; }
 
-    auto end() const -> iterator
-    {
-        return iterator{};
-    }
+    auto end() const -> iterator { return iterator{}; }
 
-    auto get_next_function() const& -> const next_function_type&
-    {
-        return m_next_fn;
-    }
+    auto get_next_function() const& -> const next_function_type& { return m_next_fn; }
 
-    auto get_next_function() && -> next_function_type&&
-    {
-        return std::move(m_next_fn);
-    }
+    auto get_next_function() && -> next_function_type&& { return std::move(m_next_fn); }
 
-    auto maybe_front() const& -> maybe<reference>
-    {
-        return get_next_function()();
-    }
+    auto maybe_front() const& -> maybe<reference> { return get_next_function()(); }
 
-    auto front() const& -> reference
-    {
-        return maybe_front().value();
-    }
+    auto front() const& -> reference { return maybe_front().value(); }
 
-    auto maybe_at(difference_type n) const -> maybe<reference>
-    {
-        return this->drop(n).maybe_front();
-    }
+    auto maybe_at(difference_type n) const -> maybe<reference> { return this->drop(n).maybe_front(); }
 
-    auto at(difference_type n) const -> reference
-    {
-        return maybe_at(n).value();
-    }
+    auto at(difference_type n) const -> reference { return maybe_at(n).value(); }
 
-    bool empty() const
-    {
-        return begin() == end();
-    }
+    bool empty() const { return begin() == end(); }
 
     template <class Pred>
     auto find_if(Pred pred) const -> maybe<reference>
@@ -1074,10 +1028,7 @@ struct iota_fn
     struct next_function
     {
         mutable In m_current;
-        auto operator()() const -> iteration_result_t<In>
-        {
-            return m_current++;
-        }
+        auto operator()() const -> iteration_result_t<In> { return m_current++; }
     };
 
     template <class T>
@@ -1232,10 +1183,7 @@ struct repeat_fn
     {
         T m_value;
 
-        auto operator()() const -> iteration_result_t<T>
-        {
-            return m_value;
-        }
+        auto operator()() const -> iteration_result_t<T> { return m_value; }
     };
 
     template <class T>

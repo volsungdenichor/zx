@@ -4,7 +4,7 @@ AlignAfterOpenBracket: 'AlwaysBreak'
 AllowAllConstructorInitializersOnNextLine: 'false'
 AlignConsecutiveMacros: 'true'
 AllowShortCaseLabelsOnASingleLine: 'true'
-AllowShortFunctionsOnASingleLine: 'None'
+AllowShortFunctionsOnASingleLine: 'Inline'
 AllowShortIfStatementsOnASingleLine: 'Never'
 AllowShortLoopsOnASingleLine: 'false'
 BreakBeforeBraces: Allman

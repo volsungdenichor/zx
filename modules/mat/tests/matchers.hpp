@@ -17,9 +17,7 @@ struct ApproxEqualMatcher<zx::mat::matrix<T, R, C>>
 
     zx::mat::matrix<T, R, C> m_expected;
 
-    ApproxEqualMatcher(zx::mat::matrix<T, R, C> expected) : m_expected{ expected }
-    {
-    }
+    ApproxEqualMatcher(zx::mat::matrix<T, R, C> expected) : m_expected{ expected } { }
 
     template <class U = T>
     bool MatchAndExplain(const zx::mat::matrix<U, R, C>& actual, ::testing::MatchResultListener* listener) const
@@ -44,15 +42,9 @@ struct ApproxEqualMatcher<zx::mat::matrix<T, R, C>>
         return result;
     }
 
-    void DescribeTo(::std::ostream* os) const
-    {
-        *os << "is approximately equal to " << m_expected;
-    }
+    void DescribeTo(::std::ostream* os) const { *os << "is approximately equal to " << m_expected; }
 
-    void DescribeNegationTo(::std::ostream* os) const
-    {
-        *os << "is not approximately equal to " << m_expected;
-    }
+    void DescribeNegationTo(::std::ostream* os) const { *os << "is not approximately equal to " << m_expected; }
 };
 
 template <class T, std::size_t D>
@@ -62,9 +54,7 @@ struct ApproxEqualMatcher<zx::mat::vector<T, D>>
 
     zx::mat::vector<T, D> m_expected;
 
-    ApproxEqualMatcher(zx::mat::vector<T, D> expected) : m_expected{ expected }
-    {
-    }
+    ApproxEqualMatcher(zx::mat::vector<T, D> expected) : m_expected{ expected } { }
 
     template <class U = T>
     bool MatchAndExplain(const zx::mat::vector<U, D>& actual, ::testing::MatchResultListener* listener) const
@@ -85,15 +75,9 @@ struct ApproxEqualMatcher<zx::mat::vector<T, D>>
         return result;
     }
 
-    void DescribeTo(::std::ostream* os) const
-    {
-        *os << "is approximately equal to " << m_expected;
-    }
+    void DescribeTo(::std::ostream* os) const { *os << "is approximately equal to " << m_expected; }
 
-    void DescribeNegationTo(::std::ostream* os) const
-    {
-        *os << "is not approximately equal to " << m_expected;
-    }
+    void DescribeNegationTo(::std::ostream* os) const { *os << "is not approximately equal to " << m_expected; }
 };
 
 template <class T, std::size_t D>
@@ -103,9 +87,7 @@ struct ApproxEqualMatcher<zx::mat::segment<T, D>>
 
     zx::mat::segment<T, D> m_expected;
 
-    ApproxEqualMatcher(zx::mat::segment<T, D> expected) : m_expected{ expected }
-    {
-    }
+    ApproxEqualMatcher(zx::mat::segment<T, D> expected) : m_expected{ expected } { }
 
     template <class U = T>
     bool MatchAndExplain(const zx::mat::segment<U, D>& actual, ::testing::MatchResultListener* listener) const
@@ -130,15 +112,9 @@ struct ApproxEqualMatcher<zx::mat::segment<T, D>>
         return result;
     }
 
-    void DescribeTo(::std::ostream* os) const
-    {
-        *os << "is approximately equal to " << m_expected;
-    }
+    void DescribeTo(::std::ostream* os) const { *os << "is approximately equal to " << m_expected; }
 
-    void DescribeNegationTo(::std::ostream* os) const
-    {
-        *os << "is not approximately equal to " << m_expected;
-    }
+    void DescribeNegationTo(::std::ostream* os) const { *os << "is not approximately equal to " << m_expected; }
 };
 
 template <class T, std::size_t D, std::size_t N>
@@ -148,9 +124,7 @@ struct ApproxEqualMatcher<zx::mat::polygonal_shape<T, D, N>>
 
     zx::mat::polygonal_shape<T, D, N> m_expected;
 
-    ApproxEqualMatcher(zx::mat::polygonal_shape<T, D, N> expected) : m_expected{ expected }
-    {
-    }
+    ApproxEqualMatcher(zx::mat::polygonal_shape<T, D, N> expected) : m_expected{ expected } { }
 
     template <class U = T>
     bool MatchAndExplain(const zx::mat::polygonal_shape<U, D, N>& actual, ::testing::MatchResultListener* listener) const
@@ -175,15 +149,9 @@ struct ApproxEqualMatcher<zx::mat::polygonal_shape<T, D, N>>
         return result;
     }
 
-    void DescribeTo(::std::ostream* os) const
-    {
-        *os << "is approximately equal to " << m_expected;
-    }
+    void DescribeTo(::std::ostream* os) const { *os << "is approximately equal to " << m_expected; }
 
-    void DescribeNegationTo(::std::ostream* os) const
-    {
-        *os << "is not approximately equal to " << m_expected;
-    }
+    void DescribeNegationTo(::std::ostream* os) const { *os << "is not approximately equal to " << m_expected; }
 };
 
 template <class T>
@@ -193,9 +161,7 @@ struct ApproxEqualMatcher<T, std::enable_if_t<std::is_floating_point_v<T>>>
 
     T m_expected;
 
-    ApproxEqualMatcher(T expected) : m_expected{ expected }
-    {
-    }
+    ApproxEqualMatcher(T expected) : m_expected{ expected } { }
 
     template <class U = T>
     bool MatchAndExplain(U actual, ::testing::MatchResultListener* listener) const
@@ -211,15 +177,9 @@ struct ApproxEqualMatcher<T, std::enable_if_t<std::is_floating_point_v<T>>>
         return true;
     }
 
-    void DescribeTo(::std::ostream* os) const
-    {
-        *os << "is approximately equal to " << m_expected;
-    }
+    void DescribeTo(::std::ostream* os) const { *os << "is approximately equal to " << m_expected; }
 
-    void DescribeNegationTo(::std::ostream* os) const
-    {
-        *os << "is not approximately equal to " << m_expected;
-    }
+    void DescribeNegationTo(::std::ostream* os) const { *os << "is not approximately equal to " << m_expected; }
 };
 
 struct ApproxEqualFn

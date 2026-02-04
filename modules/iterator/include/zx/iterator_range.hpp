@@ -49,37 +49,22 @@ struct iterator_range_base
     constexpr iterator_range_base(const iterator_range_base&) = default;
     constexpr iterator_range_base(iterator_range_base&&) noexcept = default;
 
-    constexpr iterator_range_base(iterator b, iterator e) : m_iterators(b, e)
-    {
-    }
+    constexpr iterator_range_base(iterator b, iterator e) : m_iterators(b, e) { }
 
-    constexpr iterator_range_base(const std::pair<iterator, iterator>& pair) : m_iterators(pair)
-    {
-    }
+    constexpr iterator_range_base(const std::pair<iterator, iterator>& pair) : m_iterators(pair) { }
 
-    constexpr iterator_range_base(iterator b, difference_type n) : iterator_range_base(b, std::next(b, n))
-    {
-    }
+    constexpr iterator_range_base(iterator b, difference_type n) : iterator_range_base(b, std::next(b, n)) { }
 
     template <class Range, class It = iterator_t<Range>, std::enable_if_t<std::is_constructible_v<iterator, It>, int> = 0>
     constexpr iterator_range_base(Range&& range) : iterator_range_base(std::begin(range), std::end(range))
     {
     }
 
-    constexpr auto begin() const noexcept -> iterator
-    {
-        return m_iterators.first;
-    }
+    constexpr auto begin() const noexcept -> iterator { return m_iterators.first; }
 
-    constexpr auto end() const noexcept -> iterator
-    {
-        return m_iterators.second;
-    }
+    constexpr auto end() const noexcept -> iterator { return m_iterators.second; }
 
-    void swap(iterator_range_base& other) noexcept
-    {
-        std::swap(m_iterators, other.m_iterators);
-    }
+    void swap(iterator_range_base& other) noexcept { std::swap(m_iterators, other.m_iterators); }
 
     std::pair<iterator, iterator> m_iterators;
 };
@@ -95,13 +80,9 @@ struct iterator_range_base<T*>
     constexpr iterator_range_base(const iterator_range_base&) = default;
     constexpr iterator_range_base(iterator_range_base&&) noexcept = default;
 
-    constexpr iterator_range_base(iterator b, iterator e) : m_iterators(b, e)
-    {
-    }
+    constexpr iterator_range_base(iterator b, iterator e) : m_iterators(b, e) { }
 
-    constexpr iterator_range_base(const std::pair<iterator, iterator>& pair) : m_iterators(pair)
-    {
-    }
+    constexpr iterator_range_base(const std::pair<iterator, iterator>& pair) : m_iterators(pair) { }
 
     template <class D = difference_type, std::enable_if_t<std::is_integral_v<D>, int> = 0>
     constexpr iterator_range_base(iterator b, D n) : iterator_range_base(b, std::next(b, static_cast<difference_type>(n)))
@@ -123,25 +104,13 @@ struct iterator_range_base<T*>
     {
     }
 
-    constexpr auto begin() const noexcept -> iterator
-    {
-        return m_iterators.first;
-    }
+    constexpr auto begin() const noexcept -> iterator { return m_iterators.first; }
 
-    constexpr auto end() const noexcept -> iterator
-    {
-        return m_iterators.second;
-    }
+    constexpr auto end() const noexcept -> iterator { return m_iterators.second; }
 
-    constexpr auto data() const noexcept -> pointer
-    {
-        return begin();
-    }
+    constexpr auto data() const noexcept -> pointer { return begin(); }
 
-    void swap(iterator_range_base& other) noexcept
-    {
-        std::swap(m_iterators, other.m_iterators);
-    }
+    void swap(iterator_range_base& other) noexcept { std::swap(m_iterators, other.m_iterators); }
 
     std::pair<iterator, iterator> m_iterators;
 };
@@ -186,10 +155,7 @@ struct iterator_range : detail::iterator_range_base<Iter>
         return Container{ begin(), end() };
     }
 
-    auto empty() const -> bool
-    {
-        return begin() == end();
-    }
+    auto empty() const -> bool { return begin() == end(); }
 
     template <class It = iterator, std::enable_if_t<is_random_access_iterator<It>::value, int> = 0>
     auto ssize() const -> difference_type
@@ -245,15 +211,9 @@ struct iterator_range : detail::iterator_range_base<Iter>
         return detail::make_reverse(begin(), end());
     }
 
-    auto take(difference_type n) const -> iterator_range
-    {
-        return iterator_range(begin(), advance(n));
-    }
+    auto take(difference_type n) const -> iterator_range { return iterator_range(begin(), advance(n)); }
 
-    auto drop(difference_type n) const -> iterator_range
-    {
-        return iterator_range(advance(n), end());
-    }
+    auto drop(difference_type n) const -> iterator_range { return iterator_range(advance(n), end()); }
 
     template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
     auto take_back(difference_type n) const -> iterator_range

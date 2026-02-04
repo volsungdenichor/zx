@@ -158,10 +158,7 @@ static constexpr inline auto str = format;
 template <>
 struct formatter<bool>
 {
-    void format(std::ostream& os, const bool item) const
-    {
-        os << (item ? "true" : "false");
-    }
+    void format(std::ostream& os, const bool item) const { os << (item ? "true" : "false"); }
 };
 
 struct tuple_formatter

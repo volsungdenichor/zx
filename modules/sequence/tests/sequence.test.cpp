@@ -340,7 +340,8 @@ TEST(sequence, vec)
 
 TEST(sequence, join)
 {
-    zx::sequence<zx::sequence<const int&>> seq_of_seqs = zx::seq::vec(zx::seq::vec(1, 2), zx::seq::vec(3), zx::seq::vec(4, 5, 6));
+    zx::sequence<zx::sequence<const int&>> seq_of_seqs
+        = zx::seq::vec(zx::seq::vec(1, 2), zx::seq::vec(3), zx::seq::vec(4, 5, 6));
 
     const std::vector<int> result = seq_of_seqs.join();
 

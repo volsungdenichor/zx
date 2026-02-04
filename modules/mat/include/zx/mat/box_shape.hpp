@@ -13,13 +13,9 @@ struct interval : public std::array<T, 2>
     using base_t = std::array<T, 2>;
     using base_t::base_t;
 
-    constexpr interval(T lo, T up) : base_t{ lo, up }
-    {
-    }
+    constexpr interval(T lo, T up) : base_t{ lo, up } { }
 
-    constexpr interval() : interval(T{}, T{})
-    {
-    }
+    constexpr interval() : interval(T{}, T{}) { }
 
     friend std::ostream& operator<<(std::ostream& os, const interval& item)
     {
@@ -83,9 +79,7 @@ struct box_shape : public std::array<interval<T>, D>
 
     using base_t::base_t;
 
-    constexpr box_shape() : base_t{}
-    {
-    }
+    constexpr box_shape() : base_t{} { }
 
     template <class... Tail, class = std::enable_if_t<sizeof...(Tail) == D - 1>>
     constexpr box_shape(interval<T> head, Tail&&... tail)

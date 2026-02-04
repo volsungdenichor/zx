@@ -26,10 +26,7 @@ struct maybe_underlying_type<maybe<T>>
 
 struct bad_maybe_access : std::exception
 {
-    const char* what() const noexcept override
-    {
-        return "zx::bad_maybe_access";
-    }
+    const char* what() const noexcept override { return "zx::bad_maybe_access"; }
 };
 
 namespace detail
@@ -58,17 +55,11 @@ struct maybe
 {
     using value_type = T;
 
-    constexpr maybe() : m_storage()
-    {
-    }
+    constexpr maybe() : m_storage() { }
 
-    constexpr maybe(none_t) : maybe()
-    {
-    }
+    constexpr maybe(none_t) : maybe() { }
 
-    constexpr maybe(value_type value) : m_storage(std::move(value))
-    {
-    }
+    constexpr maybe(value_type value) : m_storage(std::move(value)) { }
 
     template <class U>
     constexpr maybe(const maybe<U>& other) : maybe()
@@ -97,25 +88,13 @@ struct maybe
         return *this;
     }
 
-    constexpr explicit operator bool() const
-    {
-        return m_storage.has_value();
-    }
+    constexpr explicit operator bool() const { return m_storage.has_value(); }
 
-    constexpr const value_type& get() const&
-    {
-        return *m_storage;
-    }
+    constexpr const value_type& get() const& { return *m_storage; }
 
-    constexpr value_type& get() &
-    {
-        return *m_storage;
-    }
+    constexpr value_type& get() & { return *m_storage; }
 
-    constexpr value_type&& get() &&
-    {
-        return *std::move(m_storage);
-    }
+    constexpr value_type&& get() && { return *std::move(m_storage); }
 
     constexpr const value_type& operator*() const&
     {
@@ -144,35 +123,17 @@ struct maybe
         return std::move(*this).get();
     }
 
-    constexpr const value_type* operator->() const&
-    {
-        return &**this;
-    }
+    constexpr const value_type* operator->() const& { return &**this; }
 
-    constexpr value_type* operator->() &
-    {
-        return &**this;
-    }
+    constexpr value_type* operator->() & { return &**this; }
 
-    constexpr const value_type& value() const&
-    {
-        return **this;
-    }
+    constexpr const value_type& value() const& { return **this; }
 
-    constexpr value_type& value() &
-    {
-        return **this;
-    }
+    constexpr value_type& value() & { return **this; }
 
-    constexpr value_type&& value() &&
-    {
-        return *std::move(*this);
-    }
+    constexpr value_type&& value() && { return *std::move(*this); }
 
-    constexpr bool has_value() const noexcept
-    {
-        return static_cast<bool>(*this);
-    }
+    constexpr bool has_value() const noexcept { return static_cast<bool>(*this); }
 
     template <class Func, class FuncResult = std::invoke_result_t<Func, const T&>, class Result = FuncResult>
     constexpr auto and_then(Func&& func) const& -> Result
@@ -289,17 +250,11 @@ struct maybe<T&>
 {
     using value_type = T;
 
-    constexpr maybe() : m_storage()
-    {
-    }
+    constexpr maybe() : m_storage() { }
 
-    constexpr maybe(none_t) : maybe()
-    {
-    }
+    constexpr maybe(none_t) : maybe() { }
 
-    constexpr maybe(value_type& value) : m_storage(&value)
-    {
-    }
+    constexpr maybe(value_type& value) : m_storage(&value) { }
 
     constexpr maybe(const maybe&) = default;
     constexpr maybe(maybe&&) noexcept = default;
@@ -310,15 +265,9 @@ struct maybe<T&>
         return *this;
     }
 
-    constexpr explicit operator bool() const
-    {
-        return static_cast<bool>(m_storage);
-    }
+    constexpr explicit operator bool() const { return static_cast<bool>(m_storage); }
 
-    constexpr value_type& get() const
-    {
-        return *m_storage;
-    }
+    constexpr value_type& get() const { return *m_storage; }
 
     constexpr value_type& operator*() const
     {
@@ -329,20 +278,11 @@ struct maybe<T&>
         return get();
     }
 
-    constexpr value_type* operator->() const
-    {
-        return &**this;
-    }
+    constexpr value_type* operator->() const { return &**this; }
 
-    constexpr value_type& value() const
-    {
-        return **this;
-    }
+    constexpr value_type& value() const { return **this; }
 
-    constexpr bool has_value() const noexcept
-    {
-        return static_cast<bool>(*this);
-    }
+    constexpr bool has_value() const noexcept { return static_cast<bool>(*this); }
 
     template <class Func, class FuncResult = std::invoke_result_t<Func, T&>, class Result = FuncResult>
     constexpr auto and_then(Func&& func) const -> Result
