@@ -67,7 +67,7 @@ static constexpr inline struct format_to_fn
         }
         else
         {
-            static_assert(zx::always_false<T>::value, "No formatter or ostream operator available for type T");
+            static_assert(always_false<T>::value, "No formatter or ostream operator available for type T");
         }
     }
 
