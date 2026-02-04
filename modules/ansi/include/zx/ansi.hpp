@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdint>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -14,6 +15,83 @@ namespace zx
 
 namespace ansi
 {
+
+struct color_t
+{
+    using value_type = std::uint8_t;
+    value_type m_value;
+
+    explicit color_t(value_type value) : m_value(value) { }
+
+    constexpr value_type value() const { return m_value; }
+
+    static color_t from_rgb(value_type r, value_type g, value_type b)
+    {
+        const int v[] = { (r * 6) / 256, (g * 6) / 256, (b * 6) / 256 };
+        return color_t{ static_cast<value_type>(16 + 36 * v[0] + 6 * v[1] + v[2]) };
+    }
+
+    static color_t from_grayscale(value_type level) { return color_t{ static_cast<value_type>(232 + (level * 24) / 256) }; }
+
+    static std::optional<color_t> parse(const std::string& text)
+    {
+        static const std::map<std::string_view, value_type> color_map = { { "black", 0 },         { "red", 1 },
+                                                                          { "green", 2 },         { "yellow", 3 },
+                                                                          { "blue", 4 },          { "magenta", 5 },
+                                                                          { "cyan", 6 },          { "white", 7 },
+                                                                          { "bright_black", 8 },  { "bright_red", 9 },
+                                                                          { "bright_green", 10 }, { "bright_yellow", 11 },
+                                                                          { "bright_blue", 12 },  { "bright_magenta", 13 },
+                                                                          { "bright_cyan", 14 },  { "bright_white", 15 } };
+
+        if (const auto iter = color_map.find(text); iter != color_map.end())
+        {
+            return color_t{ iter->second };
+        }
+        if (text.find("0x") == 0 && text.length() == 8)
+        {
+            try
+            {
+                unsigned long hex_value = std::stoul(text.substr(2), nullptr, 16);
+                const std::uint8_t r = (hex_value >> 16) & 0xFF;
+                const std::uint8_t g = (hex_value >> 8) & 0xFF;
+                const std::uint8_t b = (hex_value >> 0) & 0xFF;
+
+                return from_rgb(r, g, b);
+            }
+            catch (...)
+            {
+                return std::nullopt;
+            }
+        }
+        if (text.find("gray:") == 0 || text.find("grey:") == 0)
+        {
+            try
+            {
+                size_t colon_pos = text.find(':');
+                int level = std::stoi(text.substr(colon_pos + 1));
+                if (level >= 0 && level <= 255)
+                {
+                    return from_grayscale(static_cast<value_type>(level));
+                }
+            }
+            catch (...)
+            {
+                return std::nullopt;
+            }
+        }
+
+        return std::nullopt;
+    }
+
+    friend bool operator==(const color_t& lhs, const color_t& rhs) { return lhs.m_value == rhs.m_value; }
+    friend bool operator!=(const color_t& lhs, const color_t& rhs) { return !(lhs == rhs); }
+    friend std::ostream& operator<<(std::ostream& os, const color_t& color)
+    {
+        os << "color_t(" << static_cast<int>(color.m_value) << ")";
+        return os;
+    }
+};
 
 struct stream_t
 {
@@ -151,6 +229,9 @@ struct node_t
         return os;
     }
 };
+
+namespace detail
+{
 
 template <class Self, bool IsListItem = false>
 struct node_base_t : node_t::impl_t
@@ -300,74 +381,17 @@ struct styled_node_impl : node_base_t<styled_node_impl>
         }
         if (!ansi_code.empty())
         {
-            is.write_ansi("\033[0m");  // Reset all attributes
+            is.write_ansi("\033[0m");
         }
     }
 
     static std::string parse_ansi_codes(const std::string& style_name)
     {
-        static const std::map<std::string, int> color_map = { { "black", 0 },         { "red", 1 },
-                                                              { "green", 2 },         { "yellow", 3 },
-                                                              { "blue", 4 },          { "magenta", 5 },
-                                                              { "cyan", 6 },          { "white", 7 },
-                                                              { "bright_black", 8 },  { "bright_red", 9 },
-                                                              { "bright_green", 10 }, { "bright_yellow", 11 },
-                                                              { "bright_blue", 12 },  { "bright_magenta", 13 },
-                                                              { "bright_cyan", 14 },  { "bright_white", 15 } };
+        static const std::map<std::string, int> style_map
+            = { { "bold", 1 },  { "dim", 2 },     { "italic", 3 }, { "underlined", 4 },
+                { "blink", 5 }, { "reverse", 7 }, { "hidden", 8 }, { "strikethrough", 9 } };
 
-        static const std::map<std::string, std::string> style_map
-            = { { "bold", "1" },  { "dim", "2" },     { "italic", "3" }, { "underlined", "4" },
-                { "blink", "5" }, { "reverse", "7" }, { "hidden", "8" }, { "strikethrough", "9" } };
-
-        auto parse_color = [](const std::string& color_str) -> std::optional<int>
-        {
-            if (color_map.count(color_str))
-            {
-                return color_map.at(color_str);
-            }
-
-            if (color_str.find("0x") == 0 && color_str.length() == 8)
-            {
-                try
-                {
-                    unsigned long hex_value = std::stoul(color_str.substr(2), nullptr, 16);
-                    int r = (hex_value >> 16) & 0xFF;
-                    int g = (hex_value >> 8) & 0xFF;
-                    int b = (hex_value >> 0) & 0xFF;
-
-                    int r_idx = (r * 6) / 256;
-                    int g_idx = (g * 6) / 256;
-                    int b_idx = (b * 6) / 256;
-
-                    return 16 + 36 * r_idx + 6 * g_idx + b_idx;
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
-
-            if (color_str.find("gray:") == 0 || color_str.find("grey:") == 0)
-            {
-                try
-                {
-                    size_t colon_pos = color_str.find(':');
-                    int level = std::stoi(color_str.substr(colon_pos + 1));
-                    if (level >= 0 && level <= 23)
-                    {
-                        return 232 + level;
-                    }
-                }
-                catch (...)
-                {
-                    return std::nullopt;
-                }
-            }
-
-            return std::nullopt;
-        };
-
-        std::vector<std::string> codes;
+        std::vector<int> codes;
 
         std::stringstream ss(style_name);
         std::string token;
@@ -376,33 +400,27 @@ struct styled_node_impl : node_base_t<styled_node_impl>
         {
             if (token.find("fg:") == 0)
             {
-                if (auto color_code = parse_color(token.substr(3)))
+                if (auto color_code = color_t::parse(token.substr(3)))
                 {
-                    codes.push_back("38");
-                    codes.push_back("5");
-                    codes.push_back(std::to_string(*color_code));
+                    codes = { 38, 5, color_code->value() };
                 }
             }
             else if (token.find("bg:") == 0)
             {
-                if (auto color_code = parse_color(token.substr(3)))
+                if (auto color_code = color_t::parse(token.substr(3)))
                 {
-                    codes.push_back("48");
-                    codes.push_back("5");
-                    codes.push_back(std::to_string(*color_code));
+                    codes = { 48, 5, color_code->value() };
                 }
             }
-            else if (style_map.count(token))
+            else if (const auto iter = style_map.find(token); iter != style_map.end())
             {
-                codes.push_back(style_map.at(token));
+                codes = { iter->second };
             }
             else
             {
-                if (auto color_code = parse_color(token))
+                if (auto color_code = color_t::parse(token))
                 {
-                    codes.push_back("38");
-                    codes.push_back("5");
-                    codes.push_back(std::to_string(*color_code));
+                    codes = { 38, 5, color_code->value() };
                 }
             }
         }
@@ -419,7 +437,7 @@ struct styled_node_impl : node_base_t<styled_node_impl>
             {
                 result += ";";
             }
-            result += codes[i];
+            result += std::to_string(codes[i]);
         }
         result += "m";
         return result;
@@ -484,23 +502,11 @@ template <class Impl>
 struct node_builder_fn
 {
     template <class... Args>
-    node_t operator()(Args&&... args) const
+    auto operator()(Args&&... args) const -> node_t
     {
         return make_node<Impl>(create(std::forward<Args>(args)...));
     }
 };
-
-constexpr auto indented = node_builder_fn<indented_node_t>{};
-constexpr auto line = node_builder_fn<line_node_t>{};
-
-template <class... Args>
-node_t list(Args&&... args)
-{
-    return make_node<list_node_t>("numbered", create(std::forward<Args>(args)...));
-}
-
-constexpr auto list_item = node_builder_fn<list_item_node_t>{};
-constexpr auto block = node_builder_fn<block_node_t>{};
 
 struct styled_node_builder
 {
@@ -509,15 +515,29 @@ struct styled_node_builder
     explicit styled_node_builder(std::string style_name) : m_style_name(std::move(style_name)) { }
 
     template <class... Args>
-    node_t operator()(Args&&... args) const
+    auto operator()(Args&&... args) const -> node_t
     {
         return make_node<styled_node_impl>(m_style_name, create(std::forward<Args>(args)...));
     }
 };
 
-inline styled_node_builder styled(std::string style_name)
+}  // namespace detail
+
+constexpr auto indented = detail::node_builder_fn<detail::indented_node_t>{};
+constexpr auto line = detail::node_builder_fn<detail::line_node_t>{};
+
+template <class... Args>
+auto list(Args&&... args) -> node_t
 {
-    return styled_node_builder{ std::move(style_name) };
+    return detail::make_node<detail::list_node_t>("numbered", detail::create(std::forward<Args>(args)...));
+}
+
+constexpr auto list_item = detail::node_builder_fn<detail::list_item_node_t>{};
+constexpr auto block = detail::node_builder_fn<detail::block_node_t>{};
+
+inline auto styled(std::string style_name) -> detail::styled_node_builder
+{
+    return detail::styled_node_builder{ std::move(style_name) };
 }
 
 }  // namespace ansi
