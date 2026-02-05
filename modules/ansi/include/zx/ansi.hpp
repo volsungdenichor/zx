@@ -16,33 +16,93 @@ namespace zx
 namespace ansi
 {
 
+struct str_fn
+{
+    template <class... Args>
+    std::string operator()(Args&&... args) const
+    {
+        std::ostringstream os;
+        (os << ... << args);
+        return os.str();
+    }
+} str{};
+
+struct escape_sequence_t : public std::vector<int>
+{
+    using base_t = std::vector<int>;
+    using base_t::base_t;
+
+    friend std::ostream& operator<<(std::ostream& os, const escape_sequence_t& item)
+    {
+        os << "\033[";
+        for (size_t i = 0; i < item.size(); ++i)
+        {
+            if (i != 0)
+            {
+                os << ";";
+            }
+            os << item[i];
+        }
+        os << "m";
+        return os;
+    }
+};
+
 struct color_t
 {
     using value_type = std::uint8_t;
     value_type m_value;
 
-    explicit color_t(value_type value) : m_value(value) { }
+    explicit constexpr color_t(value_type value) : m_value(value) { }
 
     constexpr value_type value() const { return m_value; }
 
-    static color_t from_rgb(value_type r, value_type g, value_type b)
+    static constexpr color_t from_rgb(value_type r, value_type g, value_type b)
     {
         const int v[] = { (r * 6) / 256, (g * 6) / 256, (b * 6) / 256 };
         return color_t{ static_cast<value_type>(16 + 36 * v[0] + 6 * v[1] + v[2]) };
     }
 
-    static color_t from_grayscale(value_type level) { return color_t{ static_cast<value_type>(232 + (level * 24) / 256) }; }
+    static constexpr color_t from_grayscale(value_type level)
+    {
+        return color_t{ static_cast<value_type>(232 + (level * 24) / 256) };
+    }
+
+    static const color_t black;
+    static const color_t red;
+    static const color_t green;
+    static const color_t yellow;
+    static const color_t blue;
+    static const color_t magenta;
+    static const color_t cyan;
+    static const color_t white;
+    static const color_t bright_black;
+    static const color_t bright_red;
+    static const color_t bright_green;
+    static const color_t bright_yellow;
+    static const color_t bright_blue;
+    static const color_t bright_magenta;
+    static const color_t bright_cyan;
+    static const color_t bright_white;
 
     static std::optional<color_t> parse(const std::string& text)
     {
-        static const std::map<std::string_view, value_type> color_map = { { "black", 0 },         { "red", 1 },
-                                                                          { "green", 2 },         { "yellow", 3 },
-                                                                          { "blue", 4 },          { "magenta", 5 },
-                                                                          { "cyan", 6 },          { "white", 7 },
-                                                                          { "bright_black", 8 },  { "bright_red", 9 },
-                                                                          { "bright_green", 10 }, { "bright_yellow", 11 },
-                                                                          { "bright_blue", 12 },  { "bright_magenta", 13 },
-                                                                          { "bright_cyan", 14 },  { "bright_white", 15 } };
+        static const std::map<std::string_view, color_t> color_map = { { "black", color_t::black },
+                                                                       { "red", color_t::red },
+                                                                       { "green", color_t::green },
+                                                                       { "yellow", color_t::yellow },
+                                                                       { "blue", color_t::blue },
+                                                                       { "magenta", color_t::magenta },
+                                                                       { "cyan", color_t::cyan },
+                                                                       { "white", color_t::white },
+                                                                       { "bright_black", color_t::bright_black },
+                                                                       { "bright_red", color_t::bright_red },
+                                                                       { "bright_green", color_t::bright_green },
+                                                                       { "bright_yellow", color_t::bright_yellow },
+                                                                       { "bright_blue", color_t::bright_blue },
+                                                                       { "bright_magenta", color_t::bright_magenta },
+                                                                       { "bright_cyan", color_t::bright_cyan },
+                                                                       { "bright_white", color_t::bright_white } };
 
         if (const auto iter = color_map.find(text); iter != color_map.end())
         {
@@ -84,14 +144,32 @@ struct color_t
         return std::nullopt;
     }
 
-    friend bool operator==(const color_t& lhs, const color_t& rhs) { return lhs.m_value == rhs.m_value; }
-    friend bool operator!=(const color_t& lhs, const color_t& rhs) { return !(lhs == rhs); }
+    friend constexpr bool operator==(const color_t& lhs, const color_t& rhs) { return lhs.m_value == rhs.m_value; }
+    friend constexpr bool operator!=(const color_t& lhs, const color_t& rhs) { return !(lhs == rhs); }
+
     friend std::ostream& operator<<(std::ostream& os, const color_t& color)
     {
         os << "color_t(" << static_cast<int>(color.m_value) << ")";
         return os;
     }
 };
+
+const inline color_t color_t::black{ 0 };
+const inline color_t color_t::red{ 1 };
+const inline color_t color_t::green{ 2 };
+const inline color_t color_t::yellow{ 3 };
+const inline color_t color_t::blue{ 4 };
+const inline color_t color_t::magenta{ 5 };
+const inline color_t color_t::cyan{ 6 };
+const inline color_t color_t::white{ 7 };
+const inline color_t color_t::bright_black{ 8 };
+const inline color_t color_t::bright_red{ 9 };
+const inline color_t color_t::bright_green{ 10 };
+const inline color_t color_t::bright_yellow{ 11 };
+const inline color_t color_t::bright_blue{ 12 };
+const inline color_t color_t::bright_magenta{ 13 };
+const inline color_t color_t::bright_cyan{ 14 };
+const inline color_t color_t::bright_white{ 15 };
 
 struct stream_t
 {
@@ -156,7 +234,7 @@ struct stream_t
             [this](state_t current_state, char ch) { return write_char(ch, current_state); });
     }
 
-    void write_ansi(std::string_view ansi_code)
+    void write_ansi(const escape_sequence_t& ansi_code)
     {
         m_state = handle_newline(m_state);
 
@@ -370,28 +448,26 @@ struct styled_node_impl : node_base_t<styled_node_impl>
 
     void render(stream_t& is) const override
     {
-        const std::string ansi_code = parse_ansi_codes(m_style_name);
-        if (!ansi_code.empty())
+        const auto ansi_code = parse_ansi_codes(m_style_name);
+        if (ansi_code)
         {
-            is.write_ansi(ansi_code);
+            is.write_ansi(*ansi_code);
         }
         for (const auto& child : m_children)
         {
             child.render(is);
         }
-        if (!ansi_code.empty())
+        if (ansi_code)
         {
-            is.write_ansi("\033[0m");
+            is.write_ansi(escape_sequence_t{ 0 });
         }
     }
 
-    static std::string parse_ansi_codes(const std::string& style_name)
+    static std::optional<escape_sequence_t> parse_ansi_codes(const std::string& style_name)
     {
         static const std::map<std::string, int> style_map
             = { { "bold", 1 },  { "dim", 2 },     { "italic", 3 }, { "underlined", 4 },
                 { "blink", 5 }, { "reverse", 7 }, { "hidden", 8 }, { "strikethrough", 9 } };
-
-        std::vector<int> codes;
 
         std::stringstream ss(style_name);
         std::string token;
@@ -402,45 +478,30 @@ struct styled_node_impl : node_base_t<styled_node_impl>
             {
                 if (auto color_code = color_t::parse(token.substr(3)))
                 {
-                    codes = { 38, 5, color_code->value() };
+                    return escape_sequence_t{ 38, 5, color_code->value() };
                 }
             }
             else if (token.find("bg:") == 0)
             {
                 if (auto color_code = color_t::parse(token.substr(3)))
                 {
-                    codes = { 48, 5, color_code->value() };
+                    return escape_sequence_t{ 48, 5, color_code->value() };
                 }
             }
             else if (const auto iter = style_map.find(token); iter != style_map.end())
             {
-                codes = { iter->second };
+                return escape_sequence_t{ iter->second };
             }
             else
             {
                 if (auto color_code = color_t::parse(token))
                 {
-                    codes = { 38, 5, color_code->value() };
+                    return escape_sequence_t{ 38, 5, color_code->value() };
                 }
             }
         }
 
-        if (codes.empty())
-        {
-            return "";
-        }
-
-        std::string result = "\033[";
-        for (size_t i = 0; i < codes.size(); ++i)
-        {
-            if (i != 0)
-            {
-                result += ";";
-            }
-            result += std::to_string(codes[i]);
-        }
-        result += "m";
-        return result;
+        return {};
     }
 };
 
