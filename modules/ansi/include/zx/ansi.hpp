@@ -45,6 +45,18 @@ struct escape_sequence_t : public std::vector<int>
         os << "m";
         return os;
     }
+
+    friend escape_sequence_t& operator+=(escape_sequence_t& lhs, const escape_sequence_t& rhs)
+    {
+        lhs.insert(lhs.end(), rhs.begin(), rhs.end());
+        return lhs;
+    }
+
+    friend escape_sequence_t operator+(escape_sequence_t lhs, const escape_sequence_t& rhs)
+    {
+        lhs += rhs;
+        return lhs;
+    }
 };
 
 struct color_t
@@ -155,7 +167,7 @@ struct color_t
 
     friend std::ostream& operator<<(std::ostream& os, const color_t& color)
     {
-        os << "color_t(" << static_cast<int>(color.m_value) << ")";
+        os << "(color_t " << static_cast<int>(color.m_value) << ")";
         return os;
     }
 };
@@ -223,12 +235,12 @@ struct font_t
     static const font_t bold;
     static const font_t dim;
     static const font_t italic;
-    static const font_t underline;
+    static const font_t underlined;
     static const font_t blink;
     static const font_t inverse;
     static const font_t hidden;
     static const font_t crossed_out;
-    static const font_t double_underline;
+    static const font_t double_underlined;
 
     bool contains(font_t v) const { return static_cast<bool>(*this & v); }
 
@@ -243,12 +255,12 @@ struct font_t
             { font_t::bold, "bold" },
             { font_t::dim, "dim" },
             { font_t::italic, "italic" },
-            { font_t::underline, "underline" },
+            { font_t::underlined, "underlined" },
             { font_t::blink, "blink" },
             { font_t::inverse, "inverse" },
             { font_t::hidden, "hidden" },
             { font_t::crossed_out, "crossed_out" },
-            { font_t::double_underline, "double_underline" },
+            { font_t::double_underlined, "double_underlined" },
         };
         return map;
     }
@@ -301,19 +313,19 @@ const inline font_t font_t::standout{ 1 << 0 };
 const inline font_t font_t::bold{ 1 << 1 };
 const inline font_t font_t::dim{ 1 << 2 };
 const inline font_t font_t::italic{ 1 << 3 };
-const inline font_t font_t::underline{ 1 << 4 };
+const inline font_t font_t::underlined{ 1 << 4 };
 const inline font_t font_t::blink{ 1 << 5 };
 const inline font_t font_t::inverse{ 1 << 6 };
 const inline font_t font_t::hidden{ 1 << 7 };
 const inline font_t font_t::crossed_out{ 1 << 8 };
-const inline font_t font_t::double_underline{ 1 << 9 };
+const inline font_t font_t::double_underlined{ 1 << 9 };
 
 inline escape_sequence_t make_ansi_code(font_t font)
 {
     static const std::vector<std::pair<font_t, int>> font_to_code = {
-        { font_t::standout, 7 }, { font_t::bold, 1 },      { font_t::dim, 2 },
-        { font_t::italic, 3 },   { font_t::underline, 4 }, { font_t::blink, 5 },
-        { font_t::inverse, 7 },  { font_t::hidden, 8 },    { font_t::crossed_out, 9 },
+        { font_t::standout, 7 }, { font_t::bold, 1 },       { font_t::dim, 2 },
+        { font_t::italic, 3 },   { font_t::underlined, 4 }, { font_t::blink, 5 },
+        { font_t::inverse, 7 },  { font_t::hidden, 8 },     { font_t::crossed_out, 9 },
     };
     escape_sequence_t code = {};
     for (const auto& [f, c] : font_to_code)
@@ -590,6 +602,69 @@ struct list_node_t : node_base_t<list_node_t>
     }
 };
 
+struct style_info_t
+{
+    std::optional<color_t> fg_color = {};
+    std::optional<color_t> bg_color = {};
+    std::optional<font_t> font = {};
+
+    static std::optional<style_info_t> parse(const std::string& style_name)
+    {
+        std::stringstream ss(style_name);
+        std::string token;
+
+        style_info_t info = {};
+        while (std::getline(ss, token, ' '))
+        {
+            if (token.find("fg:") == 0)
+            {
+                if (auto maybe_color = color_t::parse(token.substr(3)))
+                {
+                    info.fg_color = *maybe_color;
+                }
+            }
+            else if (token.find("bg:") == 0)
+            {
+                if (auto maybe_color = color_t::parse(token.substr(3)))
+                {
+                    info.bg_color = *maybe_color;
+                }
+            }
+            else if (const auto maybe_font = font_t::parse(token))
+            {
+                info.font = maybe_font;
+            }
+            else if (auto maybe_color = color_t::parse(token))
+            {
+                info.fg_color = *maybe_color;
+            }
+        }
+        if (info.fg_color || info.bg_color || info.font)
+        {
+            return info;
+        }
+        return {};
+    }
+
+    escape_sequence_t to_ansi_code() const
+    {
+        escape_sequence_t code = {};
+        if (fg_color)
+        {
+            code += escape_sequence_t{ 38, 5, fg_color->value() };
+        }
+        if (bg_color)
+        {
+            code += escape_sequence_t{ 48, 5, bg_color->value() };
+        }
+        if (font)
+        {
+            code += make_ansi_code(*font);
+        }
+        return code;
+    }
+};
+
 struct styled_node_impl : node_base_t<styled_node_impl>
 {
     std::string m_style_name;
@@ -603,10 +678,10 @@ struct styled_node_impl : node_base_t<styled_node_impl>
 
     void render(stream_t& is) const override
     {
-        const auto ansi_code = parse_ansi_codes(m_style_name);
+        const auto ansi_code = style_info_t::parse(m_style_name);
         if (ansi_code)
         {
-            is.write_ansi(*ansi_code);
+            is.write_ansi(ansi_code->to_ansi_code());
         }
         for (const auto& child : m_children)
         {
@@ -616,49 +691,6 @@ struct styled_node_impl : node_base_t<styled_node_impl>
         {
             is.write_ansi(escape_sequence_t{ 0 });
         }
-    }
-
-    static std::optional<escape_sequence_t> parse_ansi_codes(const std::string& style_name)
-    {
-        static const std::map<std::string, font_t> style_map
-            = { { "bold", font_t::bold },     { "dim", font_t::dim },
-                { "italic", font_t::italic }, { "underlined", font_t::underline },
-                { "blink", font_t::blink },   { "reverse", font_t::inverse },
-                { "hidden", font_t::hidden }, { "strikethrough", font_t::crossed_out } };
-
-        std::stringstream ss(style_name);
-        std::string token;
-
-        while (std::getline(ss, token, ' '))
-        {
-            if (token.find("fg:") == 0)
-            {
-                if (auto color_code = color_t::parse(token.substr(3)))
-                {
-                    return escape_sequence_t{ 38, 5, color_code->value() };
-                }
-            }
-            else if (token.find("bg:") == 0)
-            {
-                if (auto color_code = color_t::parse(token.substr(3)))
-                {
-                    return escape_sequence_t{ 48, 5, color_code->value() };
-                }
-            }
-            else if (const auto iter = style_map.find(token); iter != style_map.end())
-            {
-                return make_ansi_code(iter->second);
-            }
-            else
-            {
-                if (auto color_code = color_t::parse(token))
-                {
-                    return escape_sequence_t{ 38, 5, color_code->value() };
-                }
-            }
-        }
-
-        return {};
     }
 };
 

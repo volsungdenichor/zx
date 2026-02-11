@@ -49,3 +49,26 @@ TEST(ansi, parse_color_grayscale)
     EXPECT_THAT(zx::ansi::color_t::parse("grey:128"), testing::Optional(zx::ansi::color_t{ 244 }));
     EXPECT_THAT(zx::ansi::color_t::parse("gray:255"), testing::Optional(zx::ansi::color_t{ 255 }));
 }
+
+TEST(ansi, parse_color_invalid)
+{
+    EXPECT_THAT(zx::ansi::color_t::parse("invalid"), testing::Eq(std::nullopt));
+    EXPECT_THAT(zx::ansi::color_t::parse("0xGGGGGG"), testing::Eq(std::nullopt));
+    EXPECT_THAT(zx::ansi::color_t::parse("gray:-1"), testing::Eq(std::nullopt));
+    EXPECT_THAT(zx::ansi::color_t::parse("gray:256"), testing::Eq(std::nullopt));
+}
+
+TEST(ansi, parse_font)
+{
+    EXPECT_THAT(zx::ansi::font_t::parse("bold"), testing::Optional(zx::ansi::font_t::bold));
+    EXPECT_THAT(zx::ansi::font_t::parse("italic"), testing::Optional(zx::ansi::font_t::italic));
+    EXPECT_THAT(zx::ansi::font_t::parse("underlined"), testing::Optional(zx::ansi::font_t::underlined));
+    EXPECT_THAT(
+        zx::ansi::font_t::parse("bold+italic"), testing::Optional(zx::ansi::font_t::bold | zx::ansi::font_t::italic));
+    EXPECT_THAT(
+        zx::ansi::font_t::parse("underlined+blink"),
+        testing::Optional(zx::ansi::font_t::underlined | zx::ansi::font_t::blink));
+    EXPECT_THAT(
+        zx::ansi::font_t::parse("italic+underlined+hidden"),
+        testing::Optional(zx::ansi::font_t::underlined | zx::ansi::font_t::italic | zx::ansi::font_t::hidden));
+}
