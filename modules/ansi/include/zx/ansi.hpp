@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
-#include <map>
 #include <memory>
 #include <numeric>
 #include <optional>
@@ -87,24 +86,27 @@ struct color_t
 
     static std::optional<color_t> parse(const std::string& text)
     {
-        static const std::map<std::string_view, color_t> color_map = { { "black", color_t::black },
-                                                                       { "red", color_t::red },
-                                                                       { "green", color_t::green },
-                                                                       { "yellow", color_t::yellow },
-                                                                       { "blue", color_t::blue },
-                                                                       { "magenta", color_t::magenta },
-                                                                       { "cyan", color_t::cyan },
-                                                                       { "white", color_t::white },
-                                                                       { "bright_black", color_t::bright_black },
-                                                                       { "bright_red", color_t::bright_red },
-                                                                       { "bright_green", color_t::bright_green },
-                                                                       { "bright_yellow", color_t::bright_yellow },
-                                                                       { "bright_blue", color_t::bright_blue },
-                                                                       { "bright_magenta", color_t::bright_magenta },
-                                                                       { "bright_cyan", color_t::bright_cyan },
-                                                                       { "bright_white", color_t::bright_white } };
+        static const std::vector<std::pair<std::string_view, color_t>> color_map
+            = { { "black", color_t::black },
+                { "red", color_t::red },
+                { "green", color_t::green },
+                { "yellow", color_t::yellow },
+                { "blue", color_t::blue },
+                { "magenta", color_t::magenta },
+                { "cyan", color_t::cyan },
+                { "white", color_t::white },
+                { "bright_black", color_t::bright_black },
+                { "bright_red", color_t::bright_red },
+                { "bright_green", color_t::bright_green },
+                { "bright_yellow", color_t::bright_yellow },
+                { "bright_blue", color_t::bright_blue },
+                { "bright_magenta", color_t::bright_magenta },
+                { "bright_cyan", color_t::bright_cyan },
+                { "bright_white", color_t::bright_white } };
 
-        if (const auto iter = color_map.find(text); iter != color_map.end())
+        if (const auto iter
+            = std::find_if(color_map.begin(), color_map.end(), [&text](const auto& pair) { return pair.first == text; });
+            iter != color_map.end())
         {
             return color_t{ iter->second };
         }
@@ -146,6 +148,10 @@ struct color_t
 
     friend constexpr bool operator==(const color_t& lhs, const color_t& rhs) { return lhs.m_value == rhs.m_value; }
     friend constexpr bool operator!=(const color_t& lhs, const color_t& rhs) { return !(lhs == rhs); }
+    friend constexpr bool operator<(const color_t& lhs, const color_t& rhs) { return lhs.m_value < rhs.m_value; }
+    friend constexpr bool operator>(const color_t& lhs, const color_t& rhs) { return rhs < lhs; }
+    friend constexpr bool operator<=(const color_t& lhs, const color_t& rhs) { return !(lhs > rhs); }
+    friend constexpr bool operator>=(const color_t& lhs, const color_t& rhs) { return !(lhs < rhs); }
 
     friend std::ostream& operator<<(std::ostream& os, const color_t& color)
     {
@@ -170,6 +176,155 @@ const inline color_t color_t::bright_blue{ 12 };
 const inline color_t color_t::bright_magenta{ 13 };
 const inline color_t color_t::bright_cyan{ 14 };
 const inline color_t color_t::bright_white{ 15 };
+
+struct font_t
+{
+    using underlying_type = std::uint16_t;
+
+    underlying_type m_value;
+
+    constexpr explicit font_t(underlying_type value = 0) : m_value(value) { }
+
+    constexpr friend bool operator==(const font_t lhs, const font_t rhs) { return lhs.m_value == rhs.m_value; }
+    constexpr friend bool operator!=(const font_t lhs, const font_t rhs) { return !(lhs == rhs); }
+    constexpr friend bool operator<(const font_t lhs, const font_t rhs) { return lhs.m_value < rhs.m_value; }
+    constexpr friend bool operator>(const font_t lhs, const font_t rhs) { return rhs < lhs; }
+    constexpr friend bool operator<=(const font_t lhs, const font_t rhs) { return !(lhs > rhs); }
+    constexpr friend bool operator>=(const font_t lhs, const font_t rhs) { return !(lhs < rhs); }
+
+    constexpr friend font_t operator~(const font_t item) { return font_t(~item.m_value); }
+    constexpr friend font_t operator&(const font_t lhs, const font_t rhs) { return font_t(lhs.m_value & rhs.m_value); }
+    constexpr friend font_t& operator&=(font_t& lhs, const font_t rhs)
+    {
+        lhs.m_value &= rhs.m_value;
+        return lhs;
+    }
+
+    constexpr friend font_t operator|(const font_t lhs, const font_t rhs) { return font_t(lhs.m_value | rhs.m_value); }
+
+    constexpr friend font_t& operator|=(font_t& lhs, const font_t rhs)
+    {
+        lhs.m_value |= rhs.m_value;
+        return lhs;
+    }
+
+    constexpr friend font_t operator^(const font_t lhs, const font_t rhs) { return font_t(lhs.m_value ^ rhs.m_value); }
+
+    constexpr friend font_t& operator^=(font_t& lhs, const font_t rhs)
+    {
+        lhs.m_value ^= rhs.m_value;
+        return lhs;
+    }
+
+    constexpr explicit operator bool() const { return static_cast<bool>(m_value); }
+
+    static const font_t none;
+    static const font_t standout;
+    static const font_t bold;
+    static const font_t dim;
+    static const font_t italic;
+    static const font_t underline;
+    static const font_t blink;
+    static const font_t inverse;
+    static const font_t hidden;
+    static const font_t crossed_out;
+    static const font_t double_underline;
+
+    bool contains(font_t v) const { return static_cast<bool>(*this & v); }
+
+    font_t& unset(const font_t v) { return *this = *this & ~v; }
+    font_t& set(const font_t v) { return *this = *this | v; }
+
+    static const std::vector<std::pair<font_t, std::string_view>>& font_map()
+    {
+        static const std::vector<std::pair<font_t, std::string_view>> map = {
+            { font_t::none, "none" },
+            { font_t::standout, "standout" },
+            { font_t::bold, "bold" },
+            { font_t::dim, "dim" },
+            { font_t::italic, "italic" },
+            { font_t::underline, "underline" },
+            { font_t::blink, "blink" },
+            { font_t::inverse, "inverse" },
+            { font_t::hidden, "hidden" },
+            { font_t::crossed_out, "crossed_out" },
+            { font_t::double_underline, "double_underline" },
+        };
+        return map;
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, font_t item)
+    {
+        os << "(font_t";
+        for (const auto& [f, n] : font_map())
+        {
+            if (item.contains(f))
+            {
+                os << " " << n;
+            }
+        }
+        os << ")";
+        return os;
+    }
+
+    static std::optional<font_t> parse(const std::string& text)
+    {
+        std::stringstream ss(text);
+        std::string token;
+
+        std::optional<font_t> result = {};
+
+        while (std::getline(ss, token, '+'))
+        {
+            if (const auto iter = std::find_if(
+                    font_t::font_map().begin(),
+                    font_t::font_map().end(),
+                    [&token](const auto& pair) { return pair.second == token; });
+                iter != font_t::font_map().end())
+            {
+                if (result)
+                {
+                    *result |= iter->first;
+                }
+                else
+                {
+                    result = iter->first;
+                }
+            }
+        }
+        return result;
+    }
+};
+
+const inline font_t font_t::none{ 0 };
+const inline font_t font_t::standout{ 1 << 0 };
+const inline font_t font_t::bold{ 1 << 1 };
+const inline font_t font_t::dim{ 1 << 2 };
+const inline font_t font_t::italic{ 1 << 3 };
+const inline font_t font_t::underline{ 1 << 4 };
+const inline font_t font_t::blink{ 1 << 5 };
+const inline font_t font_t::inverse{ 1 << 6 };
+const inline font_t font_t::hidden{ 1 << 7 };
+const inline font_t font_t::crossed_out{ 1 << 8 };
+const inline font_t font_t::double_underline{ 1 << 9 };
+
+inline escape_sequence_t make_ansi_code(font_t font)
+{
+    static const std::vector<std::pair<font_t, int>> font_to_code = {
+        { font_t::standout, 7 }, { font_t::bold, 1 },      { font_t::dim, 2 },
+        { font_t::italic, 3 },   { font_t::underline, 4 }, { font_t::blink, 5 },
+        { font_t::inverse, 7 },  { font_t::hidden, 8 },    { font_t::crossed_out, 9 },
+    };
+    escape_sequence_t code = {};
+    for (const auto& [f, c] : font_to_code)
+    {
+        if (font.contains(f))
+        {
+            code.push_back(c);
+        }
+    }
+    return code;
+}
 
 struct stream_t
 {
@@ -414,7 +569,7 @@ struct list_node_t : node_base_t<list_node_t>
     {
         if (!std::all_of(m_children.begin(), m_children.end(), std::mem_fn(&node_t::is_list_item)))
         {
-            throw std::invalid_argument("All children of a list must be list items");
+            throw std::invalid_argument{ "All children of a list must be list items" };
         }
     }
 
@@ -465,14 +620,16 @@ struct styled_node_impl : node_base_t<styled_node_impl>
 
     static std::optional<escape_sequence_t> parse_ansi_codes(const std::string& style_name)
     {
-        static const std::map<std::string, int> style_map
-            = { { "bold", 1 },  { "dim", 2 },     { "italic", 3 }, { "underlined", 4 },
-                { "blink", 5 }, { "reverse", 7 }, { "hidden", 8 }, { "strikethrough", 9 } };
+        static const std::map<std::string, font_t> style_map
+            = { { "bold", font_t::bold },     { "dim", font_t::dim },
+                { "italic", font_t::italic }, { "underlined", font_t::underline },
+                { "blink", font_t::blink },   { "reverse", font_t::inverse },
+                { "hidden", font_t::hidden }, { "strikethrough", font_t::crossed_out } };
 
         std::stringstream ss(style_name);
         std::string token;
 
-        while (std::getline(ss, token, '+'))
+        while (std::getline(ss, token, ' '))
         {
             if (token.find("fg:") == 0)
             {
@@ -490,7 +647,7 @@ struct styled_node_impl : node_base_t<styled_node_impl>
             }
             else if (const auto iter = style_map.find(token); iter != style_map.end())
             {
-                return escape_sequence_t{ iter->second };
+                return make_ansi_code(iter->second);
             }
             else
             {
