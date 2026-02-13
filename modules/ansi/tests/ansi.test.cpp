@@ -72,3 +72,49 @@ TEST(ansi, parse_font)
         zx::ansi::font_t::parse("italic+underlined+hidden"),
         testing::Optional(zx::ansi::font_t::underlined | zx::ansi::font_t::italic | zx::ansi::font_t::hidden));
 }
+
+TEST(ansi, parse_style_info)
+{
+    EXPECT_THAT(
+        zx::ansi::style_info_t::parse("green"),
+        testing::Optional(zx::ansi::style_info_t{ zx::ansi::color_t::green, std::nullopt, std::nullopt }));
+    EXPECT_THAT(
+        zx::ansi::style_info_t::parse("green italic"),
+        testing::Optional(zx::ansi::style_info_t{ zx::ansi::color_t::green, std::nullopt, zx::ansi::font_t::italic }));
+    EXPECT_THAT(
+        zx::ansi::style_info_t::parse("fg:red bg:blue bold"),
+        testing::Optional(
+            zx::ansi::style_info_t{ zx::ansi::color_t::red, zx::ansi::color_t::blue, zx::ansi::font_t::bold }));
+    EXPECT_THAT(
+        zx::ansi::style_info_t::parse("bg:yellow underlined"),
+        testing::Optional(zx::ansi::style_info_t{ std::nullopt, zx::ansi::color_t::yellow, zx::ansi::font_t::underlined }));
+    EXPECT_THAT(
+        zx::ansi::style_info_t::parse("fg:0x00FF00 italic"),
+        testing::Optional(zx::ansi::style_info_t{ zx::ansi::color_t{ 46 }, std::nullopt, zx::ansi::font_t::italic }));
+    EXPECT_THAT(
+        zx::ansi::style_info_t::parse("bg:gray:128 underlined"),
+        testing::Optional(zx::ansi::style_info_t{ std::nullopt, zx::ansi::color_t{ 244 }, zx::ansi::font_t::underlined }));
+    EXPECT_THAT(zx::ansi::style_info_t::parse("invalid"), testing::Eq(std::nullopt));
+}
+
+TEST(ansi, stream)
+{
+    std::stringstream ss;
+    zx::ansi::stream_t stream{ ss };
+    stream << "Hello "
+           << "world!" << 42 << "." << zx::ansi::styled("fg:red")("This is red text ", 42) << " Normal text.";
+
+    EXPECT_THAT(ss.str(), testing::Eq("Hello world!42.\x1B[38;5;1mThis is red text 42\x1B[0m Normal text."));
+}
+
+TEST(ansi, stream_list)
+{
+    std::stringstream ss;
+    zx::ansi::stream_t stream{ ss };
+    stream << zx::ansi::list("numbered")(
+        zx::ansi::list_item("First item"),   //
+        zx::ansi::list_item("Second item"),  //
+        zx::ansi::list_item("Third item"));
+
+    EXPECT_THAT(ss.str(), testing::Eq("1. First item\n2. Second item\n3. Third item"));
+}

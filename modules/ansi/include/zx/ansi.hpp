@@ -15,6 +15,9 @@ namespace zx
 namespace ansi
 {
 
+template <class T>
+using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+
 struct str_fn
 {
     template <class... Args>
@@ -322,18 +325,107 @@ const inline font_t font_t::double_underlined{ 1 << 9 };
 
 inline escape_sequence_t make_ansi_code(font_t font)
 {
-    static const std::vector<std::pair<font_t, int>> font_to_code = {
+    static const std::vector<std::pair<font_t, int>> font_to_code_map = {
         { font_t::standout, 7 }, { font_t::bold, 1 },       { font_t::dim, 2 },
         { font_t::italic, 3 },   { font_t::underlined, 4 }, { font_t::blink, 5 },
         { font_t::inverse, 7 },  { font_t::hidden, 8 },     { font_t::crossed_out, 9 },
     };
     escape_sequence_t code = {};
-    for (const auto& [f, c] : font_to_code)
+    for (const auto& [f, c] : font_to_code_map)
     {
         if (font.contains(f))
         {
             code.push_back(c);
         }
+    }
+    return code;
+}
+
+struct style_info_t
+{
+    std::optional<color_t> fg_color = {};
+    std::optional<color_t> bg_color = {};
+    std::optional<font_t> font = {};
+
+    friend bool operator==(const style_info_t& lhs, const style_info_t& rhs)
+    {
+        return std::tie(lhs.fg_color, lhs.bg_color, lhs.font) == std::tie(rhs.fg_color, rhs.bg_color, rhs.font);
+    }
+
+    friend bool operator!=(const style_info_t& lhs, const style_info_t& rhs) { return !(lhs == rhs); }
+
+    static std::optional<style_info_t> parse(const std::string& style_name)
+    {
+        std::stringstream ss(style_name);
+        std::string token;
+
+        style_info_t info = {};
+        while (std::getline(ss, token, ' '))
+        {
+            if (token.find("fg:") == 0)
+            {
+                if (auto maybe_color = color_t::parse(token.substr(3)))
+                {
+                    info.fg_color = *maybe_color;
+                }
+            }
+            else if (token.find("bg:") == 0)
+            {
+                if (auto maybe_color = color_t::parse(token.substr(3)))
+                {
+                    info.bg_color = *maybe_color;
+                }
+            }
+            else if (const auto maybe_font = font_t::parse(token))
+            {
+                info.font = maybe_font;
+            }
+            else if (auto maybe_color = color_t::parse(token))
+            {
+                info.fg_color = *maybe_color;
+            }
+        }
+        if (info.fg_color || info.bg_color || info.font)
+        {
+            return info;
+        }
+        return {};
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const style_info_t& info)
+    {
+        os << "(style_info_t";
+        if (info.fg_color)
+        {
+            os << " fg:" << *info.fg_color;
+        }
+        if (info.bg_color)
+        {
+            os << " bg:" << *info.bg_color;
+        }
+        if (info.font)
+        {
+            os << " font:" << *info.font;
+        }
+        os << ")";
+        return os;
+    }
+};
+
+inline escape_sequence_t make_ansi_code(const style_info_t& info)
+{
+    escape_sequence_t code = {};
+    if (info.fg_color)
+    {
+        code += escape_sequence_t{ 38, 5, info.fg_color->value() };
+    }
+    if (info.bg_color)
+    {
+        code += escape_sequence_t{ 48, 5, info.bg_color->value() };
+    }
+    if (info.font)
+    {
+        code += make_ansi_code(*info.font);
     }
     return code;
 }
@@ -392,16 +484,17 @@ struct stream_t
         return current_state;
     }
 
-    void write(std::string_view text)
+    stream_t& write(std::string_view text)
     {
         m_state = std::accumulate(
             text.begin(),
             text.end(),
             m_state,
             [this](state_t current_state, char ch) { return write_char(ch, current_state); });
+        return *this;
     }
 
-    void write_ansi(const escape_sequence_t& ansi_code)
+    stream_t& write_ansi(const escape_sequence_t& ansi_code)
     {
         m_state = handle_newline(m_state);
 
@@ -413,15 +506,38 @@ struct stream_t
         }
 
         m_os << ansi_code;
+        return *this;
     }
 
-    void newline() { m_state.should_add_newline = true; }
+    stream_t& newline()
+    {
+        m_state.should_add_newline = true;
+        return *this;
+    }
 
-    void indent(std::size_t spaces_per_level = 2) { m_indent_levels.push_back(m_indent_levels.back() + spaces_per_level); }
-    void unindent() { m_indent_levels.pop_back(); }
+    stream_t& indent(std::size_t spaces_per_level = 2)
+    {
+        m_indent_levels.push_back(m_indent_levels.back() + spaces_per_level);
+        return *this;
+    }
 
-    void tab(std::size_t spaces) { m_tab_offsets.push_back(m_tab_offsets.back() + spaces); }
-    void untab() { m_tab_offsets.pop_back(); }
+    stream_t& unindent()
+    {
+        m_indent_levels.pop_back();
+        return *this;
+    }
+
+    stream_t& tab(std::size_t spaces)
+    {
+        m_tab_offsets.push_back(m_tab_offsets.back() + spaces);
+        return *this;
+    }
+
+    stream_t& untab()
+    {
+        m_tab_offsets.pop_back();
+        return *this;
+    }
 };
 
 struct node_t
@@ -475,6 +591,12 @@ struct node_t
     }
 };
 
+template <class T>
+struct formatter_t;
+
+template <class T>
+stream_t& operator<<(stream_t& stream, const T& value);
+
 namespace detail
 {
 
@@ -507,11 +629,11 @@ struct text_ref_node_t : node_base_t<text_ref_node_t>
     void render(stream_t& is) const override { is.write(m_content); }
 };
 
-struct block_node_t : node_base_t<block_node_t>
+struct span_node_t : node_base_t<span_node_t>
 {
     std::vector<node_t> m_children;
 
-    explicit block_node_t(std::vector<node_t> children) : m_children(std::move(children)) { }
+    explicit span_node_t(std::vector<node_t> children) : m_children(std::move(children)) { }
 
     void render(stream_t& is) const override
     {
@@ -585,6 +707,22 @@ struct list_node_t : node_base_t<list_node_t>
         }
     }
 
+    std::string prefix(std::size_t index) const
+    {
+        if (m_list_style == "numbered")
+        {
+            return std::to_string(index + 1) + ". ";
+        }
+        else if (m_list_style == "bulleted")
+        {
+            return "- ";
+        }
+        else
+        {
+            return "";
+        }
+    }
+
     void render(stream_t& is) const override
     {
         for (std::size_t i = 0; i < m_children.size(); ++i)
@@ -593,7 +731,7 @@ struct list_node_t : node_base_t<list_node_t>
             {
                 is.newline();
             }
-            std::string prefix = std::to_string(i + 1) + ". ";
+            std::string prefix = this->prefix(i);
             is.write(prefix);
             is.tab(prefix.length());
             m_children[i].render(is);
@@ -602,92 +740,28 @@ struct list_node_t : node_base_t<list_node_t>
     }
 };
 
-struct style_info_t
-{
-    std::optional<color_t> fg_color = {};
-    std::optional<color_t> bg_color = {};
-    std::optional<font_t> font = {};
-
-    static std::optional<style_info_t> parse(const std::string& style_name)
-    {
-        std::stringstream ss(style_name);
-        std::string token;
-
-        style_info_t info = {};
-        while (std::getline(ss, token, ' '))
-        {
-            if (token.find("fg:") == 0)
-            {
-                if (auto maybe_color = color_t::parse(token.substr(3)))
-                {
-                    info.fg_color = *maybe_color;
-                }
-            }
-            else if (token.find("bg:") == 0)
-            {
-                if (auto maybe_color = color_t::parse(token.substr(3)))
-                {
-                    info.bg_color = *maybe_color;
-                }
-            }
-            else if (const auto maybe_font = font_t::parse(token))
-            {
-                info.font = maybe_font;
-            }
-            else if (auto maybe_color = color_t::parse(token))
-            {
-                info.fg_color = *maybe_color;
-            }
-        }
-        if (info.fg_color || info.bg_color || info.font)
-        {
-            return info;
-        }
-        return {};
-    }
-
-    escape_sequence_t to_ansi_code() const
-    {
-        escape_sequence_t code = {};
-        if (fg_color)
-        {
-            code += escape_sequence_t{ 38, 5, fg_color->value() };
-        }
-        if (bg_color)
-        {
-            code += escape_sequence_t{ 48, 5, bg_color->value() };
-        }
-        if (font)
-        {
-            code += make_ansi_code(*font);
-        }
-        return code;
-    }
-};
-
 struct styled_node_impl : node_base_t<styled_node_impl>
 {
-    std::string m_style_name;
+    std::optional<style_info_t> m_style_info;
     std::vector<node_t> m_children;
 
-    explicit styled_node_impl(std::string style_name, std::vector<node_t> children)
-        : m_style_name(std::move(style_name))
+    explicit styled_node_impl(std::optional<style_info_t> style_info, std::vector<node_t> children)
+        : m_style_info(std::move(style_info))
         , m_children(std::move(children))
     {
     }
 
     void render(stream_t& is) const override
     {
-        const auto ansi_code = style_info_t::parse(m_style_name);
-        if (ansi_code)
+        if (m_style_info)
         {
-            is.write_ansi(ansi_code->to_ansi_code());
+            is.write_ansi(make_ansi_code(*m_style_info));
         }
         for (const auto& child : m_children)
         {
             child.render(is);
         }
-        if (ansi_code)
+        if (m_style_info)
         {
             is.write_ansi(escape_sequence_t{ 0 });
         }
@@ -740,8 +814,9 @@ struct create_fn
     template <class T>
     static void append_item(std::vector<node_t>& v, T&& value)
     {
-        std::ostringstream ss;
-        ss << value;
+        std::stringstream ss;
+        stream_t temp_stream{ ss };
+        formatter_t<remove_cvref_t<T>>{}.format(temp_stream, value);
         v.push_back(make_node<text_node_t>(ss.str()));
     }
 };
@@ -758,36 +833,89 @@ struct node_builder_fn
     }
 };
 
-struct styled_node_builder
+struct styled_node_builder_proxy_fn
 {
-    std::string m_style_name;
-
-    explicit styled_node_builder(std::string style_name) : m_style_name(std::move(style_name)) { }
-
-    template <class... Args>
-    auto operator()(Args&&... args) const -> node_t
+    struct node_builder_fn
     {
-        return make_node<styled_node_impl>(m_style_name, create(std::forward<Args>(args)...));
+        std::optional<style_info_t> m_style_info;
+
+        explicit node_builder_fn(std::optional<style_info_t> style_info) : m_style_info(std::move(style_info)) { }
+
+        template <class... Args>
+        auto operator()(Args&&... args) const -> node_t
+        {
+            return make_node<styled_node_impl>(m_style_info, create(std::forward<Args>(args)...));
+        }
+    };
+
+    auto operator()(std::optional<style_info_t> style_info) const -> node_builder_fn
+    {
+        return node_builder_fn{ std::move(style_info) };
     }
+
+    auto operator()(const std::string& style_name) const -> node_builder_fn
+    {
+        return node_builder_fn{ style_info_t::parse(style_name) };
+    }
+};
+
+struct list_node_builder_proxy_fn
+{
+    struct node_builder_fn
+    {
+        std::string m_list_style;
+
+        explicit node_builder_fn(std::string list_style) : m_list_style(std::move(list_style)) { }
+
+        template <class... Args>
+        auto operator()(Args&&... args) const -> node_t
+        {
+            return make_node<list_node_t>(m_list_style, create(std::forward<Args>(args)...));
+        }
+    };
+
+    auto operator()(std::string list_style) const -> node_builder_fn { return node_builder_fn{ std::move(list_style) }; }
 };
 
 }  // namespace detail
 
+constexpr auto styled = detail::styled_node_builder_proxy_fn{};
+constexpr auto list_item = detail::node_builder_fn<detail::list_item_node_t>{};
+
 constexpr auto indented = detail::node_builder_fn<detail::indented_node_t>{};
 constexpr auto line = detail::node_builder_fn<detail::line_node_t>{};
+constexpr auto list = detail::list_node_builder_proxy_fn{};
 
-template <class... Args>
-auto list(Args&&... args) -> node_t
+constexpr auto span = detail::node_builder_fn<detail::span_node_t>{};
+
+template <std::size_t N>
+struct formatter_t<char[N]>
 {
-    return detail::make_node<detail::list_node_t>("numbered", detail::create(std::forward<Args>(args)...));
-}
+    void format(stream_t& stream, const char* item) const { stream.write(item); }
+};
 
-constexpr auto list_item = detail::node_builder_fn<detail::list_item_node_t>{};
-constexpr auto block = detail::node_builder_fn<detail::block_node_t>{};
-
-inline auto styled(std::string style_name) -> detail::styled_node_builder
+template <>
+struct formatter_t<std::string>
 {
-    return detail::styled_node_builder{ std::move(style_name) };
+    void format(stream_t& stream, const std::string& item) const { stream.write(item); }
+};
+
+template <>
+struct formatter_t<std::string_view>
+{
+    void format(stream_t& stream, std::string_view item) const { stream.write(item); }
+};
+
+template <>
+struct formatter_t<int>
+{
+    void format(stream_t& stream, int value) const { stream << std::to_string(value); }
+};
+
+template <class T>
+stream_t& operator<<(stream_t& stream, const T& value)
+{
+    return stream << span(value);
 }
 
 }  // namespace ansi
