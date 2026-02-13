@@ -107,6 +107,21 @@ TEST(ansi, stream)
     EXPECT_THAT(ss.str(), testing::Eq("Hello world!42.\x1B[38;5;1mThis is red text 42\x1B[0m Normal text."));
 }
 
+std::vector<std::string> split_lines(const std::string& text)
+{
+    std::vector<std::string> lines;
+    std::stringstream ss(text);
+    std::string line;
+    while (std::getline(ss, line))
+    {
+        lines.push_back(line);
+    }
+    return lines;
+}
+
+constexpr auto WhenLinesSplit
+    = [](auto&& matcher) { return testing::ResultOf("split lines", split_lines, std::forward<decltype(matcher)>(matcher)); };
+
 TEST(ansi, stream_list)
 {
     std::stringstream ss;
@@ -116,5 +131,35 @@ TEST(ansi, stream_list)
         zx::ansi::list_item("Second item"),  //
         zx::ansi::list_item("Third item"));
 
-    EXPECT_THAT(ss.str(), testing::Eq("1. First item\n2. Second item\n3. Third item"));
+    EXPECT_THAT(
+        ss.str(),
+        WhenLinesSplit(testing::ElementsAre(
+            "1. First item",   //
+            "2. Second item",  //
+            "3. Third item")));
+}
+
+TEST(ansi, stream_nested_list)
+{
+    std::stringstream ss;
+    zx::ansi::stream_t stream{ ss };
+    stream << zx::ansi::list("numbered")(
+        zx::ansi::list_item(
+            zx::ansi::line("First item"),
+            zx::ansi::list("bulleted")(
+                zx::ansi::list_item("uno"),  //
+                zx::ansi::list_item("dos"),  //
+                zx::ansi::list_item("tres"))),
+        zx::ansi::list_item("Second item"),  //
+        zx::ansi::list_item("Third item"));
+
+    EXPECT_THAT(
+        ss.str(),
+        WhenLinesSplit(testing::ElementsAre(
+            "1. First item",   //
+            "   - uno",        //
+            "   - dos",        //
+            "   - tres",       //
+            "2. Second item",  //
+            "3. Third item")));
 }
