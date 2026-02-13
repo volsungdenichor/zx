@@ -707,6 +707,18 @@ struct list_node_t : node_base_t<list_node_t>
         }
     }
 
+    void handle_separator(stream_t& is) const
+    {
+        if (m_list_style == "numbered" || m_list_style == "bulleted")
+        {
+            is.newline();
+        }
+        else
+        {
+            is.write(" ");
+        }
+    }
+
     std::string prefix(std::size_t index) const
     {
         if (m_list_style == "numbered")
@@ -729,13 +741,41 @@ struct list_node_t : node_base_t<list_node_t>
         {
             if (i != 0)
             {
-                is.newline();
+                handle_separator(is);
             }
             std::string prefix = this->prefix(i);
             is.write(prefix);
             is.tab(prefix.length());
             m_children[i].render(is);
             is.untab();
+        }
+    }
+};
+
+struct delimited_list_node_t : node_base_t<delimited_list_node_t>
+{
+    std::string m_separator;
+    std::vector<node_t> m_children;
+
+    delimited_list_node_t(std::string separator, std::vector<node_t> children)
+        : m_separator(std::move(separator))
+        , m_children(std::move(children))
+    {
+        if (!std::all_of(m_children.begin(), m_children.end(), std::mem_fn(&node_t::is_list_item)))
+        {
+            throw std::invalid_argument{ "All children of a delimited list must be list items" };
+        }
+    }
+
+    void render(stream_t& is) const override
+    {
+        for (std::size_t i = 0; i < m_children.size(); ++i)
+        {
+            if (i != 0)
+            {
+                is.write(m_separator);
+            }
+            m_children[i].render(is);
         }
     }
 };
@@ -887,6 +927,17 @@ constexpr auto line = detail::node_builder_fn<detail::line_node_t>{};
 constexpr auto list = detail::list_node_builder_proxy_fn{};
 
 constexpr auto span = detail::node_builder_fn<detail::span_node_t>{};
+
+template <class Range, class Func>
+auto map(const Range& range, Func&& func) -> std::vector<node_t>
+{
+    std::vector<node_t> nodes;
+    for (const auto& item : range)
+    {
+        nodes.push_back(list_item(std::invoke(func, item)));
+    }
+    return nodes;
+}
 
 template <std::size_t N>
 struct formatter_t<char[N]>

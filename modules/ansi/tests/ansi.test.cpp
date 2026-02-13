@@ -163,3 +163,13 @@ TEST(ansi, stream_nested_list)
             "2. Second item",  //
             "3. Third item")));
 }
+
+TEST(ansi, map)
+{
+    std::vector<int> numbers = { 1, 2, 3 };
+    std::stringstream ss;
+    zx::ansi::stream_t stream{ ss };
+    stream << zx::ansi::list("")(
+        zx::ansi::map(numbers, [](int n) -> zx::ansi::node_t { return zx::ansi::span("[", n, "]"); }));
+    EXPECT_THAT(ss.str(), testing::Eq("[1] [2] [3]"));
+}
