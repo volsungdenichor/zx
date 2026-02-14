@@ -826,25 +826,13 @@ struct list_node_t : node_base_t<list_node_t>
 
     void handle_separator(stream_t& is) const
     {
-        if (const auto maybe_numeric = std::get_if<list_style_t::numeric_t>(&m_list_style.m_value))
-        {
-            is.newline();
-        }
-        else if (const auto maybe_bulleted = std::get_if<list_style_t::bulleted_t>(&m_list_style.m_value))
-        {
-            is.newline();
-        }
-        else if (const auto maybe_lower_alpha = std::get_if<list_style_t::lower_alpha_t>(&m_list_style.m_value))
-        {
-            is.newline();
-        }
-        else if (const auto maybe_upper_alpha = std::get_if<list_style_t::upper_alpha_t>(&m_list_style.m_value))
-        {
-            is.newline();
-        }
-        else if (const auto maybe_inline = std::get_if<list_style_t::inline_t>(&m_list_style.m_value))
+        if (const auto maybe_inline = std::get_if<list_style_t::inline_t>(&m_list_style.m_value))
         {
             is.write(maybe_inline->delimiter);
+        }
+        else
+        {
+            is.newline();
         }
     }
 
