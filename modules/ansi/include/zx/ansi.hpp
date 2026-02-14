@@ -430,6 +430,65 @@ inline escape_sequence_t make_ansi_code(const style_info_t& info)
     return code;
 }
 
+struct list_style_t
+{
+    struct numeric_t
+    {
+        std::size_t start_value = 0;
+    };
+
+    struct lower_alpha_t
+    {
+        std::size_t start_value = 0;
+    };
+
+    struct upper_alpha_t
+    {
+        std::size_t start_value = 0;
+    };
+
+    struct bulleted_t
+    {
+        std::string bullet = "-";
+    };
+
+    struct inline_t
+    {
+        std::string delimiter = " ";
+    };
+
+    using value_type = std::variant<inline_t, numeric_t, lower_alpha_t, upper_alpha_t, bulleted_t>;
+
+    value_type m_value;
+
+    list_style_t(value_type value = numeric_t{ 0 }) : m_value(std::move(value)) { }
+
+    static list_style_t parse(const std::string& text)
+    {
+        if (text == "numbered")
+        {
+            return { numeric_t{ 1 } };
+        }
+        else if (text == "bulleted")
+        {
+            return { bulleted_t{ "-" } };
+        }
+        else if (text.find("bullet:") == 0)
+        {
+            return { bulleted_t{ text.substr(7) } };
+        }
+        else if (text.find("delimiter:") == 0)
+        {
+            return { inline_t{ text.substr(10) } };
+        }
+        else
+        {
+            return { inline_t{ " " } };
+        }
+        return { inline_t{ "  " } };
+    }
+};
+
 struct stream_t
 {
     struct state_t
@@ -694,10 +753,10 @@ struct list_item_node_t : node_base_t<list_item_node_t, true>
 
 struct list_node_t : node_base_t<list_node_t>
 {
-    std::string m_list_style;
+    list_style_t m_list_style;
     std::vector<node_t> m_children;
 
-    explicit list_node_t(std::string list_style, std::vector<node_t> children)
+    explicit list_node_t(list_style_t list_style, std::vector<node_t> children)
         : m_list_style(std::move(list_style))
         , m_children(std::move(children))
     {
@@ -707,32 +766,56 @@ struct list_node_t : node_base_t<list_node_t>
         }
     }
 
+    explicit list_node_t(std::string list_style, std::vector<node_t> children)
+        : list_node_t(list_style_t::parse(list_style), std::move(children))
+    {
+    }
+
     void handle_separator(stream_t& is) const
     {
-        if (m_list_style == "numbered" || m_list_style == "bulleted")
+        if (const auto maybe_numeric = std::get_if<list_style_t::numeric_t>(&m_list_style.m_value))
         {
             is.newline();
         }
-        else
+        else if (const auto maybe_bulleted = std::get_if<list_style_t::bulleted_t>(&m_list_style.m_value))
         {
-            is.write(" ");
+            is.newline();
+        }
+        else if (const auto maybe_lower_alpha = std::get_if<list_style_t::lower_alpha_t>(&m_list_style.m_value))
+        {
+            is.newline();
+        }
+        else if (const auto maybe_upper_alpha = std::get_if<list_style_t::upper_alpha_t>(&m_list_style.m_value))
+        {
+            is.newline();
+        }
+        else if (const auto maybe_inline = std::get_if<list_style_t::inline_t>(&m_list_style.m_value))
+        {
+            is.write(maybe_inline->delimiter);
         }
     }
 
-    std::string prefix(std::size_t index) const
+    std::string handle_prefix(std::size_t index, std::size_t) const
     {
-        if (m_list_style == "numbered")
+        if (const auto maybe_numeric = std::get_if<list_style_t::numeric_t>(&m_list_style.m_value))
         {
-            return std::to_string(index + 1) + ". ";
+            return std::to_string(maybe_numeric->start_value + index) + ". ";
         }
-        else if (m_list_style == "bulleted")
+        else if (const auto maybe_lower_alpha = std::get_if<list_style_t::lower_alpha_t>(&m_list_style.m_value))
         {
-            return "- ";
+            const char prefix_char = static_cast<char>('a' + maybe_lower_alpha->start_value + index);
+            return std::string(1, prefix_char) + ". ";
         }
-        else
+        else if (const auto maybe_upper_alpha = std::get_if<list_style_t::upper_alpha_t>(&m_list_style.m_value))
         {
-            return "";
+            const char prefix_char = static_cast<char>('A' + maybe_upper_alpha->start_value + index);
+            return std::string(1, prefix_char) + ". ";
         }
+        else if (const auto maybe_bulleted = std::get_if<list_style_t::bulleted_t>(&m_list_style.m_value))
+        {
+            return maybe_bulleted->bullet + " ";
+        }
+        return "";
     }
 
     void render(stream_t& is) const override
@@ -743,11 +826,17 @@ struct list_node_t : node_base_t<list_node_t>
             {
                 handle_separator(is);
             }
-            std::string prefix = this->prefix(i);
+            std::string prefix = handle_prefix(i, m_children.size());
             is.write(prefix);
-            is.tab(prefix.length());
+            if (!prefix.empty())
+            {
+                is.tab(prefix.length());
+            }
             m_children[i].render(is);
-            is.untab();
+            if (!prefix.empty())
+            {
+                is.untab();
+            }
         }
     }
 };
@@ -903,9 +992,9 @@ struct list_node_builder_proxy_fn
 {
     struct node_builder_fn
     {
-        std::string m_list_style;
+        list_style_t m_list_style;
 
-        explicit node_builder_fn(std::string list_style) : m_list_style(std::move(list_style)) { }
+        explicit node_builder_fn(list_style_t list_style) : m_list_style(std::move(list_style)) { }
 
         template <class... Args>
         auto operator()(Args&&... args) const -> node_t
@@ -914,7 +1003,12 @@ struct list_node_builder_proxy_fn
         }
     };
 
-    auto operator()(std::string list_style) const -> node_builder_fn { return node_builder_fn{ std::move(list_style) }; }
+    auto operator()(list_style_t list_style) const -> node_builder_fn { return node_builder_fn{ std::move(list_style) }; }
+
+    auto operator()(std::string list_style) const -> node_builder_fn
+    {
+        return node_builder_fn{ list_style_t::parse(list_style) };
+    }
 };
 
 }  // namespace detail
