@@ -126,7 +126,7 @@ TEST(ansi, stream_list)
 {
     std::stringstream ss;
     zx::ansi::stream_t stream{ ss };
-    stream << zx::ansi::list("numbered")(
+    stream << zx::ansi::list("number:1")(
         zx::ansi::list_item("First item"),   //
         zx::ansi::list_item("Second item"),  //
         zx::ansi::list_item("Third item"));
@@ -143,10 +143,10 @@ TEST(ansi, stream_nested_list)
 {
     std::stringstream ss;
     zx::ansi::stream_t stream{ ss };
-    stream << zx::ansi::list("numbered")(
+    stream << zx::ansi::list("number:1")(
         zx::ansi::list_item(
             zx::ansi::line("First item"),
-            zx::ansi::list("bulleted")(
+            zx::ansi::list("bullet:+")(
                 zx::ansi::list_item("uno"),  //
                 zx::ansi::list_item("dos"),  //
                 zx::ansi::list_item("tres"))),
@@ -157,9 +157,9 @@ TEST(ansi, stream_nested_list)
         ss.str(),
         WhenLinesSplit(testing::ElementsAre(
             "1. First item",   //
-            "   - uno",        //
-            "   - dos",        //
-            "   - tres",       //
+            "   + uno",        //
+            "   + dos",        //
+            "   + tres",       //
             "2. Second item",  //
             "3. Third item")));
 }

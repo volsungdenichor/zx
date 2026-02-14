@@ -7,6 +7,7 @@
 #include <numeric>
 #include <optional>
 #include <sstream>
+#include <tuple>
 #include <vector>
 
 namespace zx
@@ -28,6 +29,42 @@ struct str_fn
         return os.str();
     }
 } str{};
+
+namespace detail
+{
+inline std::optional<std::tuple<std::string_view, std::string_view>> read_key_value(std::string_view text)
+{
+    std::size_t colon_pos = text.find(':');
+    if (colon_pos == std::string::npos)
+    {
+        return {};
+    }
+    std::string_view key = text.substr(0, colon_pos);
+    std::string_view value = text.substr(colon_pos + 1);
+    if (key.empty() || value.empty())
+    {
+        return {};
+    }
+    return std::tuple{ key, value };
+}
+
+inline std::optional<int> parse_int(std::string_view text)
+{
+    try
+    {
+        std::size_t idx;
+        int value = std::stoi(std::string(text), &idx);
+        if (idx == text.size())
+        {
+            return value;
+        }
+    }
+    catch (...)
+    {
+    }
+    return {};
+}
+}  // namespace detail
 
 struct escape_sequence_t : public std::vector<int>
 {
@@ -362,18 +399,22 @@ struct style_info_t
         style_info_t info = {};
         while (std::getline(ss, token, ' '))
         {
-            if (token.find("fg:") == 0)
+            if (const auto maybe_key_value = detail::read_key_value(token))
             {
-                if (auto maybe_color = color_t::parse(token.substr(3)))
+                const auto& [key, value] = *maybe_key_value;
+                if (key == "fg")
                 {
-                    info.fg_color = *maybe_color;
+                    if (auto maybe_color = color_t::parse(std::string(value)))
+                    {
+                        info.fg_color = *maybe_color;
+                    }
                 }
-            }
-            else if (token.find("bg:") == 0)
-            {
-                if (auto maybe_color = color_t::parse(token.substr(3)))
+                else if (key == "bg")
                 {
-                    info.bg_color = *maybe_color;
+                    if (auto maybe_color = color_t::parse(std::string(value)))
+                    {
+                        info.bg_color = *maybe_color;
+                    }
                 }
             }
             else if (const auto maybe_font = font_t::parse(token))
@@ -429,7 +470,6 @@ inline escape_sequence_t make_ansi_code(const style_info_t& info)
     }
     return code;
 }
-
 struct list_style_t
 {
     struct numeric_t
@@ -463,29 +503,42 @@ struct list_style_t
 
     list_style_t(value_type value = numeric_t{ 0 }) : m_value(std::move(value)) { }
 
-    static list_style_t parse(const std::string& text)
+    static list_style_t parse(std::string_view text)
     {
-        if (text == "numbered")
+        if (const auto maybe_key_value = detail::read_key_value(text))
         {
-            return { numeric_t{ 1 } };
+            const auto [key, value] = *maybe_key_value;
+            if (key == "number")
+            {
+                if (auto maybe_start = detail::parse_int(value))
+                {
+                    return { numeric_t{ static_cast<std::size_t>(*maybe_start) } };
+                }
+            }
+            else if (key == "lower_alpha")
+            {
+                if (auto maybe_start = detail::parse_int(value))
+                {
+                    return { lower_alpha_t{ static_cast<std::size_t>(*maybe_start) } };
+                }
+            }
+            else if (key == "upper_alpha")
+            {
+                if (auto maybe_start = detail::parse_int(value))
+                {
+                    return { upper_alpha_t{ static_cast<std::size_t>(*maybe_start) } };
+                }
+            }
+            else if (key == "bullet")
+            {
+                return { bulleted_t{ std::string{ value } } };
+            }
+            else if (key == "delimiter")
+            {
+                return { inline_t{ std::string{ value } } };
+            }
         }
-        else if (text == "bulleted")
-        {
-            return { bulleted_t{ "-" } };
-        }
-        else if (text.find("bullet:") == 0)
-        {
-            return { bulleted_t{ text.substr(7) } };
-        }
-        else if (text.find("delimiter:") == 0)
-        {
-            return { inline_t{ text.substr(10) } };
-        }
-        else
-        {
-            return { inline_t{ " " } };
-        }
-        return { inline_t{ "  " } };
+        return { inline_t{ " " } };
     }
 };
 
