@@ -100,7 +100,7 @@ TEST(ansi, parse_style_info)
 TEST(ansi, stream)
 {
     std::stringstream ss;
-    zx::ansi::stream_t stream{ ss };
+    zx::ansi::stream_t stream{ std::make_unique<zx::ansi::ostream_stream_t>(ss) };
     stream << "Hello "
            << "world!" << 42 << "." << zx::ansi::styled("fg:red")("This is red text ", 42) << " Normal text.";
 
@@ -125,7 +125,7 @@ constexpr auto WhenLinesSplit
 TEST(ansi, stream_list)
 {
     std::stringstream ss;
-    zx::ansi::stream_t stream{ ss };
+    zx::ansi::stream_t stream{ std::make_unique<zx::ansi::ostream_stream_t>(ss) };
     stream << zx::ansi::list("number:1")(
         zx::ansi::list_item("First item"),   //
         zx::ansi::list_item("Second item"),  //
@@ -142,7 +142,7 @@ TEST(ansi, stream_list)
 TEST(ansi, stream_nested_list)
 {
     std::stringstream ss;
-    zx::ansi::stream_t stream{ ss };
+    zx::ansi::stream_t stream{ std::make_unique<zx::ansi::ostream_stream_t>(ss) };
     stream << zx::ansi::list("number:1")(
         zx::ansi::list_item(
             zx::ansi::line("First item"),
@@ -168,7 +168,7 @@ TEST(ansi, map)
 {
     std::vector<int> numbers = { 1, 2, 3 };
     std::stringstream ss;
-    zx::ansi::stream_t stream{ ss };
+    zx::ansi::stream_t stream{ std::make_unique<zx::ansi::ostream_stream_t>(ss) };
     stream << zx::ansi::list("")(
         zx::ansi::map(numbers, [](int n) -> zx::ansi::node_t { return zx::ansi::span("[", n, "]"); }));
     EXPECT_THAT(ss.str(), testing::Eq("[1] [2] [3]"));

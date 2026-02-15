@@ -544,6 +544,67 @@ struct list_style_t
 
 struct stream_t
 {
+    struct impl_t
+    {
+        virtual ~impl_t() = default;
+        virtual void write(std::string_view text) = 0;
+        virtual void write_ansi(const escape_sequence_t& ansi_code) = 0;
+        virtual void newline() = 0;
+        virtual void indent(std::size_t spaces) = 0;
+        virtual void unindent() = 0;
+        virtual void tab(std::size_t spaces) = 0;
+        virtual void untab() = 0;
+    };
+
+    std::unique_ptr<impl_t> m_impl;
+
+    explicit stream_t(std::unique_ptr<impl_t> impl) : m_impl(std::move(impl)) { }
+
+    stream_t& write(std::string_view text)
+    {
+        m_impl->write(text);
+        return *this;
+    }
+
+    stream_t& write_ansi(const escape_sequence_t& ansi_code)
+    {
+        m_impl->write_ansi(ansi_code);
+        return *this;
+    }
+
+    stream_t& newline()
+    {
+        m_impl->newline();
+        return *this;
+    }
+
+    stream_t& indent(std::size_t spaces = 2)
+    {
+        m_impl->indent(spaces);
+        return *this;
+    }
+
+    stream_t& unindent()
+    {
+        m_impl->unindent();
+        return *this;
+    }
+
+    stream_t& tab(std::size_t spaces)
+    {
+        m_impl->tab(spaces);
+        return *this;
+    }
+
+    stream_t& untab()
+    {
+        m_impl->untab();
+        return *this;
+    }
+};
+
+struct ostream_stream_t : public stream_t::impl_t
+{
     struct state_t
     {
         bool at_line_start = true;
@@ -556,24 +617,7 @@ struct stream_t
     std::vector<std::size_t> m_tab_offsets = { 0 };
     state_t m_state = {};
 
-    explicit stream_t(std::ostream& output) : m_os{ output } { }
-
-    void write_indent(const state_t& current_state) const
-    {
-        m_os << std::string(current_state.current_line_indent + m_tab_offsets.back(), ' ');
-    }
-
-    state_t handle_newline(state_t current_state) const
-    {
-        if (current_state.should_add_newline)
-        {
-            m_os << '\n';
-            current_state.at_line_start = true;
-            current_state.should_add_newline = false;
-            current_state.current_line_indent = m_indent_levels.back();
-        }
-        return current_state;
-    }
+    explicit ostream_stream_t(std::ostream& os) : m_os(os) { }
 
     state_t write_char(char ch, state_t current_state) const
     {
@@ -596,17 +640,16 @@ struct stream_t
         return current_state;
     }
 
-    stream_t& write(std::string_view text)
+    void write(std::string_view text) override
     {
         m_state = std::accumulate(
             text.begin(),
             text.end(),
             m_state,
             [this](state_t current_state, char ch) { return write_char(ch, current_state); });
-        return *this;
     }
 
-    stream_t& write_ansi(const escape_sequence_t& ansi_code)
+    void write_ansi(const escape_sequence_t& ansi_code) override
     {
         m_state = handle_newline(m_state);
 
@@ -616,39 +659,33 @@ struct stream_t
             write_indent(m_state);
             m_state.at_line_start = false;
         }
-
         m_os << ansi_code;
-        return *this;
     }
 
-    stream_t& newline()
-    {
-        m_state.should_add_newline = true;
-        return *this;
-    }
-
-    stream_t& indent(std::size_t spaces_per_level = 2)
+    void newline() override { m_state.should_add_newline = true; }
+    void indent(std::size_t spaces_per_level) override
     {
         m_indent_levels.push_back(m_indent_levels.back() + spaces_per_level);
-        return *this;
+    }
+    void unindent() override { m_indent_levels.pop_back(); }
+    void tab(std::size_t spaces) override { m_tab_offsets.push_back(m_tab_offsets.back() + spaces); }
+    void untab() override { m_tab_offsets.pop_back(); }
+
+    void write_indent(const state_t& current_state) const
+    {
+        m_os << std::string(current_state.current_line_indent + m_tab_offsets.back(), ' ');
     }
 
-    stream_t& unindent()
+    state_t handle_newline(state_t current_state) const
     {
-        m_indent_levels.pop_back();
-        return *this;
-    }
-
-    stream_t& tab(std::size_t spaces)
-    {
-        m_tab_offsets.push_back(m_tab_offsets.back() + spaces);
-        return *this;
-    }
-
-    stream_t& untab()
-    {
-        m_tab_offsets.pop_back();
-        return *this;
+        if (current_state.should_add_newline)
+        {
+            m_os << '\n';
+            current_state.at_line_start = true;
+            current_state.should_add_newline = false;
+            current_state.current_line_indent = m_indent_levels.back();
+        }
+        return current_state;
     }
 };
 
@@ -697,7 +734,7 @@ struct node_t
 
     friend std::ostream& operator<<(std::ostream& os, const node_t& node)
     {
-        stream_t stream(os);
+        stream_t stream{ std::make_unique<ostream_stream_t>(os) };
         node.render(stream);
         return os;
     }
@@ -985,7 +1022,7 @@ struct create_fn
     static void append_item(std::vector<node_t>& v, T&& value)
     {
         std::stringstream ss;
-        stream_t temp_stream{ ss };
+        stream_t temp_stream{ std::make_unique<ostream_stream_t>(ss) };
         formatter_t<remove_cvref_t<T>>{}.format(temp_stream, value);
         v.push_back(make_node<text_node_t>(ss.str()));
     }
