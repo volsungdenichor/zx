@@ -700,6 +700,11 @@ struct ostream_stream_t : public stream_t::impl_t
     }
 };
 
+inline stream_t make_stream(std::ostream& os)
+{
+    return stream_t{ std::make_unique<ostream_stream_t>(os) };
+}
+
 struct node_t
 {
     struct impl_t
@@ -745,14 +750,16 @@ struct node_t
 
     friend std::ostream& operator<<(std::ostream& os, const node_t& node)
     {
-        stream_t stream{ std::make_unique<ostream_stream_t>(os) };
+        stream_t stream = make_stream(os);
         node.render(stream);
         return os;
     }
 };
 
-template <class T>
+template <class T, class = void>
 struct formatter_t;
+
+using format_specifier_t = std::string_view;
 
 template <class T>
 stream_t& operator<<(stream_t& stream, const T& value);
@@ -996,8 +1003,8 @@ template <class Func>
 std::string format_as_string(Func&& func)
 {
     std::stringstream ss;
-    stream_t temp_stream{ std::make_unique<ostream_stream_t>(ss) };
-    std::invoke(std::forward<Func>(func), temp_stream);
+    stream_t stream = make_stream(ss);
+    std::invoke(std::forward<Func>(func), stream);
     return ss.str();
 }
 
@@ -1107,15 +1114,25 @@ struct list_node_builder_proxy_fn
     }
 };
 
+template <class T>
+stream_t& write_formatted(stream_t& stream, format_specifier_t format_specifier, T&& value)
+{
+    formatter_t<remove_cvref_t<T>> formatter{};
+    formatter.parse(format_specifier);
+    formatter.format(stream, value);
+    return stream;
+}
+
 struct arg_ref_t
 {
-    using arg_printer_t = void (*)(stream_t&, const void*);
+    using arg_printer_t = void (*)(stream_t&, format_specifier_t, const void*);
     arg_printer_t m_printer;
     const void* m_ptr;
 
     template <class T>
     explicit arg_ref_t(const T& item)
-        : m_printer{ [](stream_t& stream, const void* ptr) { stream << *static_cast<const T*>(ptr); } }
+        : m_printer{ [](stream_t& stream, format_specifier_t format_specifier, const void* ptr)
+                     { write_formatted(stream, format_specifier, *static_cast<const T*>(ptr)); } }
         , m_ptr{ std::addressof(item) }
     {
     }
@@ -1123,7 +1140,7 @@ struct arg_ref_t
     arg_ref_t(const arg_ref_t&) = default;
     arg_ref_t(arg_ref_t&&) = default;
 
-    void print(stream_t& stream) const { m_printer(stream, m_ptr); }
+    void print(stream_t& stream, format_specifier_t format_specifier) const { m_printer(stream, format_specifier, m_ptr); }
 };
 
 template <class... Args>
@@ -1171,7 +1188,7 @@ private:
     struct print_argument_t
     {
         std::size_t index;
-        std::string_view format_specifier;
+        format_specifier_t format_specifier;
     };
 
     using print_action_t = std::variant<print_text_t, print_argument_t>;
@@ -1189,7 +1206,8 @@ private:
                 throw format_error{ str(
                     "argument index ", arg.index, " out of range (actual argument count ", m_arguments.size(), ")") };
             }
-            m_arguments[arg.index].print(m_stream);
+            const auto& argument = m_arguments[arg.index];
+            argument.print(m_stream, arg.format_specifier);
         }
     };
 
@@ -1248,8 +1266,8 @@ private:
                 }
                 result.push_back(print_text_t{ make_string_view(begin, bracket) });
 
-                const auto [actual_index, fmt_specifer] = std::invoke(
-                    [](std::string_view arg, int current_index) -> std::tuple<std::size_t, std::string_view>
+                const auto [actual_index, format_specifier] = std::invoke(
+                    [](std::string_view arg, int current_index) -> std::tuple<std::size_t, format_specifier_t>
                     {
                         const auto colon = std::find_if(std::begin(arg), std::end(arg), is_colon);
                         const auto index_part = make_string_view(std::begin(arg), colon);
@@ -1259,7 +1277,7 @@ private:
                     },
                     make_string_view(bracket + 1, closing_bracket),
                     arg_index);
-                result.push_back(print_argument_t{ actual_index, fmt_specifer });
+                result.push_back(print_argument_t{ actual_index, format_specifier });
                 fmt = make_string_view(closing_bracket + 1, end);
                 ++arg_index;
             }
@@ -1281,6 +1299,8 @@ struct format_fn
             return make_node<text_node_t>(
                 format_as_string([&](stream_t& stream) { m_format_string.format(stream, wrapped_args); }));
         }
+
+        friend std::ostream& operator<<(std::ostream& os, const proxy_t& item) { return os << item.m_format_string; }
     };
 
     auto operator()(std::string_view fmt) const { return proxy_t{ format_string_t{ fmt } }; }
@@ -1312,24 +1332,28 @@ auto map(const Range& range, Func&& func) -> std::vector<node_t>
 template <std::size_t N>
 struct formatter_t<char[N]>
 {
-    void format(stream_t& stream, const char* item) const { stream.write(item); }
+    void parse(format_specifier_t) { }
+    void format(stream_t& stream, const char* item) const { stream.write(std::string_view{ item }); }
 };
 
 template <>
 struct formatter_t<std::string>
 {
+    void parse(format_specifier_t) { }
     void format(stream_t& stream, const std::string& item) const { stream.write(item); }
 };
 
 template <>
 struct formatter_t<std::string_view>
 {
+    void parse(format_specifier_t) { }
     void format(stream_t& stream, std::string_view item) const { stream.write(item); }
 };
 
 template <>
 struct formatter_t<int>
 {
+    void parse(format_specifier_t) { }
     void format(stream_t& stream, int value) const { stream << std::to_string(value); }
 };
 

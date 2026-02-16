@@ -2,6 +2,21 @@
 
 #include <zx/ansi.hpp>
 
+std::vector<std::string> split_lines(const std::string& text)
+{
+    std::vector<std::string> lines;
+    std::stringstream ss(text);
+    std::string line;
+    while (std::getline(ss, line))
+    {
+        lines.push_back(line);
+    }
+    return lines;
+}
+
+constexpr auto WhenLinesSplit
+    = [](auto&& matcher) { return testing::ResultOf("split lines", split_lines, std::forward<decltype(matcher)>(matcher)); };
+
 TEST(ansi, parse_color_names)
 {
     EXPECT_THAT(zx::ansi::color_t::parse("black"), testing::Optional(zx::ansi::color_t{ 0 }));
@@ -100,32 +115,17 @@ TEST(ansi, parse_style_info)
 TEST(ansi, stream)
 {
     std::stringstream ss;
-    zx::ansi::stream_t stream{ std::make_unique<zx::ansi::ostream_stream_t>(ss) };
+    zx::ansi::stream_t stream = zx::ansi::make_stream(ss);
     stream << "Hello "
            << "world!" << 42 << "." << zx::ansi::styled("fg:red")("This is red text ", 42) << " Normal text.";
 
     EXPECT_THAT(ss.str(), testing::Eq("Hello world!42.\x1B[38;5;1mThis is red text 42\x1B[0m Normal text."));
 }
 
-std::vector<std::string> split_lines(const std::string& text)
-{
-    std::vector<std::string> lines;
-    std::stringstream ss(text);
-    std::string line;
-    while (std::getline(ss, line))
-    {
-        lines.push_back(line);
-    }
-    return lines;
-}
-
-constexpr auto WhenLinesSplit
-    = [](auto&& matcher) { return testing::ResultOf("split lines", split_lines, std::forward<decltype(matcher)>(matcher)); };
-
 TEST(ansi, stream_list)
 {
     std::stringstream ss;
-    zx::ansi::stream_t stream{ std::make_unique<zx::ansi::ostream_stream_t>(ss) };
+    zx::ansi::stream_t stream = zx::ansi::make_stream(ss);
     stream << zx::ansi::list("number:1")(
         zx::ansi::list_item("First item"),   //
         zx::ansi::list_item("Second item"),  //
@@ -142,7 +142,7 @@ TEST(ansi, stream_list)
 TEST(ansi, stream_nested_list)
 {
     std::stringstream ss;
-    zx::ansi::stream_t stream{ std::make_unique<zx::ansi::ostream_stream_t>(ss) };
+    zx::ansi::stream_t stream = zx::ansi::make_stream(ss);
     stream << zx::ansi::list("number:1")(
         zx::ansi::list_item(
             zx::ansi::line("First item"),
@@ -168,7 +168,7 @@ TEST(ansi, map)
 {
     std::vector<int> numbers = { 1, 2, 3 };
     std::stringstream ss;
-    zx::ansi::stream_t stream{ std::make_unique<zx::ansi::ostream_stream_t>(ss) };
+    zx::ansi::stream_t stream = zx::ansi::make_stream(ss);
     stream << zx::ansi::list("")(
         zx::ansi::map(numbers, [](int n) -> zx::ansi::node_t { return zx::ansi::span("[", n, "]"); }));
     EXPECT_THAT(ss.str(), testing::Eq("[1] [2] [3]"));
@@ -177,7 +177,7 @@ TEST(ansi, map)
 TEST(ansi, text_formatting)
 {
     std::stringstream ss;
-    zx::ansi::stream_t stream{ std::make_unique<zx::ansi::ostream_stream_t>(ss) };
+    zx::ansi::stream_t stream = zx::ansi::make_stream(ss);
     stream << zx::ansi::format("{1}, {0}!")("world", "Hello");
     EXPECT_THAT(ss.str(), testing::Eq("Hello, world!"));
 }
