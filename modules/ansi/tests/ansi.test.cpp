@@ -178,6 +178,6 @@ TEST(ansi, text_formatting)
 {
     std::stringstream ss;
     zx::ansi::stream_t stream{ std::make_unique<zx::ansi::ostream_stream_t>(ss) };
-    stream << zx::ansi::text("{1}, {0}!")("world", "Hello");
+    stream << zx::ansi::format("{1}, {0}!")("world", "Hello");
     EXPECT_THAT(ss.str(), testing::Eq("Hello, world!"));
 }

@@ -1268,7 +1268,7 @@ private:
     }
 };
 
-struct text_fn
+struct format_fn
 {
     struct proxy_t
     {
@@ -1296,7 +1296,7 @@ constexpr auto line = detail::node_builder_fn<detail::line_node_t>{};
 constexpr auto list = detail::list_node_builder_proxy_fn{};
 
 constexpr auto span = detail::node_builder_fn<detail::span_node_t>{};
-constexpr auto text = detail::text_fn{};
+constexpr auto format = detail::format_fn{};
 
 template <class Range, class Func>
 auto map(const Range& range, Func&& func) -> std::vector<node_t>
