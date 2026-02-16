@@ -173,3 +173,11 @@ TEST(ansi, map)
         zx::ansi::map(numbers, [](int n) -> zx::ansi::node_t { return zx::ansi::span("[", n, "]"); }));
     EXPECT_THAT(ss.str(), testing::Eq("[1] [2] [3]"));
 }
+
+TEST(ansi, text_formatting)
+{
+    std::stringstream ss;
+    zx::ansi::stream_t stream{ std::make_unique<zx::ansi::ostream_stream_t>(ss) };
+    stream << zx::ansi::text("{1}, {0}!")("world", "Hello");
+    EXPECT_THAT(ss.str(), testing::Eq("Hello, world!"));
+}

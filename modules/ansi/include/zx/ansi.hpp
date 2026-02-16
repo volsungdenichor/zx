@@ -32,6 +32,7 @@ struct str_fn
 
 namespace detail
 {
+
 inline std::optional<std::tuple<std::string_view, std::string_view>> read_key_value(std::string_view text)
 {
     std::size_t colon_pos = text.find(':');
@@ -50,20 +51,30 @@ inline std::optional<std::tuple<std::string_view, std::string_view>> read_key_va
 
 inline std::optional<int> parse_int(std::string_view text)
 {
-    try
+    if (text.empty())
     {
-        std::size_t idx;
-        int value = std::stoi(std::string(text), &idx);
-        if (idx == text.size())
+        return {};
+    }
+    int result = 0;
+    for (char c : text)
+    {
+        if (!('0' <= c && c <= '9'))
         {
-            return value;
+            return {};
         }
+        result = result * 10 + (c - '0');
     }
-    catch (...)
-    {
-    }
-    return {};
+    return result;
 }
+
+inline std::string_view make_string_view(std::string_view::iterator b, std::string_view::iterator e)
+{
+    if (b < e)
+        return { std::addressof(*b), std::string_view::size_type(e - b) };
+    else
+        return {};
+}
+
 }  // namespace detail
 
 struct escape_sequence_t : public std::vector<int>
@@ -981,6 +992,15 @@ node_t make_node(Args&&... args)
     return node_t{ std::make_unique<Impl>(std::forward<Args>(args)...) };
 }
 
+template <class Func>
+std::string format_as_string(Func&& func)
+{
+    std::stringstream ss;
+    stream_t temp_stream{ std::make_unique<ostream_stream_t>(ss) };
+    std::invoke(std::forward<Func>(func), temp_stream);
+    return ss.str();
+}
+
 struct create_fn
 {
     template <class... Args>
@@ -1021,10 +1041,8 @@ struct create_fn
     template <class T>
     static void append_item(std::vector<node_t>& v, T&& value)
     {
-        std::stringstream ss;
-        stream_t temp_stream{ std::make_unique<ostream_stream_t>(ss) };
-        formatter_t<remove_cvref_t<T>>{}.format(temp_stream, value);
-        v.push_back(make_node<text_node_t>(ss.str()));
+        v.push_back(make_node<text_node_t>(
+            format_as_string([&](stream_t& stream) { formatter_t<remove_cvref_t<T>>{}.format(stream, value); })));
     }
 };
 
@@ -1089,6 +1107,185 @@ struct list_node_builder_proxy_fn
     }
 };
 
+struct arg_ref_t
+{
+    using arg_printer_t = void (*)(stream_t&, const void*);
+    arg_printer_t m_printer;
+    const void* m_ptr;
+
+    template <class T>
+    explicit arg_ref_t(const T& item)
+        : m_printer{ [](stream_t& stream, const void* ptr) { stream << *static_cast<const T*>(ptr); } }
+        , m_ptr{ std::addressof(item) }
+    {
+    }
+
+    arg_ref_t(const arg_ref_t&) = default;
+    arg_ref_t(arg_ref_t&&) = default;
+
+    void print(stream_t& stream) const { m_printer(stream, m_ptr); }
+};
+
+template <class... Args>
+auto wrap_args(const Args&... args) -> std::vector<arg_ref_t>
+{
+    std::vector<arg_ref_t> result;
+    result.reserve(sizeof...(args));
+    (result.push_back(arg_ref_t{ args }), ...);
+    return result;
+}
+
+struct format_error : std::runtime_error
+{
+    using std::runtime_error::runtime_error;
+};
+
+class format_string_t
+{
+public:
+    explicit format_string_t(std::string_view fmt) : m_actions{ parse(fmt) } { }
+
+    void format(stream_t& stream, const std::vector<arg_ref_t>& arguments) const
+    {
+        for (const auto& action : m_actions)
+        {
+            std::visit(format_visitor_t{ stream, arguments }, action);
+        }
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const format_string_t& item)
+    {
+        for (const auto& action : item.m_actions)
+        {
+            std::visit(print_visitor_t{ os }, action);
+        }
+        return os;
+    }
+
+private:
+    struct print_text_t
+    {
+        std::string_view text;
+    };
+
+    struct print_argument_t
+    {
+        std::size_t index;
+        std::string_view format_specifier;
+    };
+
+    using print_action_t = std::variant<print_text_t, print_argument_t>;
+
+    struct format_visitor_t
+    {
+        stream_t& m_stream;
+        const std::vector<arg_ref_t>& m_arguments;
+
+        void operator()(const print_text_t& arg) const { m_stream.write(arg.text); }
+        void operator()(const print_argument_t& arg) const
+        {
+            if (arg.index >= m_arguments.size())
+            {
+                throw format_error{ str(
+                    "argument index ", arg.index, " out of range (actual argument count ", m_arguments.size(), ")") };
+            }
+            m_arguments[arg.index].print(m_stream);
+        }
+    };
+
+    struct print_visitor_t
+    {
+        std::ostream& m_os;
+
+        void operator()(const print_text_t& arg) const { m_os << arg.text; }
+
+        void operator()(const print_argument_t& arg) const
+        {
+            if (arg.format_specifier.empty())
+            {
+                m_os << "{" << arg.index << "}";
+            }
+            else
+            {
+                m_os << "{" << arg.index << ":" << arg.format_specifier << "}";
+            }
+        }
+    };
+
+private:
+    std::vector<print_action_t> m_actions;
+
+    static auto parse(std::string_view fmt) -> std::vector<print_action_t>
+    {
+        static constexpr auto is_opening_bracket = [](char c) { return c == '{'; };
+        static constexpr auto is_closing_bracket = [](char c) { return c == '}'; };
+        static constexpr auto is_bracket = [](char c) { return is_opening_bracket(c) || is_closing_bracket(c); };
+        static constexpr auto is_colon = [](char c) { return c == ':'; };
+
+        std::vector<print_action_t> result = {};
+        int arg_index = 0;
+        while (!fmt.empty())
+        {
+            const auto begin = std::begin(fmt);
+            const auto end = std::end(fmt);
+            const auto bracket = std::find_if(begin, end, is_bracket);
+            if (bracket == end)
+            {
+                result.push_back(print_text_t{ fmt });
+                fmt = make_string_view(bracket, end);
+            }
+            else if (bracket[0] == bracket[1])
+            {
+                result.push_back(print_text_t{ make_string_view(begin, bracket + 1) });
+                fmt = make_string_view(bracket + 2, end);
+            }
+            else if (is_opening_bracket(bracket[0]))
+            {
+                const auto closing_bracket = std::find_if(bracket + 1, end, is_closing_bracket);
+                if (closing_bracket == end)
+                {
+                    throw format_error{ "unclosed bracket" };
+                }
+                result.push_back(print_text_t{ make_string_view(begin, bracket) });
+
+                const auto [actual_index, fmt_specifer] = std::invoke(
+                    [](std::string_view arg, int current_index) -> std::tuple<std::size_t, std::string_view>
+                    {
+                        const auto colon = std::find_if(std::begin(arg), std::end(arg), is_colon);
+                        const auto index_part = make_string_view(std::begin(arg), colon);
+                        const auto fmt_part = make_string_view(colon != std::end(arg) ? colon + 1 : colon, std::end(arg));
+                        const auto index = !index_part.empty() ? parse_int(index_part).value() : current_index;
+                        return { index, fmt_part };
+                    },
+                    make_string_view(bracket + 1, closing_bracket),
+                    arg_index);
+                result.push_back(print_argument_t{ actual_index, fmt_specifer });
+                fmt = make_string_view(closing_bracket + 1, end);
+                ++arg_index;
+            }
+        }
+        return result;
+    }
+};
+
+struct text_fn
+{
+    struct proxy_t
+    {
+        format_string_t m_format_string;
+
+        template <class... Args>
+        auto operator()(Args&&... args) const -> node_t
+        {
+            const auto wrapped_args = wrap_args(std::forward<Args>(args)...);
+            return make_node<text_node_t>(
+                format_as_string([&](stream_t& stream) { m_format_string.format(stream, wrapped_args); }));
+        }
+    };
+
+    auto operator()(std::string_view fmt) const { return proxy_t{ format_string_t{ fmt } }; }
+};
+
 }  // namespace detail
 
 constexpr auto styled = detail::styled_node_builder_proxy_fn{};
@@ -1099,6 +1296,7 @@ constexpr auto line = detail::node_builder_fn<detail::line_node_t>{};
 constexpr auto list = detail::list_node_builder_proxy_fn{};
 
 constexpr auto span = detail::node_builder_fn<detail::span_node_t>{};
+constexpr auto text = detail::text_fn{};
 
 template <class Range, class Func>
 auto map(const Range& range, Func&& func) -> std::vector<node_t>
