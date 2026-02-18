@@ -103,11 +103,7 @@ struct escape_sequence_t : public std::vector<int>
         return lhs;
     }
 
-    friend escape_sequence_t operator+(escape_sequence_t lhs, const escape_sequence_t& rhs)
-    {
-        lhs += rhs;
-        return lhs;
-    }
+    friend escape_sequence_t operator+(escape_sequence_t lhs, const escape_sequence_t& rhs) { return lhs += rhs; }
 };
 
 struct color_t
@@ -559,7 +555,7 @@ struct stream_t
     {
         virtual ~impl_t() = default;
         virtual void write(std::string_view text) = 0;
-        virtual void write_ansi(const escape_sequence_t& ansi_code) = 0;
+        virtual void write_ansi(std::string_view ansi_code) = 0;
         virtual void newline() = 0;
         virtual void indent(std::size_t spaces) = 0;
         virtual void unindent() = 0;
@@ -577,7 +573,7 @@ struct stream_t
         return *this;
     }
 
-    stream_t& write_ansi(const escape_sequence_t& ansi_code)
+    stream_t& write_ansi(std::string_view ansi_code)
     {
         m_impl->write_ansi(ansi_code);
         return *this;
@@ -624,43 +620,28 @@ struct ostream_stream_t : public stream_t::impl_t
     };
 
     std::ostream& m_os;
+    std::string m_buffer = {};
     std::vector<std::size_t> m_indent_levels = { 0 };
     std::vector<std::size_t> m_tab_offsets = { 0 };
     state_t m_state = {};
+    std::size_t m_buffer_size_threshold = 1024;
 
     explicit ostream_stream_t(std::ostream& os) : m_os(os) { }
 
-    state_t write_char(char ch, state_t current_state) const
-    {
-        current_state = handle_newline(current_state);
-
-        if (current_state.at_line_start && ch != '\n')
-        {
-            current_state.current_line_indent = m_indent_levels.back();
-            write_indent(current_state);
-            current_state.at_line_start = false;
-        }
-
-        m_os.put(ch);
-        if (ch == '\n')
-        {
-            current_state.at_line_start = true;
-            current_state.current_line_indent = m_indent_levels.back();
-        }
-
-        return current_state;
-    }
+    ~ostream_stream_t() { flush(); }
 
     void write(std::string_view text) override
     {
+        reserve(text.size());
         m_state = std::accumulate(
             text.begin(),
             text.end(),
             m_state,
             [this](state_t current_state, char ch) { return write_char(ch, current_state); });
+        flush();
     }
 
-    void write_ansi(const escape_sequence_t& ansi_code) override
+    void write_ansi(std::string_view ansi_code) override
     {
         m_state = handle_newline(m_state);
 
@@ -670,34 +651,85 @@ struct ostream_stream_t : public stream_t::impl_t
             write_indent(m_state);
             m_state.at_line_start = false;
         }
-        m_os << ansi_code;
+        append(ansi_code);
     }
 
     void newline() override { m_state.should_add_newline = true; }
+
     void indent(std::size_t spaces_per_level) override
     {
         m_indent_levels.push_back(m_indent_levels.back() + spaces_per_level);
     }
+
     void unindent() override { m_indent_levels.pop_back(); }
     void tab(std::size_t spaces) override { m_tab_offsets.push_back(m_tab_offsets.back() + spaces); }
     void untab() override { m_tab_offsets.pop_back(); }
 
-    void write_indent(const state_t& current_state) const
+    void append(char ch)
     {
-        m_os << std::string(current_state.current_line_indent + m_tab_offsets.back(), ' ');
+        m_buffer.push_back(ch);
+        try_flush();
     }
 
-    state_t handle_newline(state_t current_state) const
+    void append(std::string_view text)
+    {
+        m_buffer.append(text);
+        try_flush();
+    }
+
+    void try_flush()
+    {
+        if (m_buffer.size() >= m_buffer_size_threshold)
+        {
+            flush();
+        }
+    }
+
+    state_t write_char(char ch, state_t current_state)
+    {
+        current_state = handle_newline(current_state);
+
+        if (current_state.at_line_start && ch != '\n')
+        {
+            current_state.current_line_indent = m_indent_levels.back();
+            write_indent(current_state);
+            current_state.at_line_start = false;
+        }
+        append(ch);
+        if (ch == '\n')
+        {
+            current_state.at_line_start = true;
+            current_state.current_line_indent = m_indent_levels.back();
+        }
+
+        return current_state;
+    }
+
+    void write_indent(const state_t& current_state)
+    {
+        const std::size_t size = current_state.current_line_indent + m_tab_offsets.back();
+        m_buffer.insert(m_buffer.end(), size, ' ');
+    }
+
+    state_t handle_newline(state_t current_state)
     {
         if (current_state.should_add_newline)
         {
-            m_os << '\n';
+            append('\n');
             current_state.at_line_start = true;
             current_state.should_add_newline = false;
             current_state.current_line_indent = m_indent_levels.back();
         }
         return current_state;
     }
+
+    void flush()
+    {
+        m_os.write(m_buffer.data(), static_cast<std::streamsize>(m_buffer.size()));
+        m_buffer.clear();
+    }
+
+    void reserve(std::size_t size) { m_buffer.reserve(m_buffer.size() + size); }
 };
 
 inline stream_t make_stream(std::ostream& os)
@@ -980,7 +1012,7 @@ struct styled_node_impl : node_base_t<styled_node_impl>
     {
         if (m_style_info)
         {
-            is.write_ansi(make_ansi_code(*m_style_info));
+            is.write_ansi(str(make_ansi_code(*m_style_info)));
         }
         for (const auto& child : m_children)
         {
@@ -988,7 +1020,7 @@ struct styled_node_impl : node_base_t<styled_node_impl>
         }
         if (m_style_info)
         {
-            is.write_ansi(escape_sequence_t{ 0 });
+            is.write_ansi(str(escape_sequence_t{ 0 }));
         }
     }
 };
