@@ -4,4 +4,5 @@ zx_add_module(
 
     TEST_SOURCES
     tests/ansi.test.cpp
+    tests/surface.test.cpp
 )

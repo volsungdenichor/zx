@@ -19,7 +19,7 @@ namespace ansi
 template <class T>
 using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 
-struct str_fn
+constexpr inline struct str_fn
 {
     template <class... Args>
     std::string operator()(Args&&... args) const
