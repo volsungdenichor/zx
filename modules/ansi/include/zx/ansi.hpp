@@ -8,6 +8,7 @@
 #include <optional>
 #include <sstream>
 #include <tuple>
+#include <variant>
 #include <vector>
 
 namespace zx
