@@ -1,9 +1,9 @@
 #pragma once
 
 #include <array>
-#include <cuchar>
 #include <string_view>
 #include <zx/ansi.hpp>
+#include <zx/string.hpp>
 
 namespace zx
 {
@@ -131,89 +131,6 @@ struct area_t
 
     reference operator[](const loc_t& loc) const { return view()[loc]; }
     mut_reference operator[](const loc_t& loc) { return mut_view()[loc]; }
-};
-
-struct glyph_t
-{
-    char32_t m_data;
-
-    glyph_t() = default;
-
-    glyph_t(char32_t data) : m_data(data) { }
-
-    glyph_t(std::string_view txt) : glyph_t()
-    {
-        std::setlocale(LC_ALL, "en_US.utf8");
-        std::mbstate_t state{};
-        std::size_t rc = std::mbrtoc32(&m_data, txt.data(), txt.size(), &state);
-        assert(rc != std::size_t(0) && rc != std::size_t(-1) && rc != std::size_t(-2));
-    }
-
-    glyph_t(const char* txt) : glyph_t(std::string_view(txt)) { }
-
-    glyph_t(char ch) : glyph_t(std::string_view(&ch, 1)) { }
-
-    friend bool operator==(const glyph_t& lhs, const glyph_t& rhs) { return lhs.m_data == rhs.m_data; }
-    friend bool operator!=(const glyph_t& lhs, const glyph_t& rhs) { return !(lhs == rhs); }
-    friend bool operator<(const glyph_t& lhs, const glyph_t& rhs) { return lhs.m_data < rhs.m_data; }
-    friend bool operator>(const glyph_t& lhs, const glyph_t& rhs) { return rhs < lhs; }
-    friend bool operator<=(const glyph_t& lhs, const glyph_t& rhs) { return !(lhs > rhs); }
-    friend bool operator>=(const glyph_t& lhs, const glyph_t& rhs) { return !(lhs < rhs); }
-
-    friend std::ostream& operator<<(std::ostream& os, const glyph_t& item)
-    {
-        std::setlocale(LC_ALL, "en_US.utf8");
-        std::mbstate_t state{};
-        char out[MB_LEN_MAX]{};
-        std::size_t rc = std::c32rtomb(out, item.m_data, &state);
-        assert(rc != static_cast<std::size_t>(-1));
-        std::copy(out, out + rc, std::ostreambuf_iterator<char>(os));
-        return os;
-    }
-};
-
-struct string_t : public std::vector<glyph_t>
-{
-    using base_t = std::vector<glyph_t>;
-    using base_t::base_t;
-
-    string_t(std::string_view txt)
-    {
-        std::setlocale(LC_ALL, "en_US.utf8");
-        std::mbstate_t state{};
-        const char* ptr = txt.data();
-        const char* end = ptr + txt.size();
-        this->reserve(static_cast<std::size_t>(end - ptr));
-        while (ptr < end)
-        {
-            char32_t c;
-            std::size_t rc = std::mbrtoc32(&c, ptr, static_cast<std::size_t>(end - ptr), &state);
-            assert(rc != static_cast<std::size_t>(-1) && rc != static_cast<std::size_t>(-2));
-            if (rc == 0)
-            {
-                break;
-            }
-            this->emplace_back(c);
-            ptr += rc;
-        }
-    }
-
-    string_t(const char* txt) : string_t(std::string_view(txt)) { }
-
-    friend std::ostream& operator<<(std::ostream& os, const string_t& item)
-    {
-        std::copy(item.begin(), item.end(), std::ostream_iterator<glyph_t>(os));
-        return os;
-    }
-
-    string_t& operator+=(const string_t& other)
-    {
-        this->reserve(this->size() + other.size());
-        this->insert(this->end(), other.begin(), other.end());
-        return *this;
-    }
-
-    string_t operator+(const string_t& other) const { return string_t{ *this } += other; }
 };
 
 struct cell_t
