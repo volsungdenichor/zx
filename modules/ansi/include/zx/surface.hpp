@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cuchar>
 #include <zx/ansi.hpp>
 
 namespace zx
@@ -8,96 +9,6 @@ namespace zx
 
 namespace ansi
 {
-
-inline char32_t utf8_to_char32(std::string_view s)
-{
-    if (s.empty())
-        return U'\0';
-
-    unsigned char byte = static_cast<unsigned char>(s[0]);
-
-    if ((byte & 0x80) == 0)
-    {
-        return byte;
-    }
-
-    auto [codepoint, remaining] = std::invoke(
-        [&]() -> std::tuple<char32_t, std::size_t>
-        {
-            if ((byte & 0xE0) == 0xC0)
-            {
-                return { byte & 0x1F, 1 };
-            }
-            else if ((byte & 0xF0) == 0xE0)
-            {
-                return { byte & 0x0F, 2 };
-            }
-            else if ((byte & 0xF8) == 0xF0)
-            {
-                return { byte & 0x07, 3 };
-            }
-            return { 0, 0 };
-        });
-
-    for (std::size_t i = 0; i < remaining && i + 1 < s.length(); ++i)
-    {
-        codepoint = (codepoint << 6) | (static_cast<unsigned char>(s[i + 1]) & 0x3F);
-    }
-
-    return codepoint;
-}
-
-inline std::string& char32_to_utf8(std::string& result, char32_t codepoint)
-{
-    if (codepoint <= 0x7F)
-    {
-        result += static_cast<char>(codepoint);
-    }
-    else if (codepoint <= 0x7FF)
-    {
-        result += static_cast<char>(0xC0 | ((codepoint >> 6) & 0x1F));
-        result += static_cast<char>(0x80 | ((codepoint >> 0) & 0x3F));
-    }
-    else if (codepoint <= 0xFFFF)
-    {
-        result += static_cast<char>(0xE0 | ((codepoint >> 12) & 0x0F));
-        result += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
-        result += static_cast<char>(0x80 | ((codepoint >> 0) & 0x3F));
-    }
-    else if (codepoint <= 0x10FFFF)
-    {
-        result += static_cast<char>(0xF0 | ((codepoint >> 18) & 0x07));
-        result += static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F));
-        result += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
-        result += static_cast<char>(0x80 | ((codepoint >> 0) & 0x3F));
-    }
-
-    return result;
-}
-
-inline std::string char32_to_utf8(char32_t codepoint)
-{
-    std::string result;
-    char32_to_utf8(result, codepoint);
-    return result;
-}
-
-struct cell_t
-{
-    char32_t ch;
-    style_info_t style;
-
-    cell_t() : ch{ U' ' }, style{} { }
-
-    cell_t(char32_t ch, style_info_t style = {}) : ch{ ch }, style{ style } { }
-    cell_t(std::string_view s, style_info_t style = {}) : ch{ utf8_to_char32(std::string(s)) }, style{ style } { }
-
-    friend std::ostream& operator<<(std::ostream& os, const cell_t& item)
-    {
-        os << "(cell_t ch:" << item.ch << " style:" << item.style << ")";
-        return os;
-    }
-};
 
 struct extent_t : public std::array<std::ptrdiff_t, 2>
 {
@@ -133,17 +44,17 @@ struct loc_t : public std::array<std::ptrdiff_t, 2>
     }
 };
 
-template <bool Const>
-struct surface_view_base_t
+template <class T, bool Const>
+struct view_base_t
 {
-    using pointer = std::conditional_t<Const, const cell_t*, cell_t*>;
-    using reference = std::conditional_t<Const, const cell_t&, cell_t&>;
+    using pointer = std::conditional_t<Const, const T*, T*>;
+    using reference = std::conditional_t<Const, const T&, T&>;
 
     pointer m_data;
     extent_t m_extent;
     std::ptrdiff_t m_stride;
 
-    surface_view_base_t(pointer data, extent_t extent, std::ptrdiff_t stride)
+    view_base_t(pointer data, extent_t extent, std::ptrdiff_t stride)
         : m_data{ data }
         , m_extent{ extent }
         , m_stride{ stride }
@@ -154,7 +65,7 @@ struct surface_view_base_t
 
     extent_t extent() const { return m_extent; }
 
-    surface_view_base_t sub_view(const loc_t& origin, const extent_t& new_extent) const
+    view_base_t sub_view(const loc_t& origin, const extent_t& new_extent) const
     {
         loc_t adjusted_loc = {};
         extent_t adjusted_size = {};
@@ -162,13 +73,9 @@ struct surface_view_base_t
         for (std::size_t i = 0; i < 2; ++i)
         {
             adjusted_loc[i] = std::max(origin[i], static_cast<std::ptrdiff_t>(0));
-        }
-
-        for (std::size_t i = 0; i < 2; ++i)
-        {
             adjusted_size[i] = adjusted_loc[i] + new_extent[i] > m_extent[i] ? m_extent[i] - adjusted_loc[i] : new_extent[i];
         }
-        return surface_view_base_t{ m_data + adjusted_loc[1] * m_stride + adjusted_loc[0], adjusted_size, m_stride };
+        return view_base_t{ m_data + adjusted_loc[1] * m_stride + adjusted_loc[0], adjusted_size, m_stride };
     }
 
     std::pair<pointer, pointer> row(std::ptrdiff_t r) const
@@ -182,44 +89,100 @@ struct surface_view_base_t
     }
 };
 
-struct surface_view_t : public surface_view_base_t<true>
+template <class T>
+struct view_t : public view_base_t<T, true>
 {
-    using base_t = surface_view_base_t<true>;
+    using base_t = view_base_t<T, true>;
     using base_t::base_t;
 };
 
-struct surface_mut_view_t : public surface_view_base_t<false>
+template <class T>
+struct mut_view_t : public view_base_t<T, false>
 {
-    using base_t = surface_view_base_t<false>;
+    using base_t = view_base_t<T, false>;
     using base_t::base_t;
 };
 
-struct surface_t
+template <class T>
+struct area_t
 {
     extent_t m_extent;
-    std::vector<cell_t> m_cells;
+    std::vector<T> m_data;
 
-    using view_type = surface_view_t;
-    using mut_view_type = surface_mut_view_t;
+    using view_type = view_t<T>;
+    using mut_view_type = mut_view_t<T>;
 
-    using mut_reference = mut_view_type::reference;
-    using reference = view_type::reference;
+    using mut_reference = typename mut_view_type::reference;
+    using reference = typename view_type::reference;
 
-    surface_t(extent_t extent, cell_t fill = {})
+    area_t(extent_t extent, T fill = T{})
         : m_extent{ extent }
-        , m_cells(static_cast<std::size_t>(extent.width() * extent.height()), fill)
+        , m_data(static_cast<std::size_t>(extent.width() * extent.height()), fill)
     {
     }
 
     extent_t extent() const { return m_extent; }
 
-    view_type view() const { return view_type{ m_cells.data(), m_extent, m_extent.width() }; }
-    mut_view_type mut_view() { return mut_view_type{ m_cells.data(), m_extent, m_extent.width() }; }
+    view_type view() const { return view_type{ m_data.data(), m_extent, m_extent.width() }; }
+    mut_view_type mut_view() { return mut_view_type{ m_data.data(), m_extent, m_extent.width() }; }
 
     operator view_type() const { return view(); }
 
     reference operator[](const loc_t& loc) const { return view()[loc]; }
     mut_reference operator[](const loc_t& loc) { return mut_view()[loc]; }
+};
+
+struct glyph_t
+{
+    char32_t m_data;
+
+    glyph_t() = default;
+
+    glyph_t(char32_t data) : m_data(data) { }
+
+    glyph_t(std::string_view txt) : glyph_t()
+    {
+        std::setlocale(LC_ALL, "en_US.utf8");
+        std::mbstate_t state{};
+        std::size_t rc = std::mbrtoc32(&m_data, txt.data(), txt.size(), &state);
+        assert(rc != std::size_t(0) && rc != std::size_t(-1) && rc != std::size_t(-2));
+    }
+
+    glyph_t(char ch) : glyph_t(std::string_view(&ch, 1)) { }
+
+    friend bool operator==(const glyph_t& lhs, const glyph_t& rhs) { return lhs.m_data == rhs.m_data; }
+    friend bool operator!=(const glyph_t& lhs, const glyph_t& rhs) { return !(lhs == rhs); }
+    friend bool operator<(const glyph_t& lhs, const glyph_t& rhs) { return lhs.m_data < rhs.m_data; }
+    friend bool operator>(const glyph_t& lhs, const glyph_t& rhs) { return rhs < lhs; }
+    friend bool operator<=(const glyph_t& lhs, const glyph_t& rhs) { return !(lhs > rhs); }
+    friend bool operator>=(const glyph_t& lhs, const glyph_t& rhs) { return !(lhs < rhs); }
+
+    friend std::ostream& operator<<(std::ostream& os, const glyph_t& item)
+    {
+        std::setlocale(LC_ALL, "en_US.utf8");
+        std::mbstate_t state{};
+        char out[MB_LEN_MAX]{};
+        std::size_t rc = std::c32rtomb(out, item.m_data, &state);
+        assert(rc != static_cast<std::size_t>(-1));
+        std::copy(out, out + rc, std::ostreambuf_iterator<char>(os));
+        return os;
+    }
+};
+
+struct cell_t
+{
+    glyph_t glyph;
+    style_info_t style;
+
+    cell_t() = default;
+
+    cell_t(glyph_t g, style_info_t s = {}) : glyph(g), style(s) { }
+
+    friend std::ostream& operator<<(std::ostream& os, const cell_t& item)
+    {
+        os << "(cell_t glyph:" << item.glyph << " style:" << item.style << ")";
+        return os;
+    }
 };
 
 inline std::string render_line(std::pair<const cell_t*, const cell_t*> range)
@@ -235,7 +198,7 @@ inline std::string render_line(std::pair<const cell_t*, const cell_t*> range)
             current_style = it->style;
             reset_needed = true;
         }
-        char32_to_utf8(result, it->ch);
+        result += str(it->glyph);
     }
     if (reset_needed)
     {
@@ -244,7 +207,9 @@ inline std::string render_line(std::pair<const cell_t*, const cell_t*> range)
     return result;
 }
 
-inline std::vector<std::string> render_lines(const surface_view_t& surface)
+using surface_t = area_t<cell_t>;
+
+inline std::vector<std::string> render_lines(const surface_t::view_type& surface)
 {
     std::vector<std::string> lines = {};
     lines.reserve(static_cast<std::size_t>(surface.extent()[1]));
@@ -255,7 +220,7 @@ inline std::vector<std::string> render_lines(const surface_view_t& surface)
     return lines;
 }
 
-inline std::string render(const surface_view_t& surface)
+inline std::string render(const surface_t::view_type& surface)
 {
     auto lines = render_lines(surface);
     std::string result = {};
