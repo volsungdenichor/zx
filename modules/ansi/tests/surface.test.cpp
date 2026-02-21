@@ -14,3 +14,9 @@ TEST(ansi, surface_render)
 
     EXPECT_THAT(zx::ansi::render_lines(surface), testing::ElementsAre("a❤c", "d🔴f"));
 }
+
+TEST(ansi, string)
+{
+    zx::ansi::string_t str = "❤Hello, world!🔴";
+    EXPECT_THAT(str, testing::ElementsAre(U'❤', 'H', 'e', 'l', 'l', 'o', ',', ' ', 'w', 'o', 'r', 'l', 'd', '!', "🔴"));
+}
