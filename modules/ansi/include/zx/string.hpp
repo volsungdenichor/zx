@@ -130,21 +130,21 @@ struct glyph_t
 
     glyph_t() = default;
 
-    glyph_t(char32_t data) : m_data(data) { }
+    explicit glyph_t(char32_t data) : m_data(data) { }
 
-    glyph_t(std::string_view txt) : glyph_t()
+    explicit glyph_t(std::string_view txt) : glyph_t()
     {
         auto [value, remainder] = detail::utf8_to_utf32(txt);
         if (!remainder.empty())
         {
-            throw std::invalid_argument{ "Input string contains more than one UTF-8 character" };
+            throw std::invalid_argument{ "Input string contains more than one UTF-8 character: '" + std::string(txt) + "'" };
         }
         m_data = value;
     }
 
-    glyph_t(const char* txt) : glyph_t(std::string_view(txt)) { }
+    explicit glyph_t(const char* txt) : glyph_t(std::string_view(txt)) { }
 
-    glyph_t(char ch) : glyph_t(std::string_view(&ch, 1)) { }
+    explicit glyph_t(char ch) : glyph_t(std::string_view(&ch, 1)) { }
 
     friend bool operator==(const glyph_t& lhs, const glyph_t& rhs) { return lhs.m_data == rhs.m_data; }
     friend bool operator!=(const glyph_t& lhs, const glyph_t& rhs) { return !(lhs == rhs); }

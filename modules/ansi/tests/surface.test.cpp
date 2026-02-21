@@ -17,6 +17,22 @@ TEST(ansi, surface_render)
 
 TEST(ansi, string)
 {
-    zx::ansi::string_t str = "❤Hello, world!🔴";
-    EXPECT_THAT(str, testing::ElementsAre(U'❤', 'H', 'e', 'l', 'l', 'o', ',', ' ', 'w', 'o', 'r', 'l', 'd', '!', U'🔴'));
+    using g = zx::ansi::string_t::value_type;
+    EXPECT_THAT(
+        zx::ansi::string_t{ "❤Hello, world!🔴" },
+        testing::ElementsAreArray({ g("❤"),
+                                    g('H'),
+                                    g('e'),
+                                    g('l'),
+                                    g('l'),
+                                    g('o'),
+                                    g(','),
+                                    g(' '),
+                                    g('w'),
+                                    g('o'),
+                                    g('r'),
+                                    g('l'),
+                                    g('d'),
+                                    g('!'),
+                                    g("🔴") }));
 }

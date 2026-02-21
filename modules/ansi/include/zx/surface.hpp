@@ -135,7 +135,7 @@ struct area_t
 
 struct cell_t
 {
-    glyph_t glyph = ' ';
+    glyph_t glyph = glyph_t(' ');
     style_info_t style = {};
 
     cell_t(glyph_t g = {}, style_info_t s = {}) : glyph(g), style(s) { }
