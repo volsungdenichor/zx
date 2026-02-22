@@ -42,4 +42,16 @@ TEST(image, load_image)
     EXPECT_THAT((img[{ 2, 2, 0 }]), 255);
     EXPECT_THAT((img[{ 2, 2, 1 }]), 233);
     EXPECT_THAT((img[{ 2, 2, 2 }]), 127);
+
+    EXPECT_THAT(zx::images::at(img, { 0, 0 }), (zx::images::rgb_color_t{ 255, 0, 0 }));
+    EXPECT_THAT(zx::images::at(img, { 0, 1 }), (zx::images::rgb_color_t{ 255, 106, 0 }));
+    EXPECT_THAT(zx::images::at(img, { 0, 2 }), (zx::images::rgb_color_t{ 255, 216, 0 }));
+
+    EXPECT_THAT(zx::images::at(img, { 1, 0 }), (zx::images::rgb_color_t{ 127, 0, 0 }));
+    EXPECT_THAT(zx::images::at(img, { 1, 1 }), (zx::images::rgb_color_t{ 127, 51, 0 }));
+    EXPECT_THAT(zx::images::at(img, { 1, 2 }), (zx::images::rgb_color_t{ 127, 106, 0 }));
+
+    EXPECT_THAT(zx::images::at(img, { 2, 0 }), (zx::images::rgb_color_t{ 255, 127, 127 }));
+    EXPECT_THAT(zx::images::at(img, { 2, 1 }), (zx::images::rgb_color_t{ 255, 178, 127 }));
+    EXPECT_THAT(zx::images::at(img, { 2, 2 }), (zx::images::rgb_color_t{ 255, 233, 127 }));
 }

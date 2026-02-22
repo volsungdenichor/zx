@@ -379,6 +379,7 @@ struct array_t
     mut_view_type mut_view() { return { m_data.data(), m_shape }; }
 
     operator view_type() const { return view(); }
+    operator mut_view_type() { return mut_view(); }
 
     size_type size() const { return m_shape.size(); }
     stride_type stride() const { return m_shape.stride(); }

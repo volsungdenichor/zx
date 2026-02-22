@@ -3,13 +3,12 @@
 #include <cstdint>
 #include <fstream>
 #include <zx/array.hpp>
+#include <zx/colors.hpp>
 
 namespace zx
 {
 namespace images
 {
-
-using byte_t = std::uint8_t;
 
 using rgb_image_t = arrays::array_t<byte_t, 3>;
 
@@ -210,8 +209,7 @@ struct load_bitmap_fn
         rgb_image_t result = prepare_array(header);
         auto ref = result.mut_view();
 
-        using rgb_t = std::array<byte_t, 3>;
-        using palette_t = std::array<rgb_t, 256>;
+        using palette_t = std::array<zx::images::rgb_color_t, 256>;
         palette_t palette = {};
 
         for (std::size_t i = 0; i < 256; ++i)
@@ -221,7 +219,7 @@ struct load_bitmap_fn
             const byte_t r = read<byte_t>(is);
             is.ignore(1);
 
-            palette[i] = rgb_t{ r, g, b };
+            palette[i] = zx::images::rgb_color_t{ r, g, b };
         }
 
         const zx::arrays::size_base_t h = ref.shape().m_dims[0].size;
@@ -231,7 +229,7 @@ struct load_bitmap_fn
         {
             for (zx::arrays::location_base_t x = 0; x < w; ++x)
             {
-                const rgb_t rgb = palette.at(read<byte_t>(is));
+                const zx::images::rgb_color_t rgb = palette.at(read<byte_t>(is));
                 for (std::size_t z = 0; z < 3; ++z)
                 {
                     ref[rgb_image_t::location_type{ y, x, z }] = rgb[z];
@@ -308,6 +306,24 @@ struct save_bitmap_fn
 
 static constexpr inline auto load_bitmap = detail::load_bitmap_fn{};
 static constexpr inline auto save_bitmap = detail::save_bitmap_fn{};
+
+inline zx::images::rgb_color_t at(rgb_image_t::view_type image, const zx::mat::vector<zx::arrays::location_base_t, 2>& loc)
+{
+    const auto r = image[rgb_image_t::location_type{ loc[0], loc[1], 0 }];
+    const auto g = image[rgb_image_t::location_type{ loc[0], loc[1], 1 }];
+    const auto b = image[rgb_image_t::location_type{ loc[0], loc[1], 2 }];
+    return zx::images::rgb_color_t{ r, g, b };
+}
+
+inline void at(
+    rgb_image_t::mut_view_type image,
+    const zx::mat::vector<zx::arrays::location_base_t, 2>& loc,
+    const zx::images::rgb_color_t& color)
+{
+    image[rgb_image_t::location_type{ loc[0], loc[1], 0 }] = color[0];
+    image[rgb_image_t::location_type{ loc[0], loc[1], 1 }] = color[1];
+    image[rgb_image_t::location_type{ loc[0], loc[1], 2 }] = color[2];
+}
 
 }  // namespace images
 
