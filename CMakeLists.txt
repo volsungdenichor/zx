@@ -23,6 +23,7 @@ set(ZX_MODULE_DEPENDENCIES "
         [mat [iterator]]
         [ansi []]
         [arrays [iterator mat]]
+        [images [arrays]]
     ]
 ")
 
@@ -30,6 +31,7 @@ string(REGEX REPLACE "[ \t\n\r]+" " " DEPS_NORMALIZED "${ZX_MODULE_DEPENDENCIES}
 string(REGEX MATCHALL "\\[([a-z_]+) \\[[^]]*\\]\\]" MODULE_ENTRIES "${DEPS_NORMALIZED}")
 
 set(ZX_ALL_MODULES "")
+
 foreach(ENTRY ${MODULE_ENTRIES})
     if(ENTRY MATCHES "\\[([a-z_]+) ")
         list(APPEND ZX_ALL_MODULES "${CMAKE_MATCH_1}")
@@ -58,10 +60,12 @@ if(ZX_BUILD_ALL)
 endif()
 
 message(STATUS "ZX Module Build Configuration:")
+
 foreach(MODULE ${ZX_ALL_MODULES})
     string(TOUPPER ${MODULE} MODULE_UPPER)
     message(STATUS "  ZX_BUILD_${MODULE_UPPER} = ${ZX_BUILD_${MODULE_UPPER}}")
 endforeach()
+
 message(STATUS "  ZX_BUILD_TESTS = ${ZX_BUILD_TESTS}")
 
 if(ZX_BUILD_TESTS)
