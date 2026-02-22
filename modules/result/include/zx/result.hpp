@@ -10,7 +10,7 @@ namespace zx
 {
 
 template <class T, class E>
-struct result;
+struct result_t;
 
 namespace detail
 {
@@ -21,7 +21,7 @@ struct is_result : std::false_type
 };
 
 template <class T, class E>
-struct is_result<result<T, E>> : std::true_type
+struct is_result<result_t<T, E>> : std::true_type
 {
 };
 
@@ -48,13 +48,13 @@ struct to_result
 };
 
 template <class E>
-struct to_result<result<void, E>>
+struct to_result<result_t<void, E>>
 {
     template <class Func, class... Args>
-    constexpr auto operator()(Func&& func, Args&&... args) const -> result<void, E>
+    constexpr auto operator()(Func&& func, Args&&... args) const -> result_t<void, E>
     {
         std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
-        return result<void, E>{};
+        return result_t<void, E>{};
     }
 };
 
@@ -81,31 +81,31 @@ struct bad_result_access : std::runtime_error
 };
 
 template <class T, class E>
-struct result
+struct result_t
 {
     using value_type = T;
     using error_type = E;
     using value_storage = value_type;
     using error_storage = error_wrapper<error_type>;
 
-    constexpr result(value_type value = {}) : m_storage(std::in_place_type<value_storage>, std::move(value)) { }
+    constexpr result_t(value_type value = {}) : m_storage(std::in_place_type<value_storage>, std::move(value)) { }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
-    constexpr result(const error_wrapper<Err>& error)
+    constexpr result_t(const error_wrapper<Err>& error)
         : m_storage(std::in_place_type<error_storage>, error_storage{ error.m_error })
     {
     }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
-    constexpr result(error_wrapper<Err>&& error)
+    constexpr result_t(error_wrapper<Err>&& error)
         : m_storage(std::in_place_type<error_storage>, error_storage{ std::move(error.m_error) })
     {
     }
 
-    constexpr result(const result&) = default;
-    constexpr result(result&&) noexcept = default;
+    constexpr result_t(const result_t&) = default;
+    constexpr result_t(result_t&&) noexcept = default;
 
-    constexpr result& operator=(result other)
+    constexpr result_t& operator=(result_t other)
     {
         std::swap(m_storage, other.m_storage);
         return *this;
@@ -123,7 +123,7 @@ struct result
     {
         if (!has_value())
         {
-            throw bad_result_access{ "accessing the value of an empty 'result' object" };
+            throw bad_result_access{ "accessing the value of an empty 'result_t' object" };
         }
         return get();
     }
@@ -132,7 +132,7 @@ struct result
     {
         if (!has_value())
         {
-            throw bad_result_access{ "accessing the value of an empty 'result' object" };
+            throw bad_result_access{ "accessing the value of an empty 'result_t' object" };
         }
         return get();
     }
@@ -141,7 +141,7 @@ struct result
     {
         if (!has_value())
         {
-            throw bad_result_access{ "accessing the value of an empty 'result' object" };
+            throw bad_result_access{ "accessing the value of an empty 'result_t' object" };
         }
         return std::move(*this).get();
     }
@@ -160,7 +160,7 @@ struct result
     {
         if (!has_error())
         {
-            throw bad_result_access{ "accessing the error of a 'result' object with value" };
+            throw bad_result_access{ "accessing the error of a 'result_t' object with value" };
         }
         return std::get<error_storage>(m_storage).m_error;
     }
@@ -169,7 +169,7 @@ struct result
     {
         if (!has_error())
         {
-            throw bad_result_access{ "accessing the error of a 'result' object with value" };
+            throw bad_result_access{ "accessing the error of a 'result_t' object with value" };
         }
         return std::get<error_storage>(m_storage).m_error;
     }
@@ -178,7 +178,7 @@ struct result
     {
         if (!has_error())
         {
-            throw bad_result_access{ "accessing the error of a 'result' object with value" };
+            throw bad_result_access{ "accessing the error of a 'result_t' object with value" };
         }
         return std::get<error_storage>(std::move(m_storage)).m_error;
     }
@@ -191,7 +191,7 @@ struct result
     constexpr auto and_then(Func&& func) const& -> Result
     {
         static_assert(
-            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result<T, E>` type");
+            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result_t<T, E>` type");
         return *this  //
                    ? detail::to_ok<Result>(std::forward<Func>(func), get())
                    : detail::to_error<Result>(*this);
@@ -201,13 +201,13 @@ struct result
     constexpr auto and_then(Func&& func) && -> Result
     {
         static_assert(
-            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result<T, E>` type");
+            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result_t<T, E>` type");
         return *this  //
                    ? detail::to_ok<Result>(std::forward<Func>(func), std::move(*this).get())
                    : detail::to_error<Result>(std::move(*this));
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const T&>, class Result = result<FuncResult, E>>
+    template <class Func, class FuncResult = std::invoke_result_t<Func, const T&>, class Result = result_t<FuncResult, E>>
     constexpr auto transform(Func&& func) const& -> Result
     {
         return *this  //
@@ -215,7 +215,7 @@ struct result
                    : detail::to_error<Result>(*this);
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, T&&>, class Result = result<FuncResult, E>>
+    template <class Func, class FuncResult = std::invoke_result_t<Func, T&&>, class Result = result_t<FuncResult, E>>
     constexpr auto transform(Func&& func) && -> Result
     {
         return *this  //
@@ -226,7 +226,7 @@ struct result
     template <
         class Func,
         class FuncResult = std::invoke_result_t<Func, const E&>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, result<T, E>, FuncResult>>
+        class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
     constexpr auto or_else(Func&& func) const& -> Result
     {
         if constexpr (std::is_void_v<FuncResult>)
@@ -238,7 +238,7 @@ struct result
         else
         {
             static_assert(
-                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result<T, E>` type");
+                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result_t<T, E>` type");
             return *this  //
                        ? Result{ *this }
                        : Result{ std::invoke(std::forward<Func>(func), error()) };
@@ -248,7 +248,7 @@ struct result
     template <
         class Func,
         class FuncResult = std::invoke_result_t<Func, const E&>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, result<T, E>, FuncResult>>
+        class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
     constexpr auto or_else(Func&& func) && -> Result
     {
         if constexpr (std::is_void_v<FuncResult>)
@@ -260,14 +260,14 @@ struct result
         else
         {
             static_assert(
-                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result<T, E>` type");
+                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result_t<T, E>` type");
             return *this  //
                        ? Result{ std::move(*this) }
                        : Result{ std::invoke(std::forward<Func>(func), std::move(*this).error()) };
         }
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result<T, FuncResult>>
+    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result_t<T, FuncResult>>
     constexpr auto transform_error(Func&& func) const& -> Result
     {
         return *this  //
@@ -275,7 +275,7 @@ struct result
                    : Result{ zx::error(std::invoke(std::forward<Func>(func), error())) };
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result<T, FuncResult>>
+    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result_t<T, FuncResult>>
     constexpr auto transform_error(Func&& func) && -> Result
     {
         return *this  //
@@ -300,31 +300,31 @@ private:
 };
 
 template <class T, class E>
-struct result<T&, E>
+struct result_t<T&, E>
 {
     using value_type = T;
     using error_type = E;
     using value_storage = T*;
     using error_storage = error_wrapper<error_type>;
 
-    constexpr result(value_type& value) : m_storage(std::in_place_type<value_storage>, &value) { }
+    constexpr result_t(value_type& value) : m_storage(std::in_place_type<value_storage>, &value) { }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
-    constexpr result(const error_wrapper<Err>& error)
+    constexpr result_t(const error_wrapper<Err>& error)
         : m_storage(std::in_place_type<error_storage>, error_storage{ error.m_error })
     {
     }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
-    constexpr result(error_wrapper<Err>&& error)
+    constexpr result_t(error_wrapper<Err>&& error)
         : m_storage(std::in_place_type<error_storage>, error_storage{ std::move(error.m_error) })
     {
     }
 
-    constexpr result(const result&) = default;
-    constexpr result(result&&) noexcept = default;
+    constexpr result_t(const result_t&) = default;
+    constexpr result_t(result_t&&) noexcept = default;
 
-    constexpr result& operator=(result other)
+    constexpr result_t& operator=(result_t other)
     {
         std::swap(m_storage, other.m_storage);
         return *this;
@@ -338,7 +338,7 @@ struct result<T&, E>
     {
         if (!has_value())
         {
-            throw bad_result_access{ "accessing the value of an empty 'result' object" };
+            throw bad_result_access{ "accessing the value of an empty 'result_t' object" };
         }
         return get();
     }
@@ -351,7 +351,7 @@ struct result<T&, E>
     {
         if (!has_error())
         {
-            throw bad_result_access{ "accessing the error of a 'result' object with value" };
+            throw bad_result_access{ "accessing the error of a 'result_t' object with value" };
         }
         return std::get<error_storage>(m_storage).m_error;
     }
@@ -360,7 +360,7 @@ struct result<T&, E>
     {
         if (!has_error())
         {
-            throw bad_result_access{ "accessing the error of a 'result' object with value" };
+            throw bad_result_access{ "accessing the error of a 'result_t' object with value" };
         }
         return std::get<error_storage>(m_storage).m_error;
     }
@@ -369,7 +369,7 @@ struct result<T&, E>
     {
         if (!has_error())
         {
-            throw bad_result_access{ "accessing the error of a 'result' object with value" };
+            throw bad_result_access{ "accessing the error of a 'result_t' object with value" };
         }
         return std::get<error_storage>(std::move(m_storage)).m_error;
     }
@@ -382,7 +382,7 @@ struct result<T&, E>
     constexpr auto and_then(Func&& func) const& -> Result
     {
         static_assert(
-            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result<T, E>` type");
+            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result_t<T, E>` type");
         return *this  //
                    ? detail::to_ok<Result>(std::forward<Func>(func), get())
                    : detail::to_error<Result>(*this);
@@ -392,13 +392,13 @@ struct result<T&, E>
     constexpr auto and_then(Func&& func) && -> Result
     {
         static_assert(
-            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result<T, E>` type");
+            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result_t<T, E>` type");
         return *this  //
                    ? detail::to_ok<Result>(std::forward<Func>(func), std::move(*this).get())
                    : detail::to_error<Result>(std::move(*this));
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, T&>, class Result = result<FuncResult, E>>
+    template <class Func, class FuncResult = std::invoke_result_t<Func, T&>, class Result = result_t<FuncResult, E>>
     constexpr auto transform(Func&& func) const& -> Result
     {
         return *this  //
@@ -406,7 +406,7 @@ struct result<T&, E>
                    : detail::to_error<Result>(*this);
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, T&>, class Result = result<FuncResult, E>>
+    template <class Func, class FuncResult = std::invoke_result_t<Func, T&>, class Result = result_t<FuncResult, E>>
     constexpr auto transform(Func&& func) && -> Result
     {
         return *this  //
@@ -417,7 +417,7 @@ struct result<T&, E>
     template <
         class Func,
         class FuncResult = std::invoke_result_t<Func, const E&>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, result<T, E>, FuncResult>>
+        class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
     constexpr auto or_else(Func&& func) const& -> Result
     {
         if constexpr (std::is_void_v<FuncResult>)
@@ -429,7 +429,7 @@ struct result<T&, E>
         else
         {
             static_assert(
-                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result<T, E>` type");
+                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result_t<T, E>` type");
             return *this  //
                        ? Result{ *this }
                        : Result{ std::invoke(std::forward<Func>(func), error()) };
@@ -439,7 +439,7 @@ struct result<T&, E>
     template <
         class Func,
         class FuncResult = std::invoke_result_t<Func, const E&>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, result<T, E>, FuncResult>>
+        class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
     constexpr auto or_else(Func&& func) && -> Result
     {
         if constexpr (std::is_void_v<FuncResult>)
@@ -451,14 +451,14 @@ struct result<T&, E>
         else
         {
             static_assert(
-                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result<T, E>` type");
+                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result_t<T, E>` type");
             return *this  //
                        ? Result{ std::move(*this) }
                        : Result{ std::invoke(std::forward<Func>(func), std::move(*this).error()) };
         }
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result<T, FuncResult>>
+    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result_t<T, FuncResult>>
     constexpr auto transform_error(Func&& func) const& -> Result
     {
         return *this  //
@@ -466,7 +466,7 @@ struct result<T&, E>
                    : Result{ zx::error(std::invoke(std::forward<Func>(func), error())) };
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result<T, FuncResult>>
+    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result_t<T, FuncResult>>
     constexpr auto transform_error(Func&& func) && -> Result
     {
         return *this  //
@@ -491,27 +491,27 @@ private:
 };
 
 template <class E>
-struct result<void, E>
+struct result_t<void, E>
 {
     using value_type = void;
     using error_type = E;
 
-    constexpr result() : m_storage{} { }
+    constexpr result_t() : m_storage{} { }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
-    constexpr result(const error_wrapper<Err>& error) : m_storage(error.m_error)
+    constexpr result_t(const error_wrapper<Err>& error) : m_storage(error.m_error)
     {
     }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
-    constexpr result(error_wrapper<Err>&& error) : m_storage(std::move(error.m_error))
+    constexpr result_t(error_wrapper<Err>&& error) : m_storage(std::move(error.m_error))
     {
     }
 
-    constexpr result(const result&) = default;
-    constexpr result(result&&) noexcept = default;
+    constexpr result_t(const result_t&) = default;
+    constexpr result_t(result_t&&) noexcept = default;
 
-    constexpr result& operator=(result other)
+    constexpr result_t& operator=(result_t other)
     {
         std::swap(m_storage, other.m_storage);
         return *this;
@@ -523,7 +523,7 @@ struct result<void, E>
     {
         if (!has_error())
         {
-            throw bad_result_access{ "accessing the error of a 'result' object with value" };
+            throw bad_result_access{ "accessing the error of a 'result_t' object with value" };
         }
         return *m_storage;
     }
@@ -532,7 +532,7 @@ struct result<void, E>
     {
         if (!has_error())
         {
-            throw bad_result_access{ "accessing the error of a 'result' object with value" };
+            throw bad_result_access{ "accessing the error of a 'result_t' object with value" };
         }
         return *m_storage;
     }
@@ -541,7 +541,7 @@ struct result<void, E>
     {
         if (!has_error())
         {
-            throw bad_result_access{ "accessing the error of a 'result' object with value" };
+            throw bad_result_access{ "accessing the error of a 'result_t' object with value" };
         }
         return *std::move(m_storage);
     }
@@ -554,7 +554,7 @@ struct result<void, E>
     constexpr auto and_then(Func&& func) const& -> Result
     {
         static_assert(
-            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result<T, E>` type");
+            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result_t<T, E>` type");
         return *this  //
                    ? detail::to_ok<Result>(std::forward<Func>(func))
                    : detail::to_error<Result>(*this);
@@ -564,13 +564,13 @@ struct result<void, E>
     constexpr auto and_then(Func&& func) && -> Result
     {
         static_assert(
-            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result<T, E>` type");
+            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result_t<T, E>` type");
         return *this  //
                    ? detail::to_ok<Result>(std::forward<Func>(func))
                    : detail::to_error<Result>(std::move(*this));
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func>, class Result = result<FuncResult, E>>
+    template <class Func, class FuncResult = std::invoke_result_t<Func>, class Result = result_t<FuncResult, E>>
     constexpr auto transform(Func&& func) const& -> Result
     {
         return *this  //
@@ -578,7 +578,7 @@ struct result<void, E>
                    : detail::to_error<Result>(*this);
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func>, class Result = result<FuncResult, E>>
+    template <class Func, class FuncResult = std::invoke_result_t<Func>, class Result = result_t<FuncResult, E>>
     constexpr auto transform(Func&& func) && -> Result
     {
         return *this  //
@@ -589,7 +589,7 @@ struct result<void, E>
     template <
         class Func,
         class FuncResult = std::invoke_result_t<Func, const E&>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, result<void, E>, FuncResult>>
+        class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<void, E>, FuncResult>>
     constexpr auto or_else(Func&& func) const& -> Result
     {
         if constexpr (std::is_void_v<FuncResult>)
@@ -601,7 +601,7 @@ struct result<void, E>
         else
         {
             static_assert(
-                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result<T, E>` type");
+                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result_t<T, E>` type");
             return *this  //
                        ? Result{ *this }
                        : Result{ std::invoke(std::forward<Func>(func), error()) };
@@ -611,7 +611,7 @@ struct result<void, E>
     template <
         class Func,
         class FuncResult = std::invoke_result_t<Func, const E&>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, result<void, E>, FuncResult>>
+        class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<void, E>, FuncResult>>
     constexpr auto or_else(Func&& func) && -> Result
     {
         if constexpr (std::is_void_v<FuncResult>)
@@ -623,14 +623,14 @@ struct result<void, E>
         else
         {
             static_assert(
-                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result<T, E>` type");
+                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result_t<T, E>` type");
             return *this  //
                        ? Result{ std::move(*this) }
                        : Result{ std::invoke(std::forward<Func>(func), std::move(*this).error()) };
         }
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result<void, FuncResult>>
+    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result_t<void, FuncResult>>
     constexpr auto transform_error(Func&& func) const& -> Result
     {
         return *this  //
@@ -638,7 +638,7 @@ struct result<void, E>
                    : Result{ zx::error(std::invoke(std::forward<Func>(func), error())) };
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result<void, FuncResult>>
+    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result_t<void, FuncResult>>
     constexpr auto transform_error(Func&& func) && -> Result
     {
         return *this  //
@@ -657,7 +657,7 @@ template <
     class RE,
     class = std::invoke_result_t<std::equal_to<>, L, R>,
     class = std::invoke_result_t<std::equal_to<>, LE, RE>>
-constexpr bool operator==(const result<L, LE>& lhs, const result<R, RE>& rhs)
+constexpr bool operator==(const result_t<L, LE>& lhs, const result_t<R, RE>& rhs)
 {
     if (lhs.has_value() && rhs.has_value())
     {
@@ -678,13 +678,13 @@ template <
     class RE,
     class = std::invoke_result_t<std::equal_to<>, L, R>,
     class = std::invoke_result_t<std::equal_to<>, LE, RE>>
-constexpr bool operator!=(const result<L, LE>& lhs, const result<R, RE>& rhs)
+constexpr bool operator!=(const result_t<L, LE>& lhs, const result_t<R, RE>& rhs)
 {
     return !(lhs == rhs);
 }
 
 template <class LE, class RE, class = std::invoke_result_t<std::equal_to<>, LE, RE>>
-constexpr bool operator==(const result<void, LE>& lhs, const result<void, RE>& rhs)
+constexpr bool operator==(const result_t<void, LE>& lhs, const result_t<void, RE>& rhs)
 {
     if (lhs.has_value() && rhs.has_value())
     {
@@ -699,37 +699,37 @@ constexpr bool operator==(const result<void, LE>& lhs, const result<void, RE>& r
 }
 
 template <class LE, class RE, class = std::invoke_result_t<std::equal_to<>, LE, RE>>
-constexpr bool operator!=(const result<void, LE>& lhs, const result<void, RE>& rhs)
+constexpr bool operator!=(const result_t<void, LE>& lhs, const result_t<void, RE>& rhs)
 {
     return !(lhs == rhs);
 }
 
 template <class L, class LE, class R, class = std::invoke_result_t<std::equal_to<>, L, R>>
-constexpr bool operator==(const result<L, LE>& lhs, const R& rhs)
+constexpr bool operator==(const result_t<L, LE>& lhs, const R& rhs)
 {
     return lhs && *lhs == rhs;
 }
 
 template <class L, class LE, class R, class = std::invoke_result_t<std::equal_to<>, L, R>>
-constexpr bool operator!=(const result<L, LE>& lhs, const R& rhs)
+constexpr bool operator!=(const result_t<L, LE>& lhs, const R& rhs)
 {
     return !(lhs == rhs);
 }
 
 template <class L, class R, class RE, class = std::invoke_result_t<std::equal_to<>, L, R>>
-constexpr bool operator==(const L& lhs, const result<R, RE>& rhs)
+constexpr bool operator==(const L& lhs, const result_t<R, RE>& rhs)
 {
     return rhs && lhs == *rhs;
 }
 
 template <class L, class R, class RE, class = std::invoke_result_t<std::equal_to<>, L, R>>
-constexpr bool operator!=(const L& lhs, const result<R, RE>& rhs)
+constexpr bool operator!=(const L& lhs, const result_t<R, RE>& rhs)
 {
     return !(lhs == rhs);
 }
 
 template <class Func, class... Args>
-auto try_invoke(Func&& func, Args&&... args) noexcept -> result<std::invoke_result_t<Func, Args...>, std::exception_ptr>
+auto try_invoke(Func&& func, Args&&... args) noexcept -> result_t<std::invoke_result_t<Func, Args...>, std::exception_ptr>
 {
     try
     {
@@ -750,7 +750,7 @@ auto try_invoke(Func&& func, Args&&... args) noexcept -> result<std::invoke_resu
 }
 
 template <class T, class... Args>
-auto try_create(Args&&... args) noexcept -> result<T, std::exception_ptr>
+auto try_create(Args&&... args) noexcept -> result_t<T, std::exception_ptr>
 {
     try
     {

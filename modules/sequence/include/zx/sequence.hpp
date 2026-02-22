@@ -7,7 +7,7 @@ namespace zx
 {
 
 template <class T>
-using iteration_result_t = maybe<T>;
+using iteration_result_t = maybe_t<T>;
 
 template <class T>
 using next_function_t = std::function<iteration_result_t<T>()>;
@@ -980,24 +980,24 @@ struct sequence : detail::inspect_mixin<T>,
 
     auto get_next_function() && -> next_function_type&& { return std::move(m_next_fn); }
 
-    auto maybe_front() const& -> maybe<reference> { return get_next_function()(); }
+    auto maybe_front() const& -> maybe_t<reference> { return get_next_function()(); }
 
     auto front() const& -> reference { return maybe_front().value(); }
 
-    auto maybe_at(difference_type n) const -> maybe<reference> { return this->drop(n).maybe_front(); }
+    auto maybe_at(difference_type n) const -> maybe_t<reference> { return this->drop(n).maybe_front(); }
 
     auto at(difference_type n) const -> reference { return maybe_at(n).value(); }
 
     bool empty() const { return begin() == end(); }
 
     template <class Pred>
-    auto find_if(Pred pred) const -> maybe<reference>
+    auto find_if(Pred pred) const -> maybe_t<reference>
     {
         return this->drop_while(std::not_fn(std::move(pred))).maybe_front();
     }
 
     template <class Pred>
-    auto index_of(Pred pred) const -> maybe<difference_type>
+    auto index_of(Pred pred) const -> maybe_t<difference_type>
     {
         difference_type index = 0;
         iterator it = begin();

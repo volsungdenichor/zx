@@ -115,7 +115,7 @@ TEST(sequence, transform_maybe)
     zx::sequence<int> seq = zx::sequence<int>(vec);
 
     const std::vector<int> result = seq.transform_maybe(
-        [](int value) -> zx::maybe<int>
+        [](int value) -> zx::maybe_t<int>
         {
             if (value % 2 == 0)
             {
@@ -133,7 +133,7 @@ TEST(sequence, transform_maybe_indexed)
     zx::sequence<int> seq = zx::sequence<int>(vec);
 
     const std::vector<int> result = seq.transform_maybe_indexed(
-        [](std::ptrdiff_t index, int value) -> zx::maybe<int>
+        [](std::ptrdiff_t index, int value) -> zx::maybe_t<int>
         {
             if (index % 2 == 1)
             {
@@ -296,7 +296,7 @@ TEST(sequence, unfold)
 {
     zx::sequence<std::string> seq = zx::seq::unfold(
         std::tuple<int, int, int>{ 0, 1, 1 },
-        [](std::tuple<int, int, int> state) -> zx::maybe<std::pair<std::string, std::tuple<int, int, int>>>
+        [](std::tuple<int, int, int> state) -> zx::maybe_t<std::pair<std::string, std::tuple<int, int, int>>>
         {
             const auto [n, a, b] = state;
             if (n < 10)
