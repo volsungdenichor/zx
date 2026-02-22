@@ -80,7 +80,7 @@ TEST(triangle_t, multiply_matrix)
     zx::mat::triangle_t<int, 2> t{ zx::mat::vector_t<int, 2>{ 1, 2 },
                                    zx::mat::vector_t<int, 2>{ 3, 4 },
                                    zx::mat::vector_t<int, 2>{ 5, 6 } };
-    zx::mat::matrix<float, 3> mat{ 2.0f, 0.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 1.0f };
+    zx::mat::matrix_t<float, 3> mat{ 2.0f, 0.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 1.0f };
 
     EXPECT_THAT(
         t * mat,
@@ -171,7 +171,7 @@ TEST(quad_t, multiply_matrix)
                                zx::mat::vector_t<int, 2>{ 3, 4 },
                                zx::mat::vector_t<int, 2>{ 5, 6 },
                                zx::mat::vector_t<int, 2>{ 7, 8 } };
-    zx::mat::matrix<float, 3> mat{ 2.0f, 0.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 1.0f };
+    zx::mat::matrix_t<float, 3> mat{ 2.0f, 0.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 1.0f };
 
     EXPECT_THAT(
         q * mat,

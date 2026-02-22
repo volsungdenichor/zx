@@ -75,7 +75,7 @@ constexpr auto operator-(const polygonal_shape_t<T, D, N>& lhs, const vector_t<U
 }
 
 template <class T, class U, std::size_t D, std::size_t N>
-constexpr auto operator*=(polygonal_shape_t<T, D, N>& lhs, const matrix<U, D + 1>& rhs) -> polygonal_shape_t<T, D, N>&
+constexpr auto operator*=(polygonal_shape_t<T, D, N>& lhs, const matrix_t<U, D + 1>& rhs) -> polygonal_shape_t<T, D, N>&
 {
     std::transform(
         std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::multiplies<>{}, std::placeholders::_1, rhs));
@@ -83,7 +83,8 @@ constexpr auto operator*=(polygonal_shape_t<T, D, N>& lhs, const matrix<U, D + 1
 }
 
 template <class T, class U, std::size_t D, std::size_t N, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator*(const polygonal_shape_t<T, D, N>& lhs, const matrix<U, D + 1>& rhs) -> polygonal_shape_t<Res, D, N>
+constexpr auto operator*(const polygonal_shape_t<T, D, N>& lhs, const matrix_t<U, D + 1>& rhs)
+    -> polygonal_shape_t<Res, D, N>
 {
     polygonal_shape_t<Res, D, N> result;
     std::transform(
@@ -92,7 +93,8 @@ constexpr auto operator*(const polygonal_shape_t<T, D, N>& lhs, const matrix<U, 
 }
 
 template <class T, class U, std::size_t D, std::size_t N, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator*(const matrix<U, D + 1>& lhs, const polygonal_shape_t<T, D, N>& rhs) -> polygonal_shape_t<Res, D, N>
+constexpr auto operator*(const matrix_t<U, D + 1>& lhs, const polygonal_shape_t<T, D, N>& rhs)
+    -> polygonal_shape_t<Res, D, N>
 {
     return rhs * lhs;
 }

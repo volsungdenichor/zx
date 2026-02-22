@@ -35,7 +35,7 @@ TEST(segment, subtract_vector)
 TEST(segment, multiply_matrix)
 {
     zx::mat::segment_t<int, 2> seg{ { 1, 2 }, { 3, 4 } };
-    zx::mat::matrix<float, 3> mat{ 2.0f, 0.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 1.0f };
+    zx::mat::matrix_t<float, 3> mat{ 2.0f, 0.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 1.0f };
 
     EXPECT_THAT(
         seg * mat,
@@ -91,7 +91,7 @@ TEST(ray, subtract_vector)
 TEST(ray, multiply_matrix)
 {
     zx::mat::ray_t<int, 2> r{ { 1, 2 }, { 3, 4 } };
-    zx::mat::matrix<double, 3> m{ 2.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 1.0 };
+    zx::mat::matrix_t<double, 3> m{ 2.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 1.0 };
 
     EXPECT_THAT(
         r * m,
@@ -159,7 +159,7 @@ TEST(line, subtract_vector)
 TEST(line, multiply_matrix)
 {
     zx::mat::line_t<int, 2> line{ { 1, 2 }, { 3, 4 } };
-    zx::mat::matrix<float, 3> mat{ 2.0f, 0.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 1.0f };
+    zx::mat::matrix_t<float, 3> mat{ 2.0f, 0.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 1.0f };
 
     EXPECT_THAT(
         line * mat,

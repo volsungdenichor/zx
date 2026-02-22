@@ -91,7 +91,7 @@ constexpr auto operator-(const linear_shape_t<Tag, T, D>& lhs, const vector_t<U,
 }
 
 template <class Tag, class T, class U, std::size_t D>
-constexpr auto operator*=(linear_shape_t<Tag, T, D>& lhs, const matrix<U, D + 1>& rhs) -> linear_shape_t<Tag, T, D>&
+constexpr auto operator*=(linear_shape_t<Tag, T, D>& lhs, const matrix_t<U, D + 1>& rhs) -> linear_shape_t<Tag, T, D>&
 {
     std::transform(
         std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::multiplies<>{}, std::placeholders::_1, rhs));
@@ -99,7 +99,7 @@ constexpr auto operator*=(linear_shape_t<Tag, T, D>& lhs, const matrix<U, D + 1>
 }
 
 template <class Tag, class T, class U, std::size_t D, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const linear_shape_t<Tag, T, D>& lhs, const matrix<U, D + 1>& rhs) -> linear_shape_t<Tag, Res, D>
+constexpr auto operator*(const linear_shape_t<Tag, T, D>& lhs, const matrix_t<U, D + 1>& rhs) -> linear_shape_t<Tag, Res, D>
 {
     linear_shape_t<Tag, Res, D> result;
     std::transform(
@@ -108,7 +108,7 @@ constexpr auto operator*(const linear_shape_t<Tag, T, D>& lhs, const matrix<U, D
 }
 
 template <class Tag, class T, class U, std::size_t D, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const matrix<U, D + 1>& lhs, const linear_shape_t<Tag, T, D>& rhs) -> linear_shape_t<Tag, Res, D>
+constexpr auto operator*(const matrix_t<U, D + 1>& lhs, const linear_shape_t<Tag, T, D>& rhs) -> linear_shape_t<Tag, Res, D>
 {
     return rhs * lhs;
 }
