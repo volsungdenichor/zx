@@ -35,9 +35,9 @@ constexpr auto approx_equal(T value, E epsilon)
 }
 
 template <class T, std::size_t D>
-constexpr line<T, 2> make_line(const segment<T, D>& s)
+constexpr line_t<T, 2> make_line(const segment_t<T, D>& s)
 {
-    return line<T, 2>{ s[0], s[1] };
+    return line_t<T, 2>{ s[0], s[1] };
 }
 
 struct dot_fn
@@ -109,7 +109,7 @@ struct length_fn
     }
 
     template <class T, std::size_t D>
-    constexpr auto operator()(const segment<T, D>& item) const
+    constexpr auto operator()(const segment_t<T, D>& item) const
     {
         return (*this)(item[1] - item[0]);
     }
@@ -149,13 +149,13 @@ template <std::size_t Dim>
 struct lower_upper_fn
 {
     template <class T>
-    constexpr auto operator()(const interval<T>& item) const -> T
+    constexpr auto operator()(const interval_t<T>& item) const -> T
     {
         return item[Dim];
     }
 
     template <class T, std::size_t D>
-    constexpr auto operator()(const box_shape<T, D>& item) const -> vector<T, D>
+    constexpr auto operator()(const box_shape_t<T, D>& item) const -> vector<T, D>
     {
         vector<T, D> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -173,7 +173,7 @@ template <std::size_t Dim>
 struct min_max_fn
 {
     template <class T>
-    constexpr auto operator()(const interval<T>& item) const -> T
+    constexpr auto operator()(const interval_t<T>& item) const -> T
     {
         if constexpr (Dim == 0)
         {
@@ -193,7 +193,7 @@ struct min_max_fn
     }
 
     template <class T, std::size_t D>
-    constexpr auto operator()(const box_shape<T, D>& item) const -> vector<T, D>
+    constexpr auto operator()(const box_shape_t<T, D>& item) const -> vector<T, D>
     {
         vector<T, D> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -210,13 +210,13 @@ static constexpr inline auto max = min_max_fn<1>{};
 struct size_fn
 {
     template <class T>
-    constexpr auto operator()(const interval<T>& item) const -> T
+    constexpr auto operator()(const interval_t<T>& item) const -> T
     {
         return upper(item) - lower(item);
     }
 
     template <class T, std::size_t D>
-    constexpr auto operator()(const box_shape<T, D>& item) const -> vector<T, D>
+    constexpr auto operator()(const box_shape_t<T, D>& item) const -> vector<T, D>
     {
         return upper(item) - lower(item);
     }
@@ -227,19 +227,19 @@ static constexpr inline auto size = size_fn{};
 struct center_fn
 {
     template <class T, std::size_t D>
-    constexpr auto operator()(const box_shape<T, D>& item) const -> vector<T, D>
+    constexpr auto operator()(const box_shape_t<T, D>& item) const -> vector<T, D>
     {
         return (lower(item) + upper(item)) / 2;
     }
 
     template <class T, std::size_t D>
-    constexpr auto operator()(const segment<T, D>& item) const -> vector<T, D>
+    constexpr auto operator()(const segment_t<T, D>& item) const -> vector<T, D>
     {
         return (item[0] + item[1]) / 2;
     }
 
     template <class T, std::size_t D>
-    constexpr auto operator()(const spherical_shape<T, D>& item) const -> vector<T, D>
+    constexpr auto operator()(const spherical_shape_t<T, D>& item) const -> vector<T, D>
     {
         return item.center;
     }
@@ -256,7 +256,7 @@ struct orientation_fn
     }
 
     template <class T, class U, class Tag>
-    constexpr auto operator()(const vector<T, 2>& point, const linear_shape<Tag, U, 2>& shape) const
+    constexpr auto operator()(const vector<T, 2>& point, const linear_shape_t<Tag, U, 2>& shape) const
     {
         return (*this)(point, shape[0], shape[1]);
     }
@@ -267,13 +267,13 @@ static constexpr inline auto orientation = orientation_fn{};
 struct contains_fn
 {
     template <class T, class U>
-    constexpr auto operator()(const interval<T>& item, U value) const -> bool
+    constexpr auto operator()(const interval_t<T>& item, U value) const -> bool
     {
         return between(value, lower(item), upper(item));
     }
 
     template <class T>
-    constexpr auto operator()(const interval<T>& item, const interval<T>& other) const -> bool
+    constexpr auto operator()(const interval_t<T>& item, const interval_t<T>& other) const -> bool
     {
         constexpr T lo = lower(item);
         constexpr T up = upper(item);
@@ -281,7 +281,7 @@ struct contains_fn
     }
 
     template <class T, std::size_t D>
-    constexpr auto operator()(const box_shape<T, D>& item, const box_shape<T, D>& other) const -> bool
+    constexpr auto operator()(const box_shape_t<T, D>& item, const box_shape_t<T, D>& other) const -> bool
     {
         for (std::size_t d = 0; d < D; ++d)
         {
@@ -294,13 +294,13 @@ struct contains_fn
     }
 
     template <class T, class U, std::size_t D>
-    constexpr auto operator()(const spherical_shape<T, D>& item, const vector<U, D>& other) const -> bool
+    constexpr auto operator()(const spherical_shape_t<T, D>& item, const vector<U, D>& other) const -> bool
     {
         return norm(other - center(item)) <= math::sqr(item.radius);
     }
 
     template <class T, class U>
-    constexpr bool operator()(const triangle<T, 2>& item, const vector<U, 2>& other) const
+    constexpr bool operator()(const triangle_t<T, 2>& item, const vector<U, 2>& other) const
     {
         constexpr auto same_sign = [](int a, int b) { return (a <= 0 && b <= 0) || (a >= 0 && b >= 0); };
 
@@ -308,7 +308,7 @@ struct contains_fn
 
         for (std::size_t i = 0; i < 3; ++i)
         {
-            result[i] = math::sign(orientation(other, segment<T, 2>{ item[(i + 0) % 3], item[(i + 1) % 3] }));
+            result[i] = math::sign(orientation(other, segment_t<T, 2>{ item[(i + 0) % 3], item[(i + 1) % 3] }));
         }
 
         return same_sign(result[0], result[1]) && same_sign(result[0], result[2]) && same_sign(result[1], result[2]);
@@ -320,7 +320,7 @@ static constexpr inline auto contains = contains_fn{};
 struct intersects_fn
 {
     template <class T>
-    constexpr auto operator()(const interval<T>& self, const interval<T>& other) const -> bool
+    constexpr auto operator()(const interval_t<T>& self, const interval_t<T>& other) const -> bool
     {
         return inclusive_between(lower(self), lower(other), upper(other))     //
                || inclusive_between(upper(self), lower(other), upper(other))  //
@@ -329,7 +329,7 @@ struct intersects_fn
     }
 
     template <class T, std::size_t D>
-    constexpr auto operator()(const box_shape<T, D>& self, const box_shape<T, D>& other) const -> bool
+    constexpr auto operator()(const box_shape_t<T, D>& self, const box_shape_t<T, D>& other) const -> bool
     {
         for (std::size_t d = 0; d < D; ++d)
         {
@@ -353,13 +353,13 @@ struct interpolate_fn
     }
 
     template <class R, class T, std::size_t D>
-    constexpr auto operator()(R r, const segment<T, D>& value) const
+    constexpr auto operator()(R r, const segment_t<T, D>& value) const
     {
         return (*this)(r, value[0], value[1]);
     }
 
     template <class R, class T>
-    constexpr auto operator()(R r, const interval<T>& item) const
+    constexpr auto operator()(R r, const interval_t<T>& item) const
     {
         return lower(item) * r + upper(item) * (R(1) - r);
     }
@@ -429,8 +429,8 @@ constexpr bool contains_param(segment_tag, T v)
 struct intersection_fn
 {
     template <class T, std::size_t D, class Tag1, class Tag2, class E = T>
-    constexpr auto operator()(const linear_shape<Tag1, T, D>& lhs, const linear_shape<Tag2, T, D>& rhs, E epsilon = {}) const
-        -> std::optional<vector<T, D>>
+    constexpr auto operator()(const linear_shape_t<Tag1, T, D>& lhs, const linear_shape_t<Tag2, T, D>& rhs, E epsilon = {})
+        const -> std::optional<vector<T, D>>
     {
         const auto par = detail::get_line_intersection_parameters(lhs[0], lhs[1], rhs[0], rhs[1], epsilon);
 
@@ -461,7 +461,7 @@ struct projection_fn
     }
 
     template <class T, std::size_t D, class Tag, class E = T>
-    constexpr auto operator()(const vector<T, D>& point, const linear_shape<Tag, T, D>& shape, E epsilon = {}) const
+    constexpr auto operator()(const vector<T, D>& point, const linear_shape_t<Tag, T, D>& shape, E epsilon = {}) const
         -> std::optional<vector<T, D>>
     {
         const auto p0 = shape[0];
@@ -502,14 +502,14 @@ struct perpendicular_fn
     }
 
     template <class Tag, class T>
-    constexpr auto operator()(const linear_shape<Tag, T, 2>& value, const vector<T, 2>& origin) const
-        -> linear_shape<Tag, T, 2>
+    constexpr auto operator()(const linear_shape_t<Tag, T, 2>& value, const vector<T, 2>& origin) const
+        -> linear_shape_t<Tag, T, 2>
     {
         return { origin, origin + (*this)(value[1] - value[0]) };
     }
 
     template <class Tag, class T>
-    constexpr auto operator()(const linear_shape<Tag, T, 2>& value) const -> linear_shape<Tag, T, 2>
+    constexpr auto operator()(const linear_shape_t<Tag, T, 2>& value) const -> linear_shape_t<Tag, T, 2>
     {
         return (*this)(value, value[0]);
     }
@@ -520,13 +520,13 @@ static constexpr inline auto perpendicular = perpendicular_fn{};
 struct altitude_fn
 {
     template <typename T>
-    constexpr auto operator()(const triangle<T, 2>& value, std::size_t index) const -> segment<T, 2>
+    constexpr auto operator()(const triangle_t<T, 2>& value, std::size_t index) const -> segment_t<T, 2>
     {
         constexpr T epsilon = T(0.1);
 
         const auto v = value[(index + 0) % 3];
 
-        const auto p = projection(v, line<T, 2>{ value[(index + 1) % 3], value[(index + 2) % 3] }, epsilon);
+        const auto p = projection(v, line_t<T, 2>{ value[(index + 1) % 3], value[(index + 2) % 3] }, epsilon);
 
         return { v, *p };
     }
@@ -537,7 +537,7 @@ static constexpr inline auto altitude = altitude_fn{};
 struct centroid_fn
 {
     template <typename T>
-    constexpr auto operator()(const triangle<T, 2>& value) const -> vector<T, 2>
+    constexpr auto operator()(const triangle_t<T, 2>& value) const -> vector<T, 2>
     {
         return std::accumulate(std::begin(value), std::end(value), vector<T, 2>{}) / 3;
     }
@@ -548,7 +548,7 @@ static constexpr inline auto centroid = centroid_fn{};
 struct orthocenter_fn
 {
     template <typename T>
-    constexpr auto operator()(const triangle<T, 2>& value) const -> vector<T, 2>
+    constexpr auto operator()(const triangle_t<T, 2>& value) const -> vector<T, 2>
     {
         constexpr T epsilon = T(0.0001);
 
@@ -561,12 +561,12 @@ static constexpr inline auto orthocenter = orthocenter_fn{};
 struct circumcenter_fn
 {
     template <typename T>
-    constexpr auto operator()(const triangle<T, 2>& value) const -> vector<T, 2>
+    constexpr auto operator()(const triangle_t<T, 2>& value) const -> vector<T, 2>
     {
         constexpr T epsilon = T(0.0001);
 
-        const auto s0 = segment<T, 2>{ value[0], value[1] };
-        const auto s1 = segment<T, 2>{ value[1], value[2] };
+        const auto s0 = segment_t<T, 2>{ value[0], value[1] };
+        const auto s1 = segment_t<T, 2>{ value[1], value[2] };
 
         return *intersection(make_line(perpendicular(s0, center(s0))), make_line(perpendicular(s1, center(s1))), epsilon);
     }
@@ -577,13 +577,13 @@ static constexpr inline auto circumcenter = circumcenter_fn{};
 struct incenter_fn
 {
     template <typename T>
-    constexpr auto operator()(const triangle<T, 2>& value) const -> vector<T, 2>
+    constexpr auto operator()(const triangle_t<T, 2>& value) const -> vector<T, 2>
     {
         T perimeter = T(0);
         std::array<T, 3> sides = {};
         for (std::size_t i = 0; i < 3; ++i)
         {
-            sides[i] = length(segment<T, 2>{ value[(i + 1) % 3], value[(i + 2) % 3] });
+            sides[i] = length(segment_t<T, 2>{ value[(i + 1) % 3], value[(i + 2) % 3] });
             perimeter += sides[i];
         }
 
@@ -604,14 +604,14 @@ static constexpr inline auto incenter = incenter_fn{};
 struct incircle_fn
 {
     template <class T>
-    constexpr auto operator()(const triangle<T, 2>& triangle) const -> spherical_shape<T, 2>
+    constexpr auto operator()(const triangle_t<T, 2>& triangle_t) const -> spherical_shape_t<T, 2>
     {
         constexpr T epsilon = T(0.1);
 
-        const auto c = incenter(triangle);
-        const auto r = distance(c, *projection(c, segment<T, 2>{ triangle[0], triangle[1] }, epsilon));
+        const auto c = incenter(triangle_t);
+        const auto r = distance(c, *projection(c, segment_t<T, 2>{ triangle_t[0], triangle_t[1] }, epsilon));
 
-        return spherical_shape<T, 2>{ c, static_cast<T>(r) };
+        return spherical_shape_t<T, 2>{ c, static_cast<T>(r) };
     }
 };
 
@@ -620,12 +620,12 @@ static constexpr inline auto incircle = incircle_fn{};
 struct circumcircle_fn
 {
     template <class T>
-    constexpr auto operator()(const triangle<T, 2>& triangle) const -> spherical_shape<T, 2>
+    constexpr auto operator()(const triangle_t<T, 2>& triangle_t) const -> spherical_shape_t<T, 2>
     {
-        const auto c = circumcenter(triangle);
-        const auto r = distance(c, triangle[0]);
+        const auto c = circumcenter(triangle_t);
+        const auto r = distance(c, triangle_t[0]);
 
-        return spherical_shape<T, 2>{ c, static_cast<T>(r) };
+        return spherical_shape_t<T, 2>{ c, static_cast<T>(r) };
     }
 };
 

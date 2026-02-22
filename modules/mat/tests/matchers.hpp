@@ -81,16 +81,16 @@ struct ApproxEqualMatcher<zx::mat::vector<T, D>>
 };
 
 template <class T, std::size_t D>
-struct ApproxEqualMatcher<zx::mat::segment<T, D>>
+struct ApproxEqualMatcher<zx::mat::segment_t<T, D>>
 {
     using is_gtest_matcher = void;
 
-    zx::mat::segment<T, D> m_expected;
+    zx::mat::segment_t<T, D> m_expected;
 
-    ApproxEqualMatcher(zx::mat::segment<T, D> expected) : m_expected{ expected } { }
+    ApproxEqualMatcher(zx::mat::segment_t<T, D> expected) : m_expected{ expected } { }
 
     template <class U = T>
-    bool MatchAndExplain(const zx::mat::segment<U, D>& actual, ::testing::MatchResultListener* listener) const
+    bool MatchAndExplain(const zx::mat::segment_t<U, D>& actual, ::testing::MatchResultListener* listener) const
     {
         constexpr auto epsilon = std::common_type_t<T, U>(0.1);
 
@@ -118,16 +118,16 @@ struct ApproxEqualMatcher<zx::mat::segment<T, D>>
 };
 
 template <class T, std::size_t D, std::size_t N>
-struct ApproxEqualMatcher<zx::mat::polygonal_shape<T, D, N>>
+struct ApproxEqualMatcher<zx::mat::polygonal_shape_t<T, D, N>>
 {
     using is_gtest_matcher = void;
 
-    zx::mat::polygonal_shape<T, D, N> m_expected;
+    zx::mat::polygonal_shape_t<T, D, N> m_expected;
 
-    ApproxEqualMatcher(zx::mat::polygonal_shape<T, D, N> expected) : m_expected{ expected } { }
+    ApproxEqualMatcher(zx::mat::polygonal_shape_t<T, D, N> expected) : m_expected{ expected } { }
 
     template <class U = T>
-    bool MatchAndExplain(const zx::mat::polygonal_shape<U, D, N>& actual, ::testing::MatchResultListener* listener) const
+    bool MatchAndExplain(const zx::mat::polygonal_shape_t<U, D, N>& actual, ::testing::MatchResultListener* listener) const
     {
         constexpr auto epsilon = std::common_type_t<T, U>(0.1);
 

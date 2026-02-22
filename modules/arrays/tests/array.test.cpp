@@ -33,7 +33,7 @@ TEST(array, array_1d)
     EXPECT_THAT(a.stride(), 1);
     EXPECT_THAT(a.start(), 0);
     EXPECT_THAT(a.volume(), 10);
-    EXPECT_THAT(a.bounds(), (zx::mat::interval<int>{ 0, 10 }));
+    EXPECT_THAT(a.bounds(), (zx::mat::interval_t<int>{ 0, 10 }));
     EXPECT_THAT(a[0], 0);
     EXPECT_THAT(a[1], 42);
 
@@ -42,7 +42,7 @@ TEST(array, array_1d)
     EXPECT_THAT(view.stride(), 1);
     EXPECT_THAT(view.start(), 0);
     EXPECT_THAT(view.volume(), 10);
-    EXPECT_THAT(a.bounds(), (zx::mat::interval<int>{ 0, 10 }));
+    EXPECT_THAT(a.bounds(), (zx::mat::interval_t<int>{ 0, 10 }));
     EXPECT_THAT(view[0], 0);
     EXPECT_THAT(view[1], 42);
 
@@ -52,7 +52,7 @@ TEST(array, array_1d)
     EXPECT_THAT(mut_view.size(), 10);
     EXPECT_THAT(mut_view.stride(), 1);
     EXPECT_THAT(mut_view.start(), 0);
-    EXPECT_THAT(a.bounds(), (zx::mat::interval<int>{ 0, 10 }));
+    EXPECT_THAT(a.bounds(), (zx::mat::interval_t<int>{ 0, 10 }));
     EXPECT_THAT(mut_view.volume(), 10);
     EXPECT_THAT(mut_view[0], 0);
     EXPECT_THAT(mut_view[1], 42);
@@ -72,7 +72,7 @@ TEST(array, array_1d_slice)
     EXPECT_THAT(view.stride(), 1);
     EXPECT_THAT(view.start(), 2);
     EXPECT_THAT(view.volume(), 6);
-    EXPECT_THAT(view.bounds(), (zx::mat::interval<int>{ 0, 6 }));
+    EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 6 }));
     EXPECT_THAT(view[0], 2);
     EXPECT_THAT(view[1], 3);
     EXPECT_THAT(view[2], 4);
@@ -94,7 +94,7 @@ TEST(array, array_1d_slice_step)
     EXPECT_THAT(view.stride(), 2);
     EXPECT_THAT(view.start(), 2);
     EXPECT_THAT(view.volume(), 3);
-    EXPECT_THAT(view.bounds(), (zx::mat::interval<int>{ 0, 3 }));
+    EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 3 }));
     EXPECT_THAT(view[0], 2);
     EXPECT_THAT(view[1], 4);
     EXPECT_THAT(view[2], 6);
@@ -113,7 +113,7 @@ TEST(array, array_1d_slice_negative)
     EXPECT_THAT(view.stride(), 1);
     EXPECT_THAT(view.start(), 2);
     EXPECT_THAT(view.volume(), 6);
-    EXPECT_THAT(view.bounds(), (zx::mat::interval<int>{ 0, 6 }));
+    EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 6 }));
     EXPECT_THAT(view[0], 2);
     EXPECT_THAT(view[1], 3);
     EXPECT_THAT(view[2], 4);
@@ -136,7 +136,7 @@ TEST(array, array_1d_slice_negative_step)
     EXPECT_THAT(view.stride(), -2);
     EXPECT_THAT(view.start(), 8);
     EXPECT_THAT(view.volume(), 3);
-    EXPECT_THAT(view.bounds(), (zx::mat::interval<int>{ 0, 3 }));
+    EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 3 }));
     EXPECT_THAT(view[0], 8);
     EXPECT_THAT(view[1], 6);
     EXPECT_THAT(view[2], 4);

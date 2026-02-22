@@ -4,7 +4,7 @@
 
 TEST(segment, ostream)
 {
-    zx::mat::segment<float, 3> seg{ { 1.0f, 2.0f, 3.0f }, { 4.0f, 5.0f, 6.0f } };
+    zx::mat::segment_t<float, 3> seg{ { 1.0f, 2.0f, 3.0f }, { 4.0f, 5.0f, 6.0f } };
 
     std::ostringstream os;
     os << seg;
@@ -14,7 +14,7 @@ TEST(segment, ostream)
 
 TEST(segment, add_vector)
 {
-    zx::mat::segment<float, 2> seg{ { 1.0f, 2.0f }, { 3.0f, 4.0f } };
+    zx::mat::segment_t<float, 2> seg{ { 1.0f, 2.0f }, { 3.0f, 4.0f } };
     zx::mat::vector<float, 2> vec{ 10.0f, 20.0f };
 
     EXPECT_THAT(
@@ -24,7 +24,7 @@ TEST(segment, add_vector)
 
 TEST(segment, subtract_vector)
 {
-    zx::mat::segment<float, 2> seg{ { 10.0f, 20.0f }, { 30.0f, 40.0f } };
+    zx::mat::segment_t<float, 2> seg{ { 10.0f, 20.0f }, { 30.0f, 40.0f } };
     zx::mat::vector<float, 2> vec{ 1.0f, 2.0f };
 
     EXPECT_THAT(
@@ -34,7 +34,7 @@ TEST(segment, subtract_vector)
 
 TEST(segment, multiply_matrix)
 {
-    zx::mat::segment<int, 2> seg{ { 1, 2 }, { 3, 4 } };
+    zx::mat::segment_t<int, 2> seg{ { 1, 2 }, { 3, 4 } };
     zx::mat::matrix<float, 3> mat{ 2.0f, 0.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 1.0f };
 
     EXPECT_THAT(
@@ -48,9 +48,9 @@ TEST(segment, multiply_matrix)
 
 TEST(segment, equal)
 {
-    zx::mat::segment<int, 2> seg1{ { 1, 2 }, { 3, 4 } };
-    zx::mat::segment<int, 2> seg2{ { 1, 2 }, { 3, 4 } };
-    zx::mat::segment<int, 2> seg3{ { 5, 6 }, { 7, 8 } };
+    zx::mat::segment_t<int, 2> seg1{ { 1, 2 }, { 3, 4 } };
+    zx::mat::segment_t<int, 2> seg2{ { 1, 2 }, { 3, 4 } };
+    zx::mat::segment_t<int, 2> seg3{ { 5, 6 }, { 7, 8 } };
 
     EXPECT_TRUE(seg1 == seg2);
     EXPECT_FALSE(seg1 != seg2);
@@ -60,7 +60,7 @@ TEST(segment, equal)
 
 TEST(ray, ostream)
 {
-    zx::mat::ray<double, 2> r{ { 0.0, 0.0 }, { 1.0, 1.0 } };
+    zx::mat::ray_t<double, 2> r{ { 0.0, 0.0 }, { 1.0, 1.0 } };
 
     std::ostringstream os;
     os << r;
@@ -70,7 +70,7 @@ TEST(ray, ostream)
 
 TEST(ray, add_vector)
 {
-    zx::mat::ray<double, 2> r{ { 1.0, 2.0 }, { 3.0, 4.0 } };
+    zx::mat::ray_t<double, 2> r{ { 1.0, 2.0 }, { 3.0, 4.0 } };
     zx::mat::vector<double, 2> v{ 10.0, 20.0 };
 
     EXPECT_THAT(
@@ -79,7 +79,7 @@ TEST(ray, add_vector)
 
 TEST(ray, subtract_vector)
 {
-    zx::mat::ray<double, 2> r{ { 10.0, 20.0 }, { 30.0, 40.0 } };
+    zx::mat::ray_t<double, 2> r{ { 10.0, 20.0 }, { 30.0, 40.0 } };
     zx::mat::vector<double, 2> v{ 1.0, 2.0 };
 
     EXPECT_THAT(
@@ -88,7 +88,7 @@ TEST(ray, subtract_vector)
 
 TEST(ray, multiply_matrix)
 {
-    zx::mat::ray<int, 2> r{ { 1, 2 }, { 3, 4 } };
+    zx::mat::ray_t<int, 2> r{ { 1, 2 }, { 3, 4 } };
     zx::mat::matrix<double, 3> m{ 2.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 1.0 };
 
     EXPECT_THAT(
@@ -100,9 +100,9 @@ TEST(ray, multiply_matrix)
 
 TEST(ray, equal)
 {
-    zx::mat::ray<int, 2> r1{ { 1, 2 }, { 3, 4 } };
-    zx::mat::ray<int, 2> r2{ { 1, 2 }, { 3, 4 } };
-    zx::mat::ray<int, 2> r3{ { 5, 6 }, { 7, 8 } };
+    zx::mat::ray_t<int, 2> r1{ { 1, 2 }, { 3, 4 } };
+    zx::mat::ray_t<int, 2> r2{ { 1, 2 }, { 3, 4 } };
+    zx::mat::ray_t<int, 2> r3{ { 5, 6 }, { 7, 8 } };
 
     EXPECT_TRUE(r1 == r2);
     EXPECT_FALSE(r1 != r2);
@@ -112,7 +112,7 @@ TEST(ray, equal)
 
 TEST(line, ostream)
 {
-    zx::mat::line<int, 3> line{ { 1, 2, 3 }, { 4, 5, 6 } };
+    zx::mat::line_t<int, 3> line{ { 1, 2, 3 }, { 4, 5, 6 } };
 
     std::ostringstream os;
     os << line;
@@ -122,9 +122,9 @@ TEST(line, ostream)
 
 TEST(line, equal)
 {
-    zx::mat::line<int, 2> line1{ { 1, 2 }, { 3, 4 } };
-    zx::mat::line<int, 2> line2{ { 1, 2 }, { 3, 4 } };
-    zx::mat::line<int, 2> line3{ { 5, 6 }, { 7, 8 } };
+    zx::mat::line_t<int, 2> line1{ { 1, 2 }, { 3, 4 } };
+    zx::mat::line_t<int, 2> line2{ { 1, 2 }, { 3, 4 } };
+    zx::mat::line_t<int, 2> line3{ { 5, 6 }, { 7, 8 } };
 
     EXPECT_TRUE(line1 == line2);
     EXPECT_FALSE(line1 != line2);
@@ -134,7 +134,7 @@ TEST(line, equal)
 
 TEST(line, add_vector)
 {
-    zx::mat::line<double, 2> line{ { 1.0, 2.0 }, { 3.0, 4.0 } };
+    zx::mat::line_t<double, 2> line{ { 1.0, 2.0 }, { 3.0, 4.0 } };
     zx::mat::vector<double, 2> vec{ 10.0, 20.0 };
 
     EXPECT_THAT(
@@ -144,7 +144,7 @@ TEST(line, add_vector)
 
 TEST(line, subtract_vector)
 {
-    zx::mat::line<double, 2> line{ { 10.0, 20.0 }, { 30.0, 40.0 } };
+    zx::mat::line_t<double, 2> line{ { 10.0, 20.0 }, { 30.0, 40.0 } };
     zx::mat::vector<double, 2> vec{ 1.0, 2.0 };
 
     EXPECT_THAT(
@@ -154,7 +154,7 @@ TEST(line, subtract_vector)
 
 TEST(line, multiply_matrix)
 {
-    zx::mat::line<int, 2> line{ { 1, 2 }, { 3, 4 } };
+    zx::mat::line_t<int, 2> line{ { 1, 2 }, { 3, 4 } };
     zx::mat::matrix<float, 3> mat{ 2.0f, 0.0f, 0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f, 1.0f };
 
     EXPECT_THAT(

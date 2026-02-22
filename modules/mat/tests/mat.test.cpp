@@ -14,12 +14,12 @@ TEST(mat, dot_product)
 
 TEST(mat, altitude)
 {
-    zx::mat::triangle<double, 2> tri{ zx::mat::vector<double, 2>{ 0.0, 0.0 },
+    zx::mat::triangle_t<double, 2> t{ zx::mat::vector<double, 2>{ 0.0, 0.0 },
                                       zx::mat::vector<double, 2>{ 4.0, 0.0 },
                                       zx::mat::vector<double, 2>{ 0.0, 4.0 } };
 
     EXPECT_THAT(
-        zx::mat::altitude(tri, 0),
-        ApproxEqual(
-            zx::mat::segment<double, 2>{ zx::mat::vector<double, 2>{ 0.0, 0.0 }, zx::mat::vector<double, 2>{ 2.0, 2.0 } }));
+        zx::mat::altitude(t, 0),
+        ApproxEqual(zx::mat::segment_t<double, 2>{ zx::mat::vector<double, 2>{ 0.0, 0.0 },
+                                                   zx::mat::vector<double, 2>{ 2.0, 2.0 } }));
 }

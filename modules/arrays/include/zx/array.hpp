@@ -116,7 +116,7 @@ struct shape_t
     using stride_type = zx::mat::vector<stride_base_t, D>;
     using location_type = zx::mat::vector<location_base_t, D>;
     using slice_type = zx::mat::vector<slice_base_t, D>;
-    using bounds_type = zx::mat::box_shape<size_base_t, D>;
+    using bounds_type = zx::mat::box_shape_t<size_base_t, D>;
 
     std::array<dim_t, D> m_dims{};
 
@@ -232,7 +232,7 @@ struct shape_t<1>
     using stride_type = stride_base_t;
     using location_type = location_base_t;
     using slice_type = slice_base_t;
-    using bounds_type = zx::mat::interval<size_base_t>;
+    using bounds_type = zx::mat::interval_t<size_base_t>;
 
     dim_t m_dim{};
 
