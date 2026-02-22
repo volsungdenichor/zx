@@ -22,6 +22,7 @@ set(ZX_MODULE_DEPENDENCIES "
         [sequence [maybe iterator]]
         [mat [iterator]]
         [ansi []]
+        [arrays [iterator mat]]
     ]
 ")
 
