@@ -11,6 +11,7 @@ namespace images
 {
 
 using rgb_image_t = arrays::array_t<byte_t, 3>;
+using greyscale_image_t = arrays::array_t<byte_t, 2>;
 
 namespace detail
 {
@@ -308,7 +309,7 @@ using location_type = typename arrays::array_view_t<const byte_t, D>::location_t
 static constexpr inline auto load_bitmap = detail::load_bitmap_fn{};
 static constexpr inline auto save_bitmap = detail::save_bitmap_fn{};
 
-inline rgb_color_t at(rgb_image_t::view_type image, const location_type<2>& loc)
+inline rgb_color_t at(const rgb_image_t::view_type& image, const location_type<2>& loc)
 {
     rgb_color_t result = {};
     for (std::size_t z = 0; z < 3; ++z)
@@ -318,12 +319,32 @@ inline rgb_color_t at(rgb_image_t::view_type image, const location_type<2>& loc)
     return result;
 }
 
-inline void at(rgb_image_t::mut_view_type image, const location_type<2>& loc, const rgb_color_t& color)
+inline void at(const rgb_image_t::mut_view_type& image, const location_type<2>& loc, const rgb_color_t& color)
 {
     for (std::size_t z = 0; z < 3; ++z)
     {
         image[rgb_image_t::location_type{ loc[0], loc[1], z }] = color[z];
     }
+}
+
+inline arrays::shape_t<2> get_channel_shape(const rgb_image_t::shape_type& shape)
+{
+    arrays::shape_t<2> result = {};
+    for (std::size_t d = 0; d < 2; ++d)
+    {
+        result.m_dims[d] = shape.m_dims[d];
+    }
+    return result;
+}
+
+inline greyscale_image_t::view_type channel(const rgb_image_t::view_type& image, std::size_t channel_index)
+{
+    return greyscale_image_t::view_type{ image.data() + channel_index, get_channel_shape(image.shape()) };
+}
+
+inline greyscale_image_t::mut_view_type channel(const rgb_image_t::mut_view_type& image, std::size_t channel_index)
+{
+    return greyscale_image_t::mut_view_type{ image.data() + channel_index, get_channel_shape(image.shape()) };
 }
 
 }  // namespace images
