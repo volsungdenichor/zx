@@ -9,14 +9,14 @@ namespace mat
 {
 
 template <class T, std::size_t D, std::size_t N>
-struct polygonal_shape_t : public std::array<vector<T, D>, N>
+struct polygonal_shape_t : public std::array<vector_t<T, D>, N>
 {
-    using base_t = std::array<vector<T, D>, N>;
+    using base_t = std::array<vector_t<T, D>, N>;
 
     using base_t::base_t;
 
     template <class... Tail>
-    constexpr polygonal_shape_t(const vector<T, D>& head, Tail&&... tail) : base_t{ head, std::forward<Tail>(tail)... }
+    constexpr polygonal_shape_t(const vector_t<T, D>& head, Tail&&... tail) : base_t{ head, std::forward<Tail>(tail)... }
     {
         static_assert(sizeof...(tail) + 1 == N, "Invalid number of arguments to polygonal_shape_t constructor");
     }
@@ -44,14 +44,14 @@ template <class T, std::size_t D>
 using quad_t = polygonal_shape_t<T, D, 4>;
 
 template <class T, class U, std::size_t D, std::size_t N>
-constexpr auto operator+=(polygonal_shape_t<T, D, N>& lhs, const vector<U, D>& rhs) -> polygonal_shape_t<T, D, N>&
+constexpr auto operator+=(polygonal_shape_t<T, D, N>& lhs, const vector_t<U, D>& rhs) -> polygonal_shape_t<T, D, N>&
 {
     std::transform(std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::plus<>{}, std::placeholders::_1, rhs));
     return lhs;
 }
 
 template <class T, class U, std::size_t D, std::size_t N, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator+(const polygonal_shape_t<T, D, N>& lhs, const vector<U, D>& rhs) -> polygonal_shape_t<Res, D, N>
+constexpr auto operator+(const polygonal_shape_t<T, D, N>& lhs, const vector_t<U, D>& rhs) -> polygonal_shape_t<Res, D, N>
 {
     polygonal_shape_t<Res, D, N> result;
     std::transform(std::begin(lhs), std::end(lhs), std::begin(result), std::bind(std::plus<>{}, std::placeholders::_1, rhs));
@@ -59,14 +59,14 @@ constexpr auto operator+(const polygonal_shape_t<T, D, N>& lhs, const vector<U, 
 }
 
 template <class T, class U, std::size_t D, std::size_t N>
-constexpr auto operator-=(polygonal_shape_t<T, D, N>& lhs, const vector<U, D>& rhs) -> polygonal_shape_t<T, D, N>&
+constexpr auto operator-=(polygonal_shape_t<T, D, N>& lhs, const vector_t<U, D>& rhs) -> polygonal_shape_t<T, D, N>&
 {
     std::transform(std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::minus<>{}, std::placeholders::_1, rhs));
     return lhs;
 }
 
 template <class T, class U, std::size_t D, std::size_t N, class Res = std::invoke_result_t<std::minus<>, T, U>>
-constexpr auto operator-(const polygonal_shape_t<T, D, N>& lhs, const vector<U, D>& rhs) -> polygonal_shape_t<Res, D, N>
+constexpr auto operator-(const polygonal_shape_t<T, D, N>& lhs, const vector_t<U, D>& rhs) -> polygonal_shape_t<Res, D, N>
 {
     polygonal_shape_t<Res, D, N> result;
     std::transform(

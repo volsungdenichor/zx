@@ -123,7 +123,7 @@ constexpr bool operator!=(const box_shape_t<T, D>& lhs, const box_shape_t<U, D>&
 }
 
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator+=(box_shape_t<T, D>& lhs, const vector<U, D>& rhs) -> box_shape_t<T, D>&
+constexpr auto operator+=(box_shape_t<T, D>& lhs, const vector_t<U, D>& rhs) -> box_shape_t<T, D>&
 {
     for (std::size_t d = 0; d < D; ++d)
     {
@@ -133,7 +133,7 @@ constexpr auto operator+=(box_shape_t<T, D>& lhs, const vector<U, D>& rhs) -> bo
 }
 
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator+(const box_shape_t<T, D>& lhs, const vector<U, D>& rhs) -> box_shape_t<Res, D>
+constexpr auto operator+(const box_shape_t<T, D>& lhs, const vector_t<U, D>& rhs) -> box_shape_t<Res, D>
 {
     box_shape_t<Res, D> result;
     for (std::size_t d = 0; d < D; ++d)
@@ -144,7 +144,7 @@ constexpr auto operator+(const box_shape_t<T, D>& lhs, const vector<U, D>& rhs) 
 }
 
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::minus<>, T, U>>
-constexpr auto operator-=(box_shape_t<T, D>& lhs, const vector<U, D>& rhs) -> box_shape_t<T, D>&
+constexpr auto operator-=(box_shape_t<T, D>& lhs, const vector_t<U, D>& rhs) -> box_shape_t<T, D>&
 {
     for (std::size_t d = 0; d < D; ++d)
     {
@@ -154,7 +154,7 @@ constexpr auto operator-=(box_shape_t<T, D>& lhs, const vector<U, D>& rhs) -> bo
 }
 
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::minus<>, T, U>>
-constexpr auto operator-(const box_shape_t<T, D>& lhs, const vector<U, D>& rhs) -> box_shape_t<Res, D>
+constexpr auto operator-(const box_shape_t<T, D>& lhs, const vector_t<U, D>& rhs) -> box_shape_t<Res, D>
 {
     box_shape_t<Res, D> result;
     for (std::size_t d = 0; d < D; ++d)

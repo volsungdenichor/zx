@@ -112,10 +112,10 @@ struct dim_t
 template <std::size_t D>
 struct shape_t
 {
-    using size_type = zx::mat::vector<size_base_t, D>;
-    using stride_type = zx::mat::vector<stride_base_t, D>;
-    using location_type = zx::mat::vector<location_base_t, D>;
-    using slice_type = zx::mat::vector<slice_base_t, D>;
+    using size_type = zx::mat::vector_t<size_base_t, D>;
+    using stride_type = zx::mat::vector_t<stride_base_t, D>;
+    using location_type = zx::mat::vector_t<location_base_t, D>;
+    using slice_type = zx::mat::vector_t<slice_base_t, D>;
     using bounds_type = zx::mat::box_shape_t<size_base_t, D>;
 
     std::array<dim_t, D> m_dims{};

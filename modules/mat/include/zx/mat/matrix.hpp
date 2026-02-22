@@ -84,8 +84,8 @@ struct matrix_view
     using size_type = std::size_t;
     using volume_type = std::size_t;
 
-    using extents_type = vector<size_type, 2>;
-    using location_type = vector<size_type, 2>;
+    using extents_type = vector_t<size_type, 2>;
+    using location_type = vector_t<size_type, 2>;
 
     using pointer = T*;
     using reference = T&;
@@ -358,9 +358,9 @@ constexpr auto operator*(const matrix<T, R, D>& lhs, const matrix<U, D, C>& rhs)
 }
 
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const vector<T, D>& lhs, const matrix<U, D + 1>& rhs) -> vector<Res, D>
+constexpr auto operator*(const vector_t<T, D>& lhs, const matrix<U, D + 1>& rhs) -> vector_t<Res, D>
 {
-    vector<Res, D> result;
+    vector_t<Res, D> result;
 
     for (std::size_t d = 0; d < D; ++d)
     {
@@ -371,13 +371,13 @@ constexpr auto operator*(const vector<T, D>& lhs, const matrix<U, D + 1>& rhs) -
 }
 
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const matrix<T, D + 1>& lhs, const vector<U, D>& rhs) -> vector<Res, D>
+constexpr auto operator*(const matrix<T, D + 1>& lhs, const vector_t<U, D>& rhs) -> vector_t<Res, D>
 {
     return rhs * lhs;
 }
 
 template <class T, class U, std::size_t D, class = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*=(vector<T, D>& lhs, const matrix<U, D + 1>& rhs) -> vector<T, D>&
+constexpr auto operator*=(vector_t<T, D>& lhs, const matrix<U, D + 1>& rhs) -> vector_t<T, D>&
 {
     return lhs = lhs * rhs;
 }
@@ -388,7 +388,7 @@ namespace detail
 struct minor_fn
 {
     template <class T, std::size_t R, std::size_t C>
-    auto operator()(const matrix<T, R, C>& item, const vector<std::size_t, 2>& loc) const -> matrix<T, R - 1, C - 1>
+    auto operator()(const matrix<T, R, C>& item, const vector_t<std::size_t, 2>& loc) const -> matrix<T, R - 1, C - 1>
     {
         static_assert(R > 1, "minor: invalid row.");
         static_assert(C > 1, "minor: invalid col.");
@@ -541,7 +541,7 @@ static constexpr inline auto identity = identity_fn{};
 struct scale_fn
 {
     template <class T>
-    matrix<T, 3> operator()(const vector<T, 2>& scale) const
+    matrix<T, 3> operator()(const vector_t<T, 2>& scale) const
     {
         matrix<T, 3> result = identity;
 
@@ -552,7 +552,7 @@ struct scale_fn
     }
 
     template <class T>
-    matrix<T, 4> operator()(const vector<T, 3>& scale) const
+    matrix<T, 4> operator()(const vector_t<T, 3>& scale) const
     {
         matrix<T, 4> result = identity;
 
@@ -586,7 +586,7 @@ struct rotation_fn
 struct translation_fn
 {
     template <class T>
-    matrix<T, 3> operator()(const vector<T, 2>& offset) const
+    matrix<T, 3> operator()(const vector_t<T, 2>& offset) const
     {
         matrix<T, 3> result = identity;
 
@@ -597,7 +597,7 @@ struct translation_fn
     }
 
     template <class T>
-    matrix<T, 4> operator()(const vector<T, 3>& offset) const
+    matrix<T, 4> operator()(const vector_t<T, 3>& offset) const
     {
         matrix<T, 4> result = identity;
 

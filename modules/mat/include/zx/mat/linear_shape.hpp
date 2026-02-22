@@ -23,13 +23,13 @@ struct segment_tag
 }  // namespace detail
 
 template <class Tag, class T, std::size_t D>
-struct linear_shape_t : public std::array<vector<T, D>, 2>
+struct linear_shape_t : public std::array<vector_t<T, D>, 2>
 {
-    using base_t = std::array<vector<T, D>, 2>;
+    using base_t = std::array<vector_t<T, D>, 2>;
 
     using base_t::base_t;
 
-    linear_shape_t(vector<T, D> p0, vector<T, D> p1) : base_t{ { p0, p1 } } { }
+    linear_shape_t(vector_t<T, D> p0, vector_t<T, D> p1) : base_t{ { p0, p1 } } { }
 };
 
 template <class T, std::size_t D>
@@ -60,14 +60,14 @@ std::ostream& operator<<(std::ostream& os, const segment_t<T, D>& item)
 }
 
 template <class Tag, class T, class U, std::size_t D>
-constexpr auto operator+=(linear_shape_t<Tag, T, D>& lhs, const vector<U, D>& rhs) -> linear_shape_t<Tag, T, D>&
+constexpr auto operator+=(linear_shape_t<Tag, T, D>& lhs, const vector_t<U, D>& rhs) -> linear_shape_t<Tag, T, D>&
 {
     std::transform(std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::plus<>{}, std::placeholders::_1, rhs));
     return lhs;
 }
 
 template <class Tag, class T, class U, std::size_t D, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator+(const linear_shape_t<Tag, T, D>& lhs, const vector<U, D>& rhs) -> linear_shape_t<Tag, Res, D>
+constexpr auto operator+(const linear_shape_t<Tag, T, D>& lhs, const vector_t<U, D>& rhs) -> linear_shape_t<Tag, Res, D>
 {
     linear_shape_t<Tag, Res, D> result;
     std::transform(std::begin(lhs), std::end(lhs), std::begin(result), std::bind(std::plus<>{}, std::placeholders::_1, rhs));
@@ -75,14 +75,14 @@ constexpr auto operator+(const linear_shape_t<Tag, T, D>& lhs, const vector<U, D
 }
 
 template <class Tag, class T, class U, std::size_t D>
-constexpr auto operator-=(linear_shape_t<Tag, T, D>& lhs, const vector<U, D>& rhs) -> linear_shape_t<Tag, T, D>&
+constexpr auto operator-=(linear_shape_t<Tag, T, D>& lhs, const vector_t<U, D>& rhs) -> linear_shape_t<Tag, T, D>&
 {
     std::transform(std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::minus<>{}, std::placeholders::_1, rhs));
     return lhs;
 }
 
 template <class Tag, class T, class U, std::size_t D, class Res = std::invoke_result_t<std::minus<>, T, U>>
-constexpr auto operator-(const linear_shape_t<Tag, T, D>& lhs, const vector<U, D>& rhs) -> linear_shape_t<Tag, Res, D>
+constexpr auto operator-(const linear_shape_t<Tag, T, D>& lhs, const vector_t<U, D>& rhs) -> linear_shape_t<Tag, Res, D>
 {
     linear_shape_t<Tag, Res, D> result;
     std::transform(

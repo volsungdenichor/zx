@@ -22,7 +22,7 @@ TEST(box, parameterized_construction)
 TEST(box, addition)
 {
     zx::mat::box_shape_t<int, 2> box{ zx::mat::interval_t<int>{ 1, 5 }, zx::mat::interval_t<int>{ 10, 20 } };
-    zx::mat::vector<int, 2> vec{ 3, 14 };
+    zx::mat::vector_t<int, 2> vec{ 3, 14 };
 
     EXPECT_THAT(
         box + vec, (zx::mat::box_shape_t<int, 2>{ zx::mat::interval_t<int>{ 4, 8 }, zx::mat::interval_t<int>{ 24, 34 } }));
@@ -34,7 +34,7 @@ TEST(box, addition)
 TEST(box, subtraction)
 {
     zx::mat::box_shape_t<int, 2> box{ zx::mat::interval_t<int>{ 5, 10 }, zx::mat::interval_t<int>{ 20, 30 } };
-    zx::mat::vector<int, 2> vec{ 2, 15 };
+    zx::mat::vector_t<int, 2> vec{ 2, 15 };
 
     EXPECT_THAT(
         box - vec, (zx::mat::box_shape_t<int, 2>{ zx::mat::interval_t<int>{ 3, 8 }, zx::mat::interval_t<int>{ 5, 15 } }));

@@ -15,21 +15,21 @@ TEST(segment, ostream)
 TEST(segment, add_vector)
 {
     zx::mat::segment_t<float, 2> seg{ { 1.0f, 2.0f }, { 3.0f, 4.0f } };
-    zx::mat::vector<float, 2> vec{ 10.0f, 20.0f };
+    zx::mat::vector_t<float, 2> vec{ 10.0f, 20.0f };
 
     EXPECT_THAT(
         seg + vec,
-        testing::ElementsAre((zx::mat::vector<float, 2>{ 11.0f, 22.0f }), (zx::mat::vector<float, 2>{ 13.0f, 24.0f })));
+        testing::ElementsAre((zx::mat::vector_t<float, 2>{ 11.0f, 22.0f }), (zx::mat::vector_t<float, 2>{ 13.0f, 24.0f })));
 }
 
 TEST(segment, subtract_vector)
 {
     zx::mat::segment_t<float, 2> seg{ { 10.0f, 20.0f }, { 30.0f, 40.0f } };
-    zx::mat::vector<float, 2> vec{ 1.0f, 2.0f };
+    zx::mat::vector_t<float, 2> vec{ 1.0f, 2.0f };
 
     EXPECT_THAT(
         seg - vec,
-        testing::ElementsAre((zx::mat::vector<float, 2>{ 9.0f, 18.0f }), (zx::mat::vector<float, 2>{ 29.0f, 38.0f })));
+        testing::ElementsAre((zx::mat::vector_t<float, 2>{ 9.0f, 18.0f }), (zx::mat::vector_t<float, 2>{ 29.0f, 38.0f })));
 }
 
 TEST(segment, multiply_matrix)
@@ -39,11 +39,11 @@ TEST(segment, multiply_matrix)
 
     EXPECT_THAT(
         seg * mat,
-        testing::ElementsAre((zx::mat::vector<float, 2>{ 2.0f, 6.0f }), (zx::mat::vector<float, 2>{ 6.0f, 12.0f })));
+        testing::ElementsAre((zx::mat::vector_t<float, 2>{ 2.0f, 6.0f }), (zx::mat::vector_t<float, 2>{ 6.0f, 12.0f })));
 
     EXPECT_THAT(
         mat * seg,
-        testing::ElementsAre((zx::mat::vector<float, 2>{ 2.0f, 6.0f }), (zx::mat::vector<float, 2>{ 6.0f, 12.0f })));
+        testing::ElementsAre((zx::mat::vector_t<float, 2>{ 2.0f, 6.0f }), (zx::mat::vector_t<float, 2>{ 6.0f, 12.0f })));
 }
 
 TEST(segment, equal)
@@ -71,19 +71,21 @@ TEST(ray, ostream)
 TEST(ray, add_vector)
 {
     zx::mat::ray_t<double, 2> r{ { 1.0, 2.0 }, { 3.0, 4.0 } };
-    zx::mat::vector<double, 2> v{ 10.0, 20.0 };
+    zx::mat::vector_t<double, 2> v{ 10.0, 20.0 };
 
     EXPECT_THAT(
-        r + v, testing::ElementsAre((zx::mat::vector<double, 2>{ 11.0, 22.0 }), (zx::mat::vector<double, 2>{ 13.0, 24.0 })));
+        r + v,
+        testing::ElementsAre((zx::mat::vector_t<double, 2>{ 11.0, 22.0 }), (zx::mat::vector_t<double, 2>{ 13.0, 24.0 })));
 }
 
 TEST(ray, subtract_vector)
 {
     zx::mat::ray_t<double, 2> r{ { 10.0, 20.0 }, { 30.0, 40.0 } };
-    zx::mat::vector<double, 2> v{ 1.0, 2.0 };
+    zx::mat::vector_t<double, 2> v{ 1.0, 2.0 };
 
     EXPECT_THAT(
-        r - v, testing::ElementsAre((zx::mat::vector<double, 2>{ 9.0, 18.0 }), (zx::mat::vector<double, 2>{ 29.0, 38.0 })));
+        r - v,
+        testing::ElementsAre((zx::mat::vector_t<double, 2>{ 9.0, 18.0 }), (zx::mat::vector_t<double, 2>{ 29.0, 38.0 })));
 }
 
 TEST(ray, multiply_matrix)
@@ -92,10 +94,12 @@ TEST(ray, multiply_matrix)
     zx::mat::matrix<double, 3> m{ 2.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 1.0 };
 
     EXPECT_THAT(
-        r * m, testing::ElementsAre((zx::mat::vector<double, 2>{ 2.0, 6.0 }), (zx::mat::vector<double, 2>{ 6.0, 12.0 })));
+        r * m,
+        testing::ElementsAre((zx::mat::vector_t<double, 2>{ 2.0, 6.0 }), (zx::mat::vector_t<double, 2>{ 6.0, 12.0 })));
 
     EXPECT_THAT(
-        m * r, testing::ElementsAre((zx::mat::vector<double, 2>{ 2.0, 6.0 }), (zx::mat::vector<double, 2>{ 6.0, 12.0 })));
+        m * r,
+        testing::ElementsAre((zx::mat::vector_t<double, 2>{ 2.0, 6.0 }), (zx::mat::vector_t<double, 2>{ 6.0, 12.0 })));
 }
 
 TEST(ray, equal)
@@ -135,21 +139,21 @@ TEST(line, equal)
 TEST(line, add_vector)
 {
     zx::mat::line_t<double, 2> line{ { 1.0, 2.0 }, { 3.0, 4.0 } };
-    zx::mat::vector<double, 2> vec{ 10.0, 20.0 };
+    zx::mat::vector_t<double, 2> vec{ 10.0, 20.0 };
 
     EXPECT_THAT(
         line + vec,
-        testing::ElementsAre((zx::mat::vector<double, 2>{ 11.0, 22.0 }), (zx::mat::vector<double, 2>{ 13.0, 24.0 })));
+        testing::ElementsAre((zx::mat::vector_t<double, 2>{ 11.0, 22.0 }), (zx::mat::vector_t<double, 2>{ 13.0, 24.0 })));
 }
 
 TEST(line, subtract_vector)
 {
     zx::mat::line_t<double, 2> line{ { 10.0, 20.0 }, { 30.0, 40.0 } };
-    zx::mat::vector<double, 2> vec{ 1.0, 2.0 };
+    zx::mat::vector_t<double, 2> vec{ 1.0, 2.0 };
 
     EXPECT_THAT(
         line - vec,
-        testing::ElementsAre((zx::mat::vector<double, 2>{ 9.0, 18.0 }), (zx::mat::vector<double, 2>{ 29.0, 38.0 })));
+        testing::ElementsAre((zx::mat::vector_t<double, 2>{ 9.0, 18.0 }), (zx::mat::vector_t<double, 2>{ 29.0, 38.0 })));
 }
 
 TEST(line, multiply_matrix)
@@ -159,9 +163,9 @@ TEST(line, multiply_matrix)
 
     EXPECT_THAT(
         line * mat,
-        testing::ElementsAre((zx::mat::vector<float, 2>{ 2.0f, 6.0f }), (zx::mat::vector<float, 2>{ 6.0f, 12.0f })));
+        testing::ElementsAre((zx::mat::vector_t<float, 2>{ 2.0f, 6.0f }), (zx::mat::vector_t<float, 2>{ 6.0f, 12.0f })));
 
     EXPECT_THAT(
         mat * line,
-        testing::ElementsAre((zx::mat::vector<float, 2>{ 2.0f, 6.0f }), (zx::mat::vector<float, 2>{ 6.0f, 12.0f })));
+        testing::ElementsAre((zx::mat::vector_t<float, 2>{ 2.0f, 6.0f }), (zx::mat::vector_t<float, 2>{ 6.0f, 12.0f })));
 }

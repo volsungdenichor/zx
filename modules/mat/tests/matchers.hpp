@@ -48,16 +48,16 @@ struct ApproxEqualMatcher<zx::mat::matrix<T, R, C>>
 };
 
 template <class T, std::size_t D>
-struct ApproxEqualMatcher<zx::mat::vector<T, D>>
+struct ApproxEqualMatcher<zx::mat::vector_t<T, D>>
 {
     using is_gtest_matcher = void;
 
-    zx::mat::vector<T, D> m_expected;
+    zx::mat::vector_t<T, D> m_expected;
 
-    ApproxEqualMatcher(zx::mat::vector<T, D> expected) : m_expected{ expected } { }
+    ApproxEqualMatcher(zx::mat::vector_t<T, D> expected) : m_expected{ expected } { }
 
     template <class U = T>
-    bool MatchAndExplain(const zx::mat::vector<U, D>& actual, ::testing::MatchResultListener* listener) const
+    bool MatchAndExplain(const zx::mat::vector_t<U, D>& actual, ::testing::MatchResultListener* listener) const
     {
         constexpr auto epsilon = std::common_type_t<T, U>(0.1);
 

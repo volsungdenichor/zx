@@ -65,10 +65,10 @@ TEST(matrix, multiplication)
 TEST(matrix, multiplication_with_vector)
 {
     zx::mat::matrix<int, 3> mat{ 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-    zx::mat::vector<int, 2> vec{ 1, 2 };
+    zx::mat::vector_t<int, 2> vec{ 1, 2 };
 
-    EXPECT_THAT(mat * vec, (zx::mat::vector<int, 2>{ 16, 20 }));
-    EXPECT_THAT(vec * mat, (zx::mat::vector<int, 2>{ 16, 20 }));
+    EXPECT_THAT(mat * vec, (zx::mat::vector_t<int, 2>{ 16, 20 }));
+    EXPECT_THAT(vec * mat, (zx::mat::vector_t<int, 2>{ 16, 20 }));
 }
 
 TEST(matrix, output_stream)
@@ -114,10 +114,10 @@ TEST(matrix, invert)
 
 TEST(matrix, scale)
 {
-    zx::mat::matrix<double, 3> scale2d = zx::mat::scale(zx::mat::vector<double, 2>{ 2.0, 3.0 });
+    zx::mat::matrix<double, 3> scale2d = zx::mat::scale(zx::mat::vector_t<double, 2>{ 2.0, 3.0 });
     EXPECT_THAT(scale2d, (zx::mat::matrix<double, 3>{ 2.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 1.0 }));
 
-    zx::mat::matrix<double, 4> scale3d = zx::mat::scale(zx::mat::vector<double, 3>{ 2.0, 3.0, 4.0 });
+    zx::mat::matrix<double, 4> scale3d = zx::mat::scale(zx::mat::vector_t<double, 3>{ 2.0, 3.0, 4.0 });
     EXPECT_THAT(
         scale3d,
         (zx::mat::matrix<double, 4>{ 2.0, 0.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0, 1.0 }));
@@ -125,10 +125,10 @@ TEST(matrix, scale)
 
 TEST(matrix, translation)
 {
-    zx::mat::matrix<double, 3> translation2d = zx::mat::translation(zx::mat::vector<double, 2>{ 5.0, 7.0 });
+    zx::mat::matrix<double, 3> translation2d = zx::mat::translation(zx::mat::vector_t<double, 2>{ 5.0, 7.0 });
     EXPECT_THAT(translation2d, (zx::mat::matrix<double, 3>{ 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 5.0, 7.0, 1.0 }));
 
-    zx::mat::matrix<double, 4> translation3d = zx::mat::translation(zx::mat::vector<double, 3>{ 5.0, 7.0, 9.0 });
+    zx::mat::matrix<double, 4> translation3d = zx::mat::translation(zx::mat::vector_t<double, 3>{ 5.0, 7.0, 9.0 });
     EXPECT_THAT(
         translation3d,
         (zx::mat::matrix<double, 4>{ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 5.0, 7.0, 9.0, 1.0 }));

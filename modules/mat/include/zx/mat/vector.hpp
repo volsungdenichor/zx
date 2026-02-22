@@ -12,24 +12,24 @@ namespace mat
 {
 
 template <class T, std::size_t D>
-struct vector;
+struct vector_t;
 
 template <class T, std::size_t D>
-struct vector : public std::array<T, D>
+struct vector_t : public std::array<T, D>
 {
     using base_t = std::array<T, D>;
 
     using base_t::base_t;
 
-    constexpr vector() : base_t{} { }
+    constexpr vector_t() : base_t{} { }
 
     template <class... Tail>
-    constexpr vector(T head, Tail... tail) : base_t{ head, static_cast<T>(tail)... }
+    constexpr vector_t(T head, Tail... tail) : base_t{ head, static_cast<T>(tail)... }
     {
-        static_assert(sizeof...(tail) + 1 == D, "Invalid number of arguments to vector constructor");
+        static_assert(sizeof...(tail) + 1 == D, "Invalid number of arguments to vector_t constructor");
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const vector& item)
+    friend std::ostream& operator<<(std::ostream& os, const vector_t& item)
     {
         os << "[";
         for (std::size_t i = 0; i < D; ++i)
@@ -46,57 +46,57 @@ struct vector : public std::array<T, D>
 };
 
 template <class T>
-vector(T, T) -> vector<T, 2>;
+vector_t(T, T) -> vector_t<T, 2>;
 
 template <class T>
-vector(T, T, T) -> vector<T, 3>;
+vector_t(T, T, T) -> vector_t<T, 3>;
 
 template <class T, std::size_t D>
-constexpr auto operator+(const vector<T, D>& item) -> vector<T, D>
+constexpr auto operator+(const vector_t<T, D>& item) -> vector_t<T, D>
 {
     return item;
 }
 
 template <class T, std::size_t D>
-constexpr auto operator-(const vector<T, D>& item) -> vector<T, D>
+constexpr auto operator-(const vector_t<T, D>& item) -> vector_t<T, D>
 {
-    vector<T, D> result;
+    vector_t<T, D> result;
     std::transform(std::begin(item), std::end(item), std::begin(result), std::negate<>{});
     return result;
 }
 
 template <class L, class R, std::size_t D, class Res = std::invoke_result_t<std::plus<>, L, R>>
-constexpr auto operator+=(vector<L, D>& lhs, const vector<R, D>& rhs) -> vector<L, D>&
+constexpr auto operator+=(vector_t<L, D>& lhs, const vector_t<R, D>& rhs) -> vector_t<L, D>&
 {
     std::transform(std::begin(lhs), std::end(lhs), std::begin(rhs), std::begin(lhs), std::plus<>{});
     return lhs;
 }
 
 template <class L, class R, std::size_t D, class Res = std::invoke_result_t<std::plus<>, L, R>>
-constexpr auto operator+(const vector<L, D>& lhs, const vector<R, D>& rhs) -> vector<Res, D>
+constexpr auto operator+(const vector_t<L, D>& lhs, const vector_t<R, D>& rhs) -> vector_t<Res, D>
 {
-    vector<Res, D> result;
+    vector_t<Res, D> result;
     std::transform(std::begin(lhs), std::end(lhs), std::begin(rhs), std::begin(result), std::plus<>{});
     return result;
 }
 
 template <class L, class R, std::size_t D, class Res = std::invoke_result_t<std::minus<>, L, R>>
-constexpr auto operator-=(vector<L, D>& lhs, const vector<R, D>& rhs) -> vector<L, D>&
+constexpr auto operator-=(vector_t<L, D>& lhs, const vector_t<R, D>& rhs) -> vector_t<L, D>&
 {
     std::transform(std::begin(lhs), std::end(lhs), std::begin(rhs), std::begin(lhs), std::minus<>{});
     return lhs;
 }
 
 template <class L, class R, std::size_t D, class Res = std::invoke_result_t<std::minus<>, L, R>>
-constexpr auto operator-(const vector<L, D>& lhs, const vector<R, D>& rhs) -> vector<Res, D>
+constexpr auto operator-(const vector_t<L, D>& lhs, const vector_t<R, D>& rhs) -> vector_t<Res, D>
 {
-    vector<Res, D> result;
+    vector_t<Res, D> result;
     std::transform(std::begin(lhs), std::end(lhs), std::begin(rhs), std::begin(result), std::minus<>{});
     return result;
 }
 
 template <class L, class R, std::size_t D, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
-constexpr auto operator*=(vector<L, D>& lhs, R rhs) -> vector<L, D>&
+constexpr auto operator*=(vector_t<L, D>& lhs, R rhs) -> vector_t<L, D>&
 {
     std::transform(
         std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::multiplies<>{}, std::placeholders::_1, rhs));
@@ -104,44 +104,44 @@ constexpr auto operator*=(vector<L, D>& lhs, R rhs) -> vector<L, D>&
 }
 
 template <class L, class R, std::size_t D, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
-constexpr auto operator*(const vector<L, D>& lhs, R rhs) -> vector<Res, D>
+constexpr auto operator*(const vector_t<L, D>& lhs, R rhs) -> vector_t<Res, D>
 {
-    vector<Res, D> result;
+    vector_t<Res, D> result;
     std::transform(
         std::begin(lhs), std::end(lhs), std::begin(result), std::bind(std::multiplies<>{}, std::placeholders::_1, rhs));
     return result;
 }
 
 template <class L, class R, std::size_t D, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
-constexpr auto operator*(L lhs, const vector<R, D>& rhs) -> vector<Res, D>
+constexpr auto operator*(L lhs, const vector_t<R, D>& rhs) -> vector_t<Res, D>
 {
     return rhs * lhs;
 }
 
 template <class L, class R, std::size_t D, class Res = std::invoke_result_t<std::divides<>, L, R>>
-constexpr auto operator/=(vector<L, D>& lhs, R rhs) -> vector<L, D>&
+constexpr auto operator/=(vector_t<L, D>& lhs, R rhs) -> vector_t<L, D>&
 {
     std::transform(std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::divides<>{}, std::placeholders::_1, rhs));
     return lhs;
 }
 
 template <class L, class R, std::size_t D, class Res = std::invoke_result_t<std::divides<>, L, R>>
-constexpr auto operator/(const vector<L, D>& lhs, R rhs) -> vector<Res, D>
+constexpr auto operator/(const vector_t<L, D>& lhs, R rhs) -> vector_t<Res, D>
 {
-    vector<Res, D> result;
+    vector_t<Res, D> result;
     std::transform(
         std::begin(lhs), std::end(lhs), std::begin(result), std::bind(std::divides<>{}, std::placeholders::_1, rhs));
     return result;
 }
 
 template <class L, class R, std::size_t D, class = std::invoke_result_t<std::equal_to<>, L, R>>
-constexpr bool operator==(const vector<L, D>& lhs, const vector<R, D>& rhs)
+constexpr bool operator==(const vector_t<L, D>& lhs, const vector_t<R, D>& rhs)
 {
     return std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
 }
 
 template <class L, class R, std::size_t D, class = std::invoke_result_t<std::equal_to<>, L, R>>
-constexpr bool operator!=(const vector<L, D>& lhs, const vector<R, D>& rhs)
+constexpr bool operator!=(const vector_t<L, D>& lhs, const vector_t<R, D>& rhs)
 {
     return !(lhs == rhs);
 }
