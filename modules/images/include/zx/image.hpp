@@ -330,10 +330,7 @@ inline void at(const rgb_image_t::mut_view_type& image, const location_type<2>& 
 inline arrays::shape_t<2> get_channel_shape(const rgb_image_t::shape_type& shape)
 {
     arrays::shape_t<2> result = {};
-    for (std::size_t d = 0; d < 2; ++d)
-    {
-        result.m_dims[d] = shape.m_dims[d];
-    }
+    std::copy(shape.m_dims.begin(), shape.m_dims.begin() + 2, result.m_dims.begin());
     return result;
 }
 

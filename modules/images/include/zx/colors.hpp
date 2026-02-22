@@ -21,7 +21,7 @@ struct rgb_color_t : public std::array<byte_t, 3>
 
     friend std::ostream& operator<<(std::ostream& os, const rgb_color_t& item)
     {
-        return os << "rgb(" << static_cast<int>(item[0]) << ", " << static_cast<int>(item[1]) << ", "
+        return os << "rgb(" << static_cast<int>(item[0]) << " " << static_cast<int>(item[1]) << " "
                   << static_cast<int>(item[2]) << ")";
     }
 };
