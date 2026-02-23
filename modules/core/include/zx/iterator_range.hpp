@@ -172,34 +172,47 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
         return std::distance(begin(), end());
     }
 
+    auto maybe_front() const -> maybe_reference { return !empty() ? maybe_reference{ *begin() } : maybe_reference{}; }
+
     auto front() const -> reference
     {
-        if (empty())
+        if (auto maybe = maybe_front())
         {
-            throw std::out_of_range("iterator_range_t::front - empty range");
+            return *maybe;
         }
+        throw std::out_of_range("iterator_range_t::front - empty range");
+    }
 
-        return *begin();
+    template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
+    auto maybe_back() const -> maybe_reference
+    {
+        return !empty() ? maybe_reference{ *std::prev(end()) } : maybe_reference{};
     }
 
     template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
     auto back() const -> reference
     {
-        if (empty())
+        if (auto maybe = maybe_back())
         {
-            throw std::out_of_range("iterator_range_t::back - empty range");
+            return *maybe;
         }
-        return *std::prev(end());
+        throw std::out_of_range("iterator_range_t::back - empty range");
+    }
+
+    template <class It = iterator, std::enable_if_t<is_random_access_iterator<It>::value, int> = 0>
+    auto maybe_at(difference_type n) const -> maybe_reference
+    {
+        return (0 <= n && n < size()) ? maybe_reference{ *std::next(begin(), n) } : maybe_reference{};
     }
 
     template <class It = iterator, std::enable_if_t<is_random_access_iterator<It>::value, int> = 0>
     auto at(difference_type n) const -> reference
     {
-        if (!(0 <= n && n < size()))
+        if (auto maybe = maybe_at(n))
         {
-            throw std::out_of_range("iterator_range_t::at - index out of range");
+            return *maybe;
         }
-        return *std::next(begin(), n);
+        throw std::out_of_range("iterator_range_t::at - index out of range");
     }
 
     template <class It = iterator, std::enable_if_t<is_random_access_iterator<It>::value, int> = 0>
@@ -267,6 +280,19 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
         const size_type b = info.start ? adjust(*info.start, s) : size_type{ 0 };
         const size_type e = info.stop ? adjust(*info.stop, s) : s;
         return iterator_range_t{ begin() + b, std::max(size_type{ 0 }, e - b) };
+    }
+
+    auto find(const value_type& value) const -> maybe_reference
+    {
+        auto it = std::find(begin(), end(), value);
+        return it != end() ? maybe_reference{ *it } : maybe_reference{};
+    }
+
+    template <class Pred>
+    auto find_if(Pred&& pred) const -> maybe_reference
+    {
+        auto it = std::find_if(begin(), end(), std::forward<Pred>(pred));
+        return it != end() ? maybe_reference{ *it } : maybe_reference{};
     }
 
 private:

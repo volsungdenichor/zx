@@ -23,3 +23,19 @@ TEST(iteratror_range, slicing)
     EXPECT_THAT(span.slice({ -4, -2 }), testing::ElementsAre(4, 5));
     EXPECT_THAT(span.slice({ -2, -4 }), testing::IsEmpty());
 }
+
+TEST(iterator_range, find)
+{
+    const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
+    const auto span = zx::span_t<int>{ vect };
+    EXPECT_THAT(span.find(4), testing::Optional(4));
+    EXPECT_THAT(span.find(-1), testing::Eq(zx::none));
+}
+
+TEST(iterator_range, find_if)
+{
+    const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
+    const auto span = zx::span_t<int>{ vect };
+    EXPECT_THAT(span.find_if([](int x) { return x % 2 == 0; }), testing::Optional(2));
+    EXPECT_THAT(span.find_if([](int x) { return x < 0; }), testing::Eq(zx::none));
+}
