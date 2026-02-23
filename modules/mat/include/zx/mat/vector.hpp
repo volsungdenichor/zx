@@ -29,6 +29,12 @@ struct vector_t : public std::array<T, D>
         static_assert(sizeof...(tail) + 1 == D, "Invalid number of arguments to vector_t constructor");
     }
 
+    template <std::size_t D_ = D, std::enable_if_t<D_ == 1, int> = 0>
+    constexpr operator T() const
+    {
+        return (*this)[0];
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const vector_t& item)
     {
         os << "[";
@@ -50,6 +56,25 @@ vector_t(T, T) -> vector_t<T, 2>;
 
 template <class T>
 vector_t(T, T, T) -> vector_t<T, 3>;
+
+template <class T, std::size_t D>
+constexpr auto erase(const vector_t<T, D>& v, std::size_t index) -> vector_t<T, D - 1>
+{
+    vector_t<T, D - 1> result;
+    auto iter = std::copy(v.begin(), v.begin() + index, std::begin(result));
+    std::copy(v.begin() + index + 1, v.end(), iter);
+    return result;
+}
+
+template <class T, std::size_t D>
+constexpr auto insert(const vector_t<T, D>& v, std::size_t index, T value) -> vector_t<T, D + 1>
+{
+    vector_t<T, D + 1> result;
+    auto iter = std::copy(v.begin(), v.begin() + index, result.begin());
+    *iter++ = value;
+    std::copy(v.begin() + index, v.end(), iter);
+    return result;
+}
 
 template <class T, std::size_t D>
 constexpr auto operator+(const vector_t<T, D>& item) -> vector_t<T, D>
