@@ -128,6 +128,15 @@ struct iterator_range_slice_t
 };
 
 template <class Iter>
+struct iterator_range_t;
+
+template <class Iter>
+iterator_range_t(Iter, Iter) -> iterator_range_t<Iter>;
+
+template <class Range>
+iterator_range_t(Range&&) -> iterator_range_t<iterator_t<Range>>;
+
+template <class Iter>
 struct iterator_range_t : detail::iterator_range_base_t<Iter>
 {
     using base_t = detail::iterator_range_base_t<Iter>;
@@ -305,30 +314,45 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
     }
 
     template <class Range, class Compare = std::equal_to<>>
-    bool equal(Range&& other, Compare&& compare = {}) const
+    bool is_equal(Range&& other, Compare&& compare = {}) const
     {
-        auto other_range = iterator_range_t(std::forward<Range>(other));
+        auto other_range = iterator_range_t<iterator_t<Range>>{ std::forward<Range>(other) };
         return std::equal(begin(), end(), other_range.begin(), other_range.end(), std::forward<Compare>(compare));
+    }
+
+    template <class Range, class Compare = std::less<>>
+    bool is_less(Range&& other, Compare&& compare = {}) const
+    {
+        auto other_range = iterator_range_t<iterator_t<Range>>{ std::forward<Range>(other) };
+        return std::lexicographical_compare(
+            begin(), end(), other_range.begin(), other_range.end(), std::forward<Compare>(compare));
+    }
+
+    template <class Range, class Compare = std::less<>>
+    bool is_greater(Range&& other, Compare&& compare = {}) const
+    {
+        return iterator_range_t<iterator_t<Range>>{ std::forward<Range>(other) }.is_less(
+            *this, std::forward<Compare>(compare));
     }
 
     template <class Range, class Compare = std::equal_to<>>
     bool starts_with(Range&& prefix, Compare&& compare = {}) const
     {
-        auto prefix_range = iterator_range_t(std::forward<Range>(prefix));
-        return take(prefix_range.size()).equal(prefix_range, std::forward<Compare>(compare));
+        auto prefix_range = iterator_range_t<iterator_t<Range>>{ std::forward<Range>(prefix) };
+        return take(prefix_range.size()).is_equal(prefix_range, std::forward<Compare>(compare));
     }
 
     template <class Range, class Compare = std::equal_to<>>
     bool ends_with(Range&& suffix, Compare&& compare = {}) const
     {
-        auto suffix_range = iterator_range_t(std::forward<Range>(suffix));
-        return take_back(suffix_range.size()).equal(suffix_range, std::forward<Compare>(compare));
+        auto suffix_range = iterator_range_t<iterator_t<Range>>{ std::forward<Range>(suffix) };
+        return take_back(suffix_range.size()).is_equal(suffix_range, std::forward<Compare>(compare));
     }
 
     template <class Range, class Compare = std::equal_to<>>
     bool contains_subrange(Range&& subrange, Compare&& compare = {}) const
     {
-        auto subrange_range = iterator_range_t(std::forward<Range>(subrange));
+        auto subrange_range = iterator_range_t<iterator_t<Range>>{ std::forward<Range>(subrange) };
         return std::search(begin(), end(), subrange_range.begin(), subrange_range.end(), std::forward<Compare>(compare))
                != end();
     }
@@ -370,6 +394,78 @@ private:
         }
     }
 };
+
+template <class L, class R>
+bool operator==(iterator_range_t<L> lhs, R&& rhs)
+{
+    return lhs.is_equal(rhs);
+}
+
+template <class L, class R>
+bool operator!=(iterator_range_t<L> lhs, R&& rhs)
+{
+    return !(lhs == rhs);
+}
+
+template <class L, class R>
+bool operator==(L&& lhs, iterator_range_t<R> rhs)
+{
+    return rhs == lhs;
+}
+
+template <class L, class R>
+bool operator!=(L&& lhs, iterator_range_t<R> rhs)
+{
+    return !(lhs == rhs);
+}
+
+template <class L, class R>
+bool operator<(iterator_range_t<L> lhs, R&& rhs)
+{
+    return lhs.is_less(rhs);
+}
+
+template <class L, class R>
+bool operator>(iterator_range_t<L> lhs, R&& rhs)
+{
+    return lhs.is_greater(rhs);
+}
+
+template <class L, class R>
+bool operator<=(iterator_range_t<L> lhs, R&& rhs)
+{
+    return !(lhs > rhs);
+}
+
+template <class L, class R>
+bool operator>=(iterator_range_t<L> lhs, R&& rhs)
+{
+    return !(lhs < rhs);
+}
+
+template <class L, class R>
+bool operator<(L&& lhs, iterator_range_t<R> rhs)
+{
+    return rhs > lhs;
+}
+
+template <class L, class R>
+bool operator>(L&& lhs, iterator_range_t<R> rhs)
+{
+    return rhs < lhs;
+}
+
+template <class L, class R>
+bool operator<=(L&& lhs, iterator_range_t<R> rhs)
+{
+    return !(lhs > rhs);
+}
+
+template <class L, class R>
+bool operator>=(L&& lhs, iterator_range_t<R> rhs)
+{
+    return !(lhs < rhs);
+}
 
 template <class T>
 using span_t = iterator_range_t<const T*>;

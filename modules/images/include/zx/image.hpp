@@ -329,9 +329,7 @@ inline void at(const rgb_image_t::mut_view_type& image, const location_type<2>& 
 
 inline arrays::shape_t<2> get_channel_shape(const rgb_image_t::shape_type& shape)
 {
-    arrays::shape_t<2> result = {};
-    std::copy(shape.m_dims.begin(), shape.m_dims.begin() + 2, result.m_dims.begin());
-    return result;
+    return arrays::shape_t<2>{ zx::mat::erase(shape.m_dims, 2) };
 }
 
 inline greyscale_image_t::view_type channel(const rgb_image_t::view_type& image, std::size_t channel_index)

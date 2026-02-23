@@ -118,9 +118,13 @@ struct shape_t
     using slice_type = zx::mat::vector_t<slice_base_t, D>;
     using bounds_type = zx::mat::box_shape_t<size_base_t, D>;
 
-    std::array<dim_t, D> m_dims = {};
+    using dims_type = zx::mat::vector_t<dim_t, D>;
+
+    dims_type m_dims = {};
 
     shape_t() = default;
+
+    shape_t(dims_type dims) : m_dims(dims) { }
 
     template <class... Tail>
     shape_t(dim_t head, Tail... tail) : m_dims{ head, static_cast<dim_t>(tail)... }
@@ -242,9 +246,12 @@ struct shape_t<1>
     using slice_type = slice_base_t;
     using bounds_type = zx::mat::interval_t<size_base_t>;
 
-    std::array<dim_t, 1> m_dims = {};
+    using dims_type = zx::mat::vector_t<dim_t, 1>;
+
+    dims_type m_dims = {};
 
     shape_t() = default;
+    shape_t(dims_type dims) : m_dims(dims) { }
     shape_t(dim_t dim) : m_dims{ dim } { }
 
     friend bool operator==(const shape_t& lhs, const shape_t& rhs) { return lhs.m_dims[0] == rhs.m_dims[0]; }
