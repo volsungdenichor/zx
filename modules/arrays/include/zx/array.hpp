@@ -317,23 +317,33 @@ struct array_view_t
     volume_t volume() const { return m_shape.volume(); }
     bounds_type bounds() const { return m_shape.bounds(); }
 
-    pointer data() const { return m_data; }
+    pointer data() const { return m_data + m_shape.flat_offset(location_type{}); }
 
-    pointer get(const location_type& loc) const { return data() + m_shape.flat_offset(loc); }
+    pointer get(const location_type& loc) const { return m_data + m_shape.flat_offset(loc); }
     reference operator[](const location_type& loc) const { return *get(loc); }
 
-    array_view_t slice(const slice_type& s) const { return array_view_t{ data(), m_shape.slice(s) }; }
+    array_view_t slice(const slice_type& s) const { return array_view_t{ m_data, m_shape.slice(s) }; }
 
     template <std::size_t D_ = D, std::enable_if_t<D_ == 1, int> = 0>
     iterator begin() const
     {
-        return iterator{ data() + m_shape.m_dim.start, m_shape.m_dim.stride };
+        return iterator{ m_data + m_shape.m_dim.start, m_shape.m_dim.stride };
     }
 
     template <std::size_t D_ = D, std::enable_if_t<D_ == 1, int> = 0>
     iterator end() const
     {
         return begin() + m_shape.m_dim.size;
+    }
+
+    template <std::size_t D_ = D, std::enable_if_t<D_ >= 2, int> = 0>
+    auto sub(std::size_t d, std::size_t n) const -> array_view_t<T, D - 1>
+    {
+        assert(d < D);
+        assert(n < size()[d]);
+        const auto new_shape = m_shape;
+        const auto offset = m_shape.m_dims[d].start + n * m_shape.m_dims[d].stride;
+        return array_view_t<T, D - 1>{ m_data + offset, new_shape };
     }
 
     friend std::ostream& operator<<(std::ostream& os, const array_view_t& item) { return os << item.shape(); }
@@ -387,8 +397,8 @@ struct array_t
     volume_t volume() const { return m_shape.volume(); }
     bounds_type bounds() const { return m_shape.bounds(); }
 
-    const_pointer data() const { return m_data.data(); }
-    pointer data() { return m_data.data(); }
+    // const_pointer data() const { return m_data.data(); }
+    // pointer data() { return m_data.data(); }
 
     const_reference operator[](const location_type& loc) const { return view()[loc]; }
     reference operator[](const location_type& loc) { return mut_view()[loc]; }

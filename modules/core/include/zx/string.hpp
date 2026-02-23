@@ -6,10 +6,9 @@
 #include <stdexcept>
 #include <string_view>
 #include <vector>
+#include <zx/iterator_range.hpp>
 
 namespace zx
-{
-namespace ansi
 {
 
 namespace detail
@@ -160,6 +159,18 @@ struct glyph_t
     }
 };
 
+struct string_view_t : public iterator_range_t<const glyph_t*>
+{
+    using base_t = iterator_range_t<const glyph_t*>;
+    using base_t::base_t;
+
+    friend std::ostream& operator<<(std::ostream& os, const string_view_t& item)
+    {
+        std::copy(item.begin(), item.end(), std::ostream_iterator<glyph_t>(os));
+        return os;
+    }
+};
+
 struct string_t : public std::vector<glyph_t>
 {
     using base_t = std::vector<glyph_t>;
@@ -176,7 +187,11 @@ struct string_t : public std::vector<glyph_t>
         }
     }
 
+    string_t(string_view_t txt) : base_t(txt.begin(), txt.end()) { }
+
     string_t(const char* txt) : string_t(std::string_view(txt)) { }
+
+    operator string_view_t() const { return string_view_t(this->data(), this->size()); }
 
     friend std::ostream& operator<<(std::ostream& os, const string_t& item)
     {
@@ -194,5 +209,4 @@ struct string_t : public std::vector<glyph_t>
     string_t operator+(const string_t& other) const { return string_t{ *this } += other; }
 };
 
-}  // namespace ansi
 }  // namespace zx

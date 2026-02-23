@@ -6,4 +6,6 @@ zx_add_module(
     tests/type_traits.test.cpp
     tests/format.test.cpp
     tests/iterator_range.test.cpp
+    tests/maybe.test.cpp
+    tests/result.test.cpp
 )

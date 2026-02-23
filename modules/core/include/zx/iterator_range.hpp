@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <optional>
 #include <utility>
+#include <zx/maybe.hpp>
 #include <zx/type_traits.hpp>
 
 namespace zx
@@ -135,6 +136,7 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
     using const_iterator = iterator;
 
     using reference = typename std::iterator_traits<iterator>::reference;
+    using maybe_reference = maybe_t<reference>;
 
     using value_type = typename std::iterator_traits<iterator>::value_type;
 

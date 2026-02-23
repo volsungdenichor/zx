@@ -3,6 +3,7 @@
 #include <array>
 #include <string_view>
 #include <zx/ansi.hpp>
+#include <zx/array.hpp>
 #include <zx/string.hpp>
 
 namespace zx
@@ -10,128 +11,6 @@ namespace zx
 
 namespace ansi
 {
-
-struct extent_t : public std::array<std::ptrdiff_t, 2>
-{
-    using base_t = std::array<std::ptrdiff_t, 2>;
-    using base_t::base_t;
-
-    extent_t(std::ptrdiff_t width, std::ptrdiff_t height) : base_t{ width, height } { }
-
-    std::ptrdiff_t width() const { return std::get<0>(*this); }
-    std::ptrdiff_t height() const { return std::get<1>(*this); }
-
-    friend std::ostream& operator<<(std::ostream& os, const extent_t& item)
-    {
-        os << item.width() << "x" << item.height();
-        return os;
-    }
-};
-
-struct loc_t : public std::array<std::ptrdiff_t, 2>
-{
-    using base_t = std::array<std::ptrdiff_t, 2>;
-    using base_t::base_t;
-
-    loc_t(std::ptrdiff_t x, std::ptrdiff_t y) : base_t{ x, y } { }
-
-    std::ptrdiff_t x() const { return std::get<0>(*this); }
-    std::ptrdiff_t y() const { return std::get<1>(*this); }
-
-    friend std::ostream& operator<<(std::ostream& os, const loc_t& loc)
-    {
-        os << "(" << loc.x() << ", " << loc.y() << ")";
-        return os;
-    }
-};
-
-template <class T, bool Const>
-struct view_base_t
-{
-    using pointer = std::conditional_t<Const, const T*, T*>;
-    using reference = std::conditional_t<Const, const T&, T&>;
-
-    pointer m_data;
-    extent_t m_extent;
-    std::ptrdiff_t m_stride;
-
-    view_base_t(pointer data, extent_t extent, std::ptrdiff_t stride)
-        : m_data{ data }
-        , m_extent{ extent }
-        , m_stride{ stride }
-    {
-    }
-
-    reference operator[](const loc_t& loc) const { return m_data[loc[1] * m_stride + loc[0]]; }
-
-    extent_t extent() const { return m_extent; }
-
-    view_base_t sub_view(const loc_t& origin, const extent_t& new_extent) const
-    {
-        loc_t adjusted_loc = {};
-        extent_t adjusted_size = {};
-
-        for (std::size_t i = 0; i < 2; ++i)
-        {
-            adjusted_loc[i] = std::max(origin[i], static_cast<std::ptrdiff_t>(0));
-            adjusted_size[i] = adjusted_loc[i] + new_extent[i] > m_extent[i] ? m_extent[i] - adjusted_loc[i] : new_extent[i];
-        }
-        return view_base_t{ m_data + adjusted_loc[1] * m_stride + adjusted_loc[0], adjusted_size, m_stride };
-    }
-
-    std::pair<pointer, pointer> row(std::ptrdiff_t r) const
-    {
-        if (!(0 <= r && r < m_extent[1]))
-        {
-            return { nullptr, nullptr };
-        }
-        pointer row_start = m_data + r * m_stride;
-        return { row_start, row_start + m_extent[0] };
-    }
-};
-
-template <class T>
-struct view_t : public view_base_t<T, true>
-{
-    using base_t = view_base_t<T, true>;
-    using base_t::base_t;
-};
-
-template <class T>
-struct mut_view_t : public view_base_t<T, false>
-{
-    using base_t = view_base_t<T, false>;
-    using base_t::base_t;
-};
-
-template <class T>
-struct area_t
-{
-    extent_t m_extent;
-    std::vector<T> m_data;
-
-    using view_type = view_t<T>;
-    using mut_view_type = mut_view_t<T>;
-
-    using mut_reference = typename mut_view_type::reference;
-    using reference = typename view_type::reference;
-
-    area_t(extent_t extent, T fill = T{})
-        : m_extent{ extent }
-        , m_data(static_cast<std::size_t>(extent.width() * extent.height()), fill)
-    {
-    }
-
-    extent_t extent() const { return m_extent; }
-
-    view_type view() const { return view_type{ m_data.data(), m_extent, m_extent.width() }; }
-    mut_view_type mut_view() { return mut_view_type{ m_data.data(), m_extent, m_extent.width() }; }
-
-    operator view_type() const { return view(); }
-
-    reference operator[](const loc_t& loc) const { return view()[loc]; }
-    mut_reference operator[](const loc_t& loc) { return mut_view()[loc]; }
-};
 
 struct cell_t
 {
@@ -147,20 +26,20 @@ struct cell_t
     }
 };
 
-inline std::string render_line(std::pair<const cell_t*, const cell_t*> range)
+inline std::string render_line(const arrays::array_t<cell_t, 1>::view_type& range)
 {
     std::string result = {};
     auto current_style = style_info_t{};
     bool reset_needed = false;
-    for (const cell_t* it = range.first; it != range.second; ++it)
+    for (const cell_t& cell : range)
     {
-        if (it->style != current_style)
+        if (cell.style != current_style)
         {
-            result += str(make_ansi_code(it->style));
-            current_style = it->style;
+            result += str(make_ansi_code(cell.style));
+            current_style = cell.style;
             reset_needed = true;
         }
-        result += str(it->glyph);
+        result += str(cell.glyph);
     }
     if (reset_needed)
     {
@@ -169,15 +48,23 @@ inline std::string render_line(std::pair<const cell_t*, const cell_t*> range)
     return result;
 }
 
-using surface_t = area_t<cell_t>;
+using surface_t = arrays::array_t<cell_t, 2>;
 
 inline std::vector<std::string> render_lines(const surface_t::view_type& surface)
 {
-    std::vector<std::string> lines = {};
-    lines.reserve(static_cast<std::size_t>(surface.extent()[1]));
-    for (std::ptrdiff_t y = 0; y < surface.extent()[1]; ++y)
+    constexpr auto row = [](const surface_t::view_type& s, std::ptrdiff_t y) -> arrays::array_t<cell_t, 1>::view_type
     {
-        lines.push_back(render_line(surface.row(y)));
+        const auto slice = s.slice({ arrays::slice_base_t{ y, y + 1, {} }, arrays::slice_base_t{} });
+        return arrays::array_t<cell_t, 1>::view_type{
+            slice.m_data, arrays::shape_t<1>{ slice.size()[1], slice.stride()[1], slice.start()[0] }
+        };
+    };
+    std::cerr << surface.shape().stride() << std::endl;
+    std::vector<std::string> lines = {};
+    lines.reserve(static_cast<std::size_t>(surface.size()[0]));
+    for (std::ptrdiff_t y = 0; y < surface.size()[0]; ++y)
+    {
+        lines.push_back(render_line(row(surface, y)));
     }
     return lines;
 }
