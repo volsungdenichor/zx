@@ -5,7 +5,7 @@
 TEST(iteratror_range, slicing)
 {
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
-    const auto span = zx::iterator_range<const int*>{ vect };
+    const auto span = zx::span_t<int>{ vect };
     EXPECT_THAT(span, testing::ElementsAre(1, 2, 3, 4, 5, 6, 7));
 
     EXPECT_THAT(span.take(4), testing::ElementsAre(1, 2, 3, 4));

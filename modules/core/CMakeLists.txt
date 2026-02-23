@@ -5,5 +5,5 @@ zx_add_module(
     TEST_SOURCES
     tests/type_traits.test.cpp
     tests/format.test.cpp
-    tests/string_vector.test.cpp
+    tests/iterator_range.test.cpp
 )

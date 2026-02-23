@@ -40,23 +40,23 @@ auto make_reverse(std::reverse_iterator<Iter> b, std::reverse_iterator<Iter> e) 
 }
 
 template <class Iter>
-struct iterator_range_base
+struct iterator_range_base_t
 {
     using iterator = Iter;
     using difference_type = typename std::iterator_traits<iterator>::difference_type;
 
-    constexpr iterator_range_base() = default;
-    constexpr iterator_range_base(const iterator_range_base&) = default;
-    constexpr iterator_range_base(iterator_range_base&&) noexcept = default;
+    constexpr iterator_range_base_t() = default;
+    constexpr iterator_range_base_t(const iterator_range_base_t&) = default;
+    constexpr iterator_range_base_t(iterator_range_base_t&&) noexcept = default;
 
-    constexpr iterator_range_base(iterator b, iterator e) : m_iterators(b, e) { }
+    constexpr iterator_range_base_t(iterator b, iterator e) : m_iterators(b, e) { }
 
-    constexpr iterator_range_base(const std::pair<iterator, iterator>& pair) : m_iterators(pair) { }
+    constexpr iterator_range_base_t(const std::pair<iterator, iterator>& pair) : m_iterators(pair) { }
 
-    constexpr iterator_range_base(iterator b, difference_type n) : iterator_range_base(b, std::next(b, n)) { }
+    constexpr iterator_range_base_t(iterator b, difference_type n) : iterator_range_base_t(b, std::next(b, n)) { }
 
     template <class Range, class It = iterator_t<Range>, std::enable_if_t<std::is_constructible_v<iterator, It>, int> = 0>
-    constexpr iterator_range_base(Range&& range) : iterator_range_base(std::begin(range), std::end(range))
+    constexpr iterator_range_base_t(Range&& range) : iterator_range_base_t(std::begin(range), std::end(range))
     {
     }
 
@@ -64,33 +64,34 @@ struct iterator_range_base
 
     constexpr auto end() const noexcept -> iterator { return m_iterators.second; }
 
-    void swap(iterator_range_base& other) noexcept { std::swap(m_iterators, other.m_iterators); }
+    void swap(iterator_range_base_t& other) noexcept { std::swap(m_iterators, other.m_iterators); }
 
     std::pair<iterator, iterator> m_iterators;
 };
 
 template <class T>
-struct iterator_range_base<T*>
+struct iterator_range_base_t<T*>
 {
     using iterator = T*;
     using pointer = iterator;
     using difference_type = typename std::iterator_traits<iterator>::difference_type;
 
-    constexpr iterator_range_base() = default;
-    constexpr iterator_range_base(const iterator_range_base&) = default;
-    constexpr iterator_range_base(iterator_range_base&&) noexcept = default;
+    constexpr iterator_range_base_t() = default;
+    constexpr iterator_range_base_t(const iterator_range_base_t&) = default;
+    constexpr iterator_range_base_t(iterator_range_base_t&&) noexcept = default;
 
-    constexpr iterator_range_base(iterator b, iterator e) : m_iterators(b, e) { }
+    constexpr iterator_range_base_t(iterator b, iterator e) : m_iterators(b, e) { }
 
-    constexpr iterator_range_base(const std::pair<iterator, iterator>& pair) : m_iterators(pair) { }
+    constexpr iterator_range_base_t(const std::pair<iterator, iterator>& pair) : m_iterators(pair) { }
 
     template <class D = difference_type, std::enable_if_t<std::is_integral_v<D>, int> = 0>
-    constexpr iterator_range_base(iterator b, D n) : iterator_range_base(b, std::next(b, static_cast<difference_type>(n)))
+    constexpr iterator_range_base_t(iterator b, D n)
+        : iterator_range_base_t(b, std::next(b, static_cast<difference_type>(n)))
     {
     }
 
     template <class Range, class It = iterator_t<Range>, std::enable_if_t<std::is_constructible_v<iterator, It>, int> = 0>
-    constexpr iterator_range_base(Range&& range) : iterator_range_base(std::begin(range), std::end(range))
+    constexpr iterator_range_base_t(Range&& range) : iterator_range_base_t(std::begin(range), std::end(range))
     {
     }
 
@@ -99,8 +100,8 @@ struct iterator_range_base<T*>
         class It = iterator_t<Range>,
         class Ptr = decltype(std::declval<Range>().data()),
         std::enable_if_t<std::is_constructible_v<iterator, Ptr> && !std::is_constructible_v<iterator, It>, int> = 0>
-    constexpr iterator_range_base(Range&& range)
-        : iterator_range_base(range.data(), static_cast<difference_type>(range.size()))
+    constexpr iterator_range_base_t(Range&& range)
+        : iterator_range_base_t(range.data(), static_cast<difference_type>(range.size()))
     {
     }
 
@@ -110,23 +111,23 @@ struct iterator_range_base<T*>
 
     constexpr auto data() const noexcept -> pointer { return begin(); }
 
-    void swap(iterator_range_base& other) noexcept { std::swap(m_iterators, other.m_iterators); }
+    void swap(iterator_range_base_t& other) noexcept { std::swap(m_iterators, other.m_iterators); }
 
     std::pair<iterator, iterator> m_iterators;
 };
 
 }  // namespace detail
 
-struct slice_t
+struct iterator_range_slice_t
 {
-    std::optional<std::ptrdiff_t> begin;
-    std::optional<std::ptrdiff_t> end;
+    std::optional<std::ptrdiff_t> start;
+    std::optional<std::ptrdiff_t> stop;
 };
 
 template <class Iter>
-struct iterator_range : detail::iterator_range_base<Iter>
+struct iterator_range_t : detail::iterator_range_base_t<Iter>
 {
-    using base_t = detail::iterator_range_base<Iter>;
+    using base_t = detail::iterator_range_base_t<Iter>;
 
     using iterator = typename base_t::iterator;
     using difference_type = typename base_t::difference_type;
@@ -137,13 +138,13 @@ struct iterator_range : detail::iterator_range_base<Iter>
 
     using value_type = typename std::iterator_traits<iterator>::value_type;
 
-    using reverse_type = iterator_range<detail::reverse_iterator_t<iterator>>;
+    using reverse_type = iterator_range_t<detail::reverse_iterator_t<iterator>>;
 
     using base_t::base_t;
     using base_t::begin;
     using base_t::end;
 
-    iterator_range& operator=(iterator_range other) noexcept
+    iterator_range_t& operator=(iterator_range_t other) noexcept
     {
         base_t::swap(other);
         return *this;
@@ -173,7 +174,7 @@ struct iterator_range : detail::iterator_range_base<Iter>
     {
         if (empty())
         {
-            throw std::out_of_range("iterator_range::front - empty range");
+            throw std::out_of_range("iterator_range_t::front - empty range");
         }
 
         return *begin();
@@ -184,7 +185,7 @@ struct iterator_range : detail::iterator_range_base<Iter>
     {
         if (empty())
         {
-            throw std::out_of_range("iterator_range::back - empty range");
+            throw std::out_of_range("iterator_range_t::back - empty range");
         }
         return *std::prev(end());
     }
@@ -194,7 +195,7 @@ struct iterator_range : detail::iterator_range_base<Iter>
     {
         if (!(0 <= n && n < size()))
         {
-            throw std::out_of_range("iterator_range::at - index out of range");
+            throw std::out_of_range("iterator_range_t::at - index out of range");
         }
         return *std::next(begin(), n);
     }
@@ -211,59 +212,59 @@ struct iterator_range : detail::iterator_range_base<Iter>
         return detail::make_reverse(begin(), end());
     }
 
-    auto take(difference_type n) const -> iterator_range { return iterator_range(begin(), advance(n)); }
+    auto take(difference_type n) const -> iterator_range_t { return iterator_range_t(begin(), advance(n)); }
 
-    auto drop(difference_type n) const -> iterator_range { return iterator_range(advance(n), end()); }
+    auto drop(difference_type n) const -> iterator_range_t { return iterator_range_t(advance(n), end()); }
 
     template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
-    auto take_back(difference_type n) const -> iterator_range
+    auto take_back(difference_type n) const -> iterator_range_t
     {
         return reverse().take(n).reverse();
     }
 
     template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
-    auto drop_back(difference_type n) const -> iterator_range
+    auto drop_back(difference_type n) const -> iterator_range_t
     {
         return reverse().drop(n).reverse();
     }
 
     template <class Pred>
-    auto take_while(Pred&& pred) const -> iterator_range
+    auto take_while(Pred&& pred) const -> iterator_range_t
     {
         const iterator found = std::find_if_not(begin(), end(), std::forward<Pred>(pred));
-        return iterator_range(begin(), found);
+        return iterator_range_t(begin(), found);
     }
 
     template <class Pred>
-    auto drop_while(Pred&& pred) const -> iterator_range
+    auto drop_while(Pred&& pred) const -> iterator_range_t
     {
         const iterator found = std::find_if_not(begin(), end(), std::forward<Pred>(pred));
-        return iterator_range(found, end());
+        return iterator_range_t(found, end());
     }
 
     template <class Pred, class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
-    auto take_back_while(Pred&& pred) const -> iterator_range
+    auto take_back_while(Pred&& pred) const -> iterator_range_t
     {
         return reverse().take_while(std::forward<Pred>(pred)).reverse();
     }
 
     template <class Pred, class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value> = 0>
-    auto drop_back_while(Pred&& pred) const -> iterator_range
+    auto drop_back_while(Pred&& pred) const -> iterator_range_t
     {
         return reverse().drop_while(std::forward<Pred>(pred)).reverse();
     }
 
     template <class It = iterator, std::enable_if_t<is_random_access_iterator<It>::value, int> = 0>
-    auto slice(const slice_t& info) const -> iterator_range
+    auto slice(const iterator_range_slice_t& info) const -> iterator_range_t
     {
         static const auto adjust = [](difference_type index,
                                       size_type size) -> size_type {  //
             return std::clamp<size_type>(index >= 0 ? index : index + size, 0, size);
         };
         const size_type s = size();
-        const size_type b = info.begin ? adjust(*info.begin, s) : size_type{ 0 };
-        const size_type e = info.end ? adjust(*info.end, s) : s;
-        return iterator_range{ begin() + b, std::max(size_type{ 0 }, e - b) };
+        const size_type b = info.start ? adjust(*info.start, s) : size_type{ 0 };
+        const size_type e = info.stop ? adjust(*info.stop, s) : s;
+        return iterator_range_t{ begin() + b, std::max(size_type{ 0 }, e - b) };
     }
 
 private:
@@ -285,5 +286,14 @@ private:
         }
     }
 };
+
+template <class T>
+using span_t = iterator_range_t<const T*>;
+
+template <class T>
+using mut_span_t = iterator_range_t<T*>;
+
+template <class Container>
+using subrange_t = iterator_range_t<iterator_t<Container>>;
 
 }  // namespace zx

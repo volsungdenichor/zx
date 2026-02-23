@@ -4,5 +4,4 @@ zx_add_module(
 
     TEST_SOURCES
     tests/iterator_interface.test.cpp
-    tests/iterator_range.test.cpp
 )

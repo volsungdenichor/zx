@@ -19,10 +19,10 @@ set(ZX_MODULE_DEPENDENCIES "
         [functional [core]]
         [maybe []]
         [result []]
-        [sequence [maybe iterator]]
-        [mat [iterator]]
+        [sequence [core maybe iterator]]
+        [mat [core iterator]]
         [ansi []]
-        [arrays [iterator mat]]
+        [arrays [core mat]]
         [images [arrays]]
     ]
 ")
