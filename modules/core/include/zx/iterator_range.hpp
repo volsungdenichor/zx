@@ -1,6 +1,8 @@
 #pragma once
 
 #include <algorithm>
+#include <cstring>
+#include <iostream>
 #include <optional>
 #include <utility>
 #include <zx/maybe.hpp>
@@ -141,15 +143,22 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
     using value_type = typename std::iterator_traits<iterator>::value_type;
 
     using reverse_type = iterator_range_t<detail::reverse_iterator_t<iterator>>;
+    using reverse_iterator = typename reverse_type::iterator;
 
     using base_t::base_t;
     using base_t::begin;
     using base_t::end;
 
-    iterator_range_t& operator=(iterator_range_t other) noexcept
+    template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
+    auto rbegin() const -> reverse_iterator
     {
-        base_t::swap(other);
-        return *this;
+        return reverse_iterator{ end() };
+    }
+
+    template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
+    auto rend() const -> reverse_iterator
+    {
+        return reverse_iterator{ begin() };
     }
 
     template <class Container, std::enable_if_t<std::is_constructible_v<Container, iterator, iterator>, int> = 0>
@@ -293,6 +302,53 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
     {
         auto it = std::find_if(begin(), end(), std::forward<Pred>(pred));
         return it != end() ? maybe_reference{ *it } : maybe_reference{};
+    }
+
+    template <class Range, class Compare = std::equal_to<>>
+    bool equal(Range&& other, Compare&& compare = {}) const
+    {
+        auto other_range = iterator_range_t(std::forward<Range>(other));
+        return std::equal(begin(), end(), other_range.begin(), other_range.end(), std::forward<Compare>(compare));
+    }
+
+    template <class Range, class Compare = std::equal_to<>>
+    bool starts_with(Range&& prefix, Compare&& compare = {}) const
+    {
+        auto prefix_range = iterator_range_t(std::forward<Range>(prefix));
+        return take(prefix_range.size()).equal(prefix_range, std::forward<Compare>(compare));
+    }
+
+    template <class Range, class Compare = std::equal_to<>>
+    bool ends_with(Range&& suffix, Compare&& compare = {}) const
+    {
+        auto suffix_range = iterator_range_t(std::forward<Range>(suffix));
+        return take_back(suffix_range.size()).equal(suffix_range, std::forward<Compare>(compare));
+    }
+
+    template <class Range, class Compare = std::equal_to<>>
+    bool contains_subrange(Range&& subrange, Compare&& compare = {}) const
+    {
+        auto subrange_range = iterator_range_t(std::forward<Range>(subrange));
+        return std::search(begin(), end(), subrange_range.begin(), subrange_range.end(), std::forward<Compare>(compare))
+               != end();
+    }
+
+    template <class Pred>
+    bool all_of(Pred&& pred) const
+    {
+        return std::all_of(begin(), end(), std::forward<Pred>(pred));
+    }
+
+    template <class Pred>
+    bool any_of(Pred&& pred) const
+    {
+        return std::any_of(begin(), end(), std::forward<Pred>(pred));
+    }
+
+    template <class Pred>
+    bool none_of(Pred&& pred) const
+    {
+        return std::none_of(begin(), end(), std::forward<Pred>(pred));
     }
 
 private:
