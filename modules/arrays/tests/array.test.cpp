@@ -142,3 +142,16 @@ TEST(array, array_1d_slice_negative_step)
     EXPECT_THAT(view[2], 4);
     EXPECT_THAT(view, testing::ElementsAreArray({ 8, 6, 4 }));
 }
+
+TEST(array, array_2d_indexing)
+{
+    zx::arrays::array_t<int, 2> a{ { 3, 4 } };
+    a[0][0] = 1;
+    a[0][1] = 42;
+    a[1][0] = 53;
+    a[2].fill(-1);
+    EXPECT_THAT(a[0][0], 1);
+    EXPECT_THAT(a[0][1], 42);
+    EXPECT_THAT(a[1][0], 53);
+    EXPECT_THAT(a.m_data, testing::ElementsAreArray({ 1, 42, 0, 0, 53, 0, 0, 0, -1, -1, -1, -1 }));
+}

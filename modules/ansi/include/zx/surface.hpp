@@ -52,19 +52,11 @@ using surface_t = arrays::array_t<cell_t, 2>;
 
 inline std::vector<std::string> render_lines(const surface_t::view_type& surface)
 {
-    constexpr auto row = [](const surface_t::view_type& s, std::ptrdiff_t y) -> arrays::array_t<cell_t, 1>::view_type
-    {
-        const auto slice = s.slice({ arrays::slice_base_t{ y, y + 1, {} }, arrays::slice_base_t{} });
-        return arrays::array_t<cell_t, 1>::view_type{
-            slice.m_data, arrays::shape_t<1>{ { slice.size()[1], slice.stride()[1], slice.start()[0] } }
-        };
-    };
-    std::cerr << surface.shape().stride() << std::endl;
     std::vector<std::string> lines = {};
     lines.reserve(static_cast<std::size_t>(surface.size()[0]));
     for (std::ptrdiff_t y = 0; y < surface.size()[0]; ++y)
     {
-        lines.push_back(render_line(row(surface, y)));
+        lines.push_back(render_line(surface[y]));
     }
     return lines;
 }

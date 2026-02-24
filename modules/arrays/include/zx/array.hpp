@@ -132,6 +132,8 @@ struct shape_t
         static_assert(sizeof...(tail) + 1 == D, "Invalid number of arguments to shape_t constructor");
     }
 
+    const dim_t& dim(std::size_t d) const { return m_dims[d]; }
+
     friend bool operator==(const shape_t& lhs, const shape_t& rhs) { return lhs.m_dims == rhs.m_dims; }
     friend bool operator!=(const shape_t& lhs, const shape_t& rhs) { return !(lhs == rhs); }
 
@@ -254,6 +256,8 @@ struct shape_t<1>
     shape_t(dims_type dims) : m_dims(dims) { }
     shape_t(dim_t dim) : m_dims{ dim } { }
 
+    const dim_t& dim(std::size_t d) const { return m_dims[d]; }
+
     friend bool operator==(const shape_t& lhs, const shape_t& rhs) { return lhs.m_dims[0] == rhs.m_dims[0]; }
     friend bool operator!=(const shape_t& lhs, const shape_t& rhs) { return !(lhs == rhs); }
 
@@ -345,23 +349,42 @@ struct array_view_t
     template <std::size_t D_ = D, std::enable_if_t<D_ == 1, int> = 0>
     iterator begin() const
     {
-        return iterator{ m_data + m_shape.m_dims[0].start, m_shape.m_dims[0].stride };
+        return iterator{ m_data + m_shape.dim(0).start, m_shape.dim(0).stride };
     }
 
     template <std::size_t D_ = D, std::enable_if_t<D_ == 1, int> = 0>
     iterator end() const
     {
-        return begin() + m_shape.m_dims[0].size;
+        return begin() + m_shape.dim(0).size;
     }
 
     template <std::size_t D_ = D, std::enable_if_t<D_ >= 2, int> = 0>
-    auto sub(std::size_t d, std::size_t n) const -> array_view_t<T, D - 1>
+    array_view_t<T, D - 1> sub(std::size_t d, location_base_t n) const
     {
-        assert(d < D);
-        assert(n < size()[d]);
-        const auto new_shape = m_shape;
-        const auto offset = m_shape.m_dims[d].start + n * m_shape.m_dims[d].stride;
-        return array_view_t<T, D - 1>{ m_data + offset, new_shape };
+        const auto offset = m_shape.dim(d).start + n * m_shape.dim(d).stride;
+        return array_view_t<T, D - 1>{ m_data + offset, shape_t<D - 1>{ mat::erase(m_shape.m_dims, d) } };
+    }
+
+    template <std::size_t D_ = D, std::enable_if_t<D_ >= 2, int> = 0>
+    array_view_t<T, D - 1> operator[](location_base_t n) const
+    {
+        return sub(0, n);
+    }
+
+    template <class T_ = T, std::enable_if_t<!std::is_const_v<T_>, int> = 0>
+    void fill(const value_type& value)
+    {
+        if constexpr (D == 1)
+        {
+            std::fill(begin(), end(), value);
+        }
+        else
+        {
+            for (std::size_t i = 0; i < m_shape.dim(0).size; ++i)
+            {
+                (*this)[i].fill(value);
+            }
+        }
     }
 
     friend std::ostream& operator<<(std::ostream& os, const array_view_t& item) { return os << item.shape(); }
@@ -377,6 +400,12 @@ struct array_t
     using mut_view_type = array_view_t<T, D>;
     using view_type = array_view_t<const T, D>;
 
+    template <std::size_t D_>
+    using mut_sub_view_type = array_view_t<T, D_>;
+
+    template <std::size_t D_>
+    using sub_view_type = array_view_t<const T, D_>;
+
     using shape_type = typename view_type::shape_type;
     using location_type = typename view_type::location_type;
     using size_type = typename view_type::size_type;
@@ -391,9 +420,9 @@ struct array_t
     using reference = typename mut_view_type::reference;
     using iterator = typename mut_view_type::iterator;
 
-    array_t(const size_type size) : m_shape{ shape_type::from_size(size) }, m_data{}
+    array_t(const size_type size, const T& init = {}) : m_shape{ shape_type::from_size(size) }, m_data{}
     {
-        m_data.resize(static_cast<std::size_t>(m_shape.volume()));
+        m_data.resize(static_cast<std::size_t>(m_shape.volume()), init);
     }
 
     array_t(const array_t&) = default;
@@ -415,11 +444,20 @@ struct array_t
     volume_t volume() const { return m_shape.volume(); }
     bounds_type bounds() const { return m_shape.bounds(); }
 
-    // const_pointer data() const { return m_data.data(); }
-    // pointer data() { return m_data.data(); }
-
     const_reference operator[](const location_type& loc) const { return view()[loc]; }
     reference operator[](const location_type& loc) { return mut_view()[loc]; }
+
+    template <std::size_t D_ = D, std::enable_if_t<D_ >= 2, int> = 0>
+    sub_view_type<D_ - 1> operator[](location_base_t n) const
+    {
+        return view()[n];
+    }
+
+    template <std::size_t D_ = D, std::enable_if_t<D_ >= 2, int> = 0>
+    mut_sub_view_type<D_ - 1> operator[](location_base_t n)
+    {
+        return mut_view()[n];
+    }
 
     iterator begin() { return mut_view().begin(); }
     iterator end() { return mut_view().end(); }
