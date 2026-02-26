@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <string_view>
 #include <tuple>
@@ -10,12 +11,12 @@
 namespace zx
 {
 
-struct ostream_writer : public std::function<void(std::ostream&)>
+struct ostream_writer_t : public std::function<void(std::ostream&)>
 {
     using base_type = std::function<void(std::ostream&)>;
     using base_type::base_type;
 
-    friend std::ostream& operator<<(std::ostream& os, const ostream_writer& item)
+    friend std::ostream& operator<<(std::ostream& os, const ostream_writer_t& item)
     {
         item(os);
         return os;
@@ -111,7 +112,7 @@ static constexpr inline struct println_fn
 static constexpr inline struct delimit_fn
 {
     template <class Iter>
-    auto operator()(Iter begin, Iter end, std::string_view separator) const -> ostream_writer
+    auto operator()(Iter begin, Iter end, std::string_view separator) const -> ostream_writer_t
     {
         return [=](std::ostream& os)
         {
@@ -129,18 +130,18 @@ static constexpr inline struct delimit_fn
     }
 
     template <class Range>
-    auto operator()(Range&& range, std::string_view separator) const -> ostream_writer
+    auto operator()(Range&& range, std::string_view separator) const -> ostream_writer_t
     {
         return (*this)(std::begin(range), std::end(range), separator);
     }
 
     template <class T>
-    auto operator()(std::initializer_list<T> range, std::string_view separator) const -> ostream_writer
+    auto operator()(std::initializer_list<T> range, std::string_view separator) const -> ostream_writer_t
     {
         return (*this)(std::begin(range), std::end(range), separator);
     }
 
-    auto operator()(const char* str, std::string_view separator) const -> ostream_writer
+    auto operator()(const char* str, std::string_view separator) const -> ostream_writer_t
     {
         return (*this)(std::string_view(str), separator);
     }
@@ -178,6 +179,15 @@ struct tuple_formatter
     }
 };
 
+struct range_formatter
+{
+    template <class Range>
+    void format(std::ostream& os, const Range& item) const
+    {
+        os << "[" << delimit(item, ", ") << "]";
+    }
+};
+
 template <class... Args>
 struct formatter<std::tuple<Args...>> : tuple_formatter
 {
@@ -186,6 +196,22 @@ struct formatter<std::tuple<Args...>> : tuple_formatter
 template <class F, class S>
 struct formatter<std::pair<F, S>> : tuple_formatter
 {
+};
+
+template <class T>
+struct formatter<std::optional<T>>
+{
+    void format(std::ostream& os, const std::optional<T>& item) const
+    {
+        if (item)
+        {
+            format_to(os, *item);
+        }
+        else
+        {
+            os << "<< none >>";
+        }
+    }
 };
 
 }  // namespace zx
