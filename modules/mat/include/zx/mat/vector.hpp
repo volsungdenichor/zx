@@ -21,7 +21,7 @@ struct vector_t : public std::array<T, D>
 
     using base_t::base_t;
 
-    constexpr vector_t() : base_t{} { }
+    constexpr vector_t() : base_t{} { std::fill(this->begin(), this->end(), T{}); }
 
     template <class... Tail>
     constexpr vector_t(T head, Tail... tail) : base_t{ head, static_cast<T>(tail)... }
