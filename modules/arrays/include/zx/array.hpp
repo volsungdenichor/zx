@@ -327,7 +327,7 @@ struct array_view_t<T, 1>
     using pointer = T*;
     using reference = T&;
 
-    using iterator = strided_iterator<T>;
+    using iterator = strided_iterator<pointer>;
 
     using location_type = location_base_t;
     using size_type = size_base_t;

@@ -25,7 +25,7 @@ struct matrix_view_t
     using pointer = T*;
     using reference = T&;
     using row_type = iterator_range_t<pointer>;
-    using column_type = iterator_range_t<strided_iterator<T, std::ptrdiff_t(C)>>;
+    using column_type = iterator_range_t<strided_iterator<pointer, std::ptrdiff_t(C)>>;
     using data_type = iterator_range_t<pointer>;
 
     pointer m_data;

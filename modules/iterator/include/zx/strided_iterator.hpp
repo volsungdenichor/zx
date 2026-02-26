@@ -7,66 +7,71 @@ namespace zx
 
 namespace detail
 {
-template <class T, std::ptrdiff_t N>
+template <class Iter, std::ptrdiff_t N>
 struct strided_iterator_impl
 {
-    T* m_ptr;
+    static_assert(is_random_access_iterator<Iter>::value, "strided_iterator: random access iterator required");
 
-    explicit strided_iterator_impl(T* ptr = {}) : m_ptr{ ptr } { }
+    Iter m_inner;
 
-    constexpr T& deref() const { return *m_ptr; }
+    strided_iterator_impl() = default;
+    strided_iterator_impl(Iter inner) : m_inner{ inner } { }
 
-    constexpr void inc() { m_ptr += N; }
+    constexpr iter_reference_t<Iter> deref() const { return *m_inner; }
 
-    constexpr void dec() { m_ptr -= N; }
+    constexpr void inc() { m_inner += N; }
 
-    constexpr void advance(std::ptrdiff_t n) { m_ptr += n * N; }
+    constexpr void dec() { m_inner -= N; }
 
-    constexpr bool is_equal(const strided_iterator_impl& other) const { return m_ptr == other.m_ptr; }
+    constexpr void advance(std::ptrdiff_t n) { m_inner += n * N; }
+
+    constexpr bool is_equal(const strided_iterator_impl& other) const { return m_inner == other.m_inner; }
 
     constexpr bool is_less(const strided_iterator_impl& other) const
     {
-        return N > 0 ? m_ptr < other.m_ptr : m_ptr > other.m_ptr;
+        return N > 0 ? m_inner < other.m_inner : m_inner > other.m_inner;
     }
 
-    constexpr std::ptrdiff_t distance_to(const strided_iterator_impl& other) const { return (other.m_ptr - m_ptr) / N; }
+    constexpr std::ptrdiff_t distance_to(const strided_iterator_impl& other) const { return (other.m_inner - m_inner) / N; }
 };
 
-template <class T>
-struct strided_iterator_impl<T, 0>
+template <class Iter>
+struct strided_iterator_impl<Iter, 0>
 {
-    T* m_ptr;
+    static_assert(is_random_access_iterator<Iter>::value, "strided_iterator: random access iterator required");
 
+    Iter m_inner;
     std::ptrdiff_t m_stride;
 
-    strided_iterator_impl(T* ptr = {}, std::ptrdiff_t stride = 0) : m_ptr{ ptr }, m_stride{ stride } { }
+    strided_iterator_impl() = default;
+    strided_iterator_impl(Iter inner, std::ptrdiff_t stride = 0) : m_inner{ inner }, m_stride{ stride } { }
 
-    constexpr T& deref() const { return *m_ptr; }
+    constexpr iter_reference_t<Iter> deref() const { return *m_inner; }
 
-    constexpr void inc() { m_ptr += m_stride; }
+    constexpr void inc() { m_inner += m_stride; }
 
-    constexpr void dec() { m_ptr -= m_stride; }
+    constexpr void dec() { m_inner -= m_stride; }
 
-    constexpr void advance(std::ptrdiff_t n) { m_ptr += n * m_stride; }
+    constexpr void advance(std::ptrdiff_t n) { m_inner += n * m_stride; }
 
-    constexpr bool is_equal(const strided_iterator_impl& other) const { return m_ptr == other.m_ptr; }
+    constexpr bool is_equal(const strided_iterator_impl& other) const { return m_inner == other.m_inner; }
 
     constexpr bool is_less(const strided_iterator_impl& other) const
     {
         assert(m_stride == other.m_stride);
-        return m_stride > 0 ? m_ptr < other.m_ptr : m_ptr > other.m_ptr;
+        return m_stride > 0 ? m_inner < other.m_inner : m_inner > other.m_inner;
     }
 
     constexpr std::ptrdiff_t distance_to(const strided_iterator_impl& other) const
     {
         assert(m_stride == other.m_stride);
-        return (other.m_ptr - m_ptr) / m_stride;
+        return (other.m_inner - m_inner) / m_stride;
     }
 };
 
 }  // namespace detail
 
-template <class T, std::ptrdiff_t N = 0>
-using strided_iterator = zx::iterator_interface<detail::strided_iterator_impl<T, N>>;
+template <class Iter, std::ptrdiff_t N = 0>
+using strided_iterator = zx::iterator_interface<detail::strided_iterator_impl<Iter, N>>;
 
 }  // namespace zx
