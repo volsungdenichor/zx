@@ -30,7 +30,7 @@ struct vector_t : public std::array<T, D>
     }
 
     template <std::size_t D_ = D, std::enable_if_t<D_ == 1, int> = 0>
-    constexpr operator T() const
+    constexpr explicit operator T() const
     {
         return (*this)[0];
     }
