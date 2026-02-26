@@ -363,7 +363,8 @@ struct array_view_t
     array_view_t<T, D - 1> sub(std::size_t d, location_base_t n) const
     {
         const auto offset = m_shape.dim(d).start + n * m_shape.dim(d).stride;
-        return array_view_t<T, D - 1>{ m_data + offset, shape_t<D - 1>{ mat::erase(m_shape.m_dims, d) } };
+        // Explicitly extract the first element from erased dims to avoid constructor issues
+        return array_view_t<T, D - 1>{ m_data + offset, shape_t<D - 1>{ mat::erase(m_shape.m_dims, d)[0] } };
     }
 
     template <std::size_t D_ = D, std::enable_if_t<(D_ > 1), int> = 0>
