@@ -421,9 +421,10 @@ struct array_t
     using reference = typename mut_view_type::reference;
     using iterator = typename mut_view_type::iterator;
 
-    array_t(const size_type size, const T& init = {}) : m_shape{ shape_type::from_size(size) }, m_data{}
+    array_t(const size_type size, const T& init = {})
+        : m_shape{ shape_type::from_size(size) }
+        , m_data(static_cast<std::size_t>(m_shape.volume()), init)
     {
-        m_data.resize(static_cast<std::size_t>(m_shape.volume()), init);
     }
 
     array_t(const array_t&) = default;

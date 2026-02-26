@@ -150,6 +150,7 @@ TEST(array, array_2d_indexing)
     a[0][1] = 42;
     a[1][0] = 53;
     a[2].fill(-1);
+    EXPECT_THAT(a.volume(), 12);
     EXPECT_THAT(a[0][0], 1);
     EXPECT_THAT(a[0][1], 42);
     EXPECT_THAT(a[1][0], 53);
