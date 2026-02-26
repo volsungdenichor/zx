@@ -75,7 +75,7 @@ struct strided_iterator_impl<T, 0>
 
 }  // namespace detail
 
-template <class T, std::ptrdiff_t N>
+template <class T, std::ptrdiff_t N = 0>
 using strided_iterator = zx::iterator_interface<detail::strided_iterator_impl<T, N>>;
 
 template <class T, std::size_t R, std::size_t C>

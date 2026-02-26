@@ -253,35 +253,6 @@ struct shape_t
     }
 };
 
-namespace detail
-{
-
-template <class T>
-struct strided_iter
-{
-    T* m_data;
-    stride_base_t m_stride;
-
-    strided_iter() = default;
-
-    strided_iter(T* data, stride_base_t stride) : m_data{ data }, m_stride{ stride } { }
-
-    T& deref() const { return *m_data; }
-
-    bool is_equal(const strided_iter& other) const { return m_data == other.m_data; }
-    bool is_less(const strided_iter& other) const { return m_stride > 0 ? m_data < other.m_data : m_data > other.m_data; }
-
-    bool distance_to(const strided_iter& other) const
-    {
-        assert(m_stride == other.m_stride);
-        return (other.m_data - m_data) / m_stride;
-    }
-
-    void advance(std::ptrdiff_t offset) { m_data += offset * m_stride; }
-};
-
-}  // namespace detail
-
 template <class T, std::size_t D>
 struct array_view_t
 {
@@ -356,7 +327,7 @@ struct array_view_t<T, 1>
     using pointer = T*;
     using reference = T&;
 
-    using iterator = zx::iterator_interface<detail::strided_iter<T>>;
+    using iterator = mat::strided_iterator<T, 0>;
 
     using location_type = location_base_t;
     using size_type = size_base_t;
