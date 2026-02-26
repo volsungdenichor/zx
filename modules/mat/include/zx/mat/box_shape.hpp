@@ -87,6 +87,12 @@ struct box_shape_t : public std::array<interval_t<T>, D>
     {
     }
 
+    template <std::size_t D_ = D, std::enable_if_t<D_ == 1, int> = 0>
+    constexpr operator interval_t<T>() const
+    {
+        return (*this)[0];
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const box_shape_t& item)
     {
         os << "(";

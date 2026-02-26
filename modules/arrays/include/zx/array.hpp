@@ -118,7 +118,7 @@ struct shape_t
     using slice_type = zx::mat::vector_t<slice_base_t, D>;
     using bounds_type = zx::mat::box_shape_t<size_base_t, D>;
 
-    using dims_type = zx::mat::vector_t<dim_t, D>;
+    using dims_type = std::array<dim_t, D>;
 
     dims_type m_dims = {};
 
@@ -237,48 +237,24 @@ struct shape_t
         }
         return result;
     }
+
+    template <std::size_t D_ = D, std::enable_if_t<(D_ > 1), int> = 0>
+    shape_t<D - 1> erase(std::size_t index) const
+    {
+        typename shape_t<D - 1>::dims_type result = {};
+        for (std::size_t i = 0, j = 0; i < D; ++i)
+        {
+            if (i != index)
+            {
+                result[j++] = m_dims[i];
+            }
+        }
+        return shape_t<D - 1>{ result };
+    }
 };
 
-template <>
-struct shape_t<1>
+namespace detail
 {
-    using size_type = size_base_t;
-    using stride_type = stride_base_t;
-    using location_type = location_base_t;
-    using slice_type = slice_base_t;
-    using bounds_type = zx::mat::interval_t<size_base_t>;
-
-    using dims_type = zx::mat::vector_t<dim_t, 1>;
-
-    dims_type m_dims = {};
-
-    shape_t() = default;
-    shape_t(dims_type dims) : m_dims(dims) { }
-    shape_t(dim_t dim) : m_dims{ dim } { }
-
-    const dim_t& dim(std::size_t d) const { return m_dims[d]; }
-
-    friend bool operator==(const shape_t& lhs, const shape_t& rhs) { return lhs.m_dims[0] == rhs.m_dims[0]; }
-    friend bool operator!=(const shape_t& lhs, const shape_t& rhs) { return !(lhs == rhs); }
-
-    friend std::ostream& operator<<(std::ostream& os, const shape_t& item) { return os << "{" << item.m_dims[0] << "}"; }
-
-    volume_t volume() const { return m_dims[0].size; }
-
-    size_type size() const { return m_dims[0].size; }
-
-    stride_type stride() const { return m_dims[0].stride; }
-
-    location_type start() const { return m_dims[0].start; }
-
-    bounds_type bounds() const { return bounds_type{ 0, size() }; }
-
-    flat_offset_t flat_offset(const location_type& loc) const { return m_dims[0].start + loc * m_dims[0].stride; }
-
-    static shape_t from_size(const size_type& size) { return shape_t{ dim_t{ size, 1, 0 } }; }
-
-    shape_t slice(const slice_type& s) const { return shape_t{ m_dims[0].slice(s) }; }
-};
 
 template <class T>
 struct strided_iter
@@ -304,6 +280,8 @@ struct strided_iter
     void advance(std::ptrdiff_t offset) { m_data += offset * m_stride; }
 };
 
+}  // namespace detail
+
 template <class T, std::size_t D>
 struct array_view_t
 {
@@ -312,7 +290,7 @@ struct array_view_t
     using pointer = T*;
     using reference = T&;
 
-    using iterator = std::conditional_t<D == 1, zx::iterator_interface<strided_iter<T>>, void>;
+    using iterator = void;
 
     using location_type = typename shape_type::location_type;
     using size_type = typename shape_type::size_type;
@@ -347,46 +325,79 @@ struct array_view_t
 
     array_view_t slice(const slice_type& s) const { return array_view_t{ m_data, m_shape.slice(s) }; }
 
-    template <std::size_t D_ = D, std::enable_if_t<(D_ == 1), int> = 0>
-    iterator begin() const
-    {
-        return iterator{ m_data + m_shape.dim(0).start, m_shape.dim(0).stride };
-    }
-
-    template <std::size_t D_ = D, std::enable_if_t<(D_ == 1), int> = 0>
-    iterator end() const
-    {
-        return begin() + volume();
-    }
-
-    template <std::size_t D_ = D, std::enable_if_t<(D_ > 1), int> = 0>
     array_view_t<T, D - 1> sub(std::size_t d, location_base_t n) const
     {
         const auto offset = m_shape.dim(d).start + n * m_shape.dim(d).stride;
-        // Explicitly extract the first element from erased dims to avoid constructor issues
-        return array_view_t<T, D - 1>{ m_data + offset, shape_t<D - 1>{ mat::erase(m_shape.m_dims, d)[0] } };
+        return array_view_t<T, D - 1>{ m_data + offset, m_shape.erase(d) };
     }
 
-    template <std::size_t D_ = D, std::enable_if_t<(D_ > 1), int> = 0>
-    array_view_t<T, D - 1> operator[](location_base_t n) const
-    {
-        return sub(0, n);
-    }
+    array_view_t<T, D - 1> operator[](location_base_t n) const { return sub(0, n); }
 
     template <class T_ = T, std::enable_if_t<!std::is_const_v<T_>, int> = 0>
     void fill(const value_type& value)
     {
-        if constexpr (D == 1)
+        for (std::size_t i = 0; i < m_shape.dim(0).size; ++i)
         {
-            std::fill(begin(), end(), value);
+            (*this)[i].fill(value);
         }
-        else
-        {
-            for (std::size_t i = 0; i < m_shape.dim(0).size; ++i)
-            {
-                (*this)[i].fill(value);
-            }
-        }
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const array_view_t& item) { return os << item.shape(); }
+
+    pointer m_data;
+    shape_type m_shape;
+};
+
+template <class T>
+struct array_view_t<T, 1>
+{
+    using value_type = std::remove_const_t<T>;
+    using shape_type = shape_t<1>;
+    using pointer = T*;
+    using reference = T&;
+
+    using iterator = zx::iterator_interface<detail::strided_iter<T>>;
+
+    using location_type = location_base_t;
+    using size_type = size_base_t;
+    using stride_type = stride_base_t;
+    using slice_type = slice_base_t;
+    using bounds_type = mat::interval_t<size_base_t>;
+
+    array_view_t(pointer data, shape_type shape) : m_data{ data }, m_shape{ shape } { }
+    array_view_t(const array_view_t&) = default;
+    array_view_t(array_view_t&&) noexcept = default;
+
+    array_view_t& operator=(const array_view_t&) = default;
+    array_view_t& operator=(array_view_t&&) noexcept = default;
+
+    const shape_type& shape() const { return m_shape; }
+
+    array_view_t<std::add_const_t<T>, 1> as_const() const { return { m_data, m_shape }; }
+
+    operator array_view_t<std::add_const_t<T>, 1>() const { return as_const(); }
+
+    size_type size() const { return m_shape.dim(0).size; }
+    stride_type stride() const { return m_shape.dim(0).stride; }
+    location_type start() const { return m_shape.dim(0).start; }
+    volume_t volume() const { return m_shape.volume(); }
+    bounds_type bounds() const { return m_shape.bounds()[0]; }
+
+    pointer data() const { return m_data + m_shape.flat_offset(location_type{}); }
+
+    pointer get(location_type loc) const { return m_data + m_shape.flat_offset(loc); }
+
+    reference operator[](location_type loc) const { return *get(loc); }
+
+    array_view_t slice(const slice_type& s) const { return array_view_t{ m_data, m_shape.slice(s) }; }
+
+    iterator begin() const { return iterator{ m_data + m_shape.dim(0).start, m_shape.dim(0).stride }; }
+    iterator end() const { return begin() + volume(); }
+
+    template <class T_ = T, std::enable_if_t<!std::is_const_v<T_>, int> = 0>
+    void fill(const value_type& value)
+    {
+        std::fill(begin(), end(), value);
     }
 
     friend std::ostream& operator<<(std::ostream& os, const array_view_t& item) { return os << item.shape(); }
