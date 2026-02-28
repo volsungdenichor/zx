@@ -43,6 +43,8 @@ TEST(image, load_image)
     EXPECT_THAT((img[{ 2, 2, 1 }]), 233);
     EXPECT_THAT((img[{ 2, 2, 2 }]), 127);
 
+    EXPECT_THAT(img[-1][-1], testing::ElementsAre(96, 96, 96));
+
     EXPECT_THAT(zx::images::at(img, { 0, 0 }), (zx::images::rgb_color_t{ 255, 0, 0 }));
     EXPECT_THAT(zx::images::at(img, { 0, 1 }), (zx::images::rgb_color_t{ 255, 106, 0 }));
     EXPECT_THAT(zx::images::at(img, { 0, 2 }), (zx::images::rgb_color_t{ 255, 216, 0 }));

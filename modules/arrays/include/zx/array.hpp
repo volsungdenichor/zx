@@ -73,6 +73,8 @@ struct dim_t
                   << ":start " << item.start << "}";
     }
 
+    location_base_t adjust_location(location_base_t loc) const { return loc >= 0 ? loc : (loc + size); }
+
     dim_t slice(const slice_base_t& s) const
     {
         const auto clamp = [&](location_base_t value, location_base_t init) -> location_base_t
@@ -140,17 +142,7 @@ struct shape_t
 
     friend std::ostream& operator<<(std::ostream& os, const shape_t& item)
     {
-        os << "{";
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            if (d != 0)
-            {
-                os << " ";
-            }
-            os << item.m_dims[d];
-        }
-        os << "}";
-        return os;
+        return os << "{ :size " << item.size() << " :stride " << item.stride() << " :start " << item.start() << " }";
     }
 
     volume_t volume() const
@@ -208,7 +200,7 @@ struct shape_t
         location_type result = {};
         for (std::size_t d = 0; d < D; ++d)
         {
-            result[d] = loc[d] >= 0 ? loc[d] : (loc[d] + m_dims[d].size);
+            result[d] = m_dims[d].adjust_location(loc[d]);
         }
         return result;
     }
@@ -319,7 +311,14 @@ struct array_view_t
 
     array_view_t<T, D - 1> sub(std::size_t d, location_base_t n) const
     {
-        const auto offset = m_shape.dim(d).start + n * m_shape.dim(d).stride;
+        const location_base_t adjusted_loc = m_shape.dim(d).adjust_location(n);
+        if (!(0 <= adjusted_loc && adjusted_loc < m_shape.dim(d).size))
+        {
+            throw std::out_of_range{
+                (std::ostringstream() << "Location " << n << " is out of bounds (" << m_shape.dim(d).size << ")").str()
+            };
+        }
+        const auto offset = m_shape.dim(d).start + adjusted_loc * m_shape.dim(d).stride;
         return array_view_t<T, D - 1>{ m_data + offset, m_shape.erase(d) };
     }
 
