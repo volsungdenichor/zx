@@ -74,6 +74,9 @@ struct dim_t
     }
 
     location_base_t adjust_location(location_base_t loc) const { return loc >= 0 ? loc : (loc + size); }
+    mat::interval_t<location_base_t> bounds() const { return { 0, size }; }
+
+    flat_offset_t flat_offset(const location_base_t& loc) const { return start + loc * stride; }
 
     dim_t slice(const slice_base_t& s) const
     {
@@ -190,7 +193,7 @@ struct shape_t
         bounds_type result = {};
         for (std::size_t d = 0; d < D; ++d)
         {
-            result[d] = { 0, m_dims[d].size };
+            result[d] = m_dims[d].bounds();
         }
         return result;
     }
@@ -210,7 +213,7 @@ struct shape_t
         flat_offset_t result = 0;
         for (std::size_t d = 0; d < D; ++d)
         {
-            result += m_dims[d].start + loc[d] * m_dims[d].stride;
+            result += m_dims[d].flat_offset(loc[d]);
         }
         return result;
     }
@@ -312,10 +315,10 @@ struct array_view_t
     array_view_t<T, D - 1> sub(std::size_t d, location_base_t n) const
     {
         const location_base_t adjusted_loc = m_shape.dim(d).adjust_location(n);
-        if (!(0 <= adjusted_loc && adjusted_loc < m_shape.dim(d).size))
+        if (!mat::contains(m_shape.dim(d).bounds(), adjusted_loc))
         {
             throw std::out_of_range{
-                (std::ostringstream() << "Location " << n << " is out of bounds (" << m_shape.dim(d).size << ")").str()
+                (std::ostringstream() << "Index " << n << " is out of bounds (" << m_shape.dim(d).size << ")").str()
             };
         }
         const auto offset = m_shape.dim(d).start + adjusted_loc * m_shape.dim(d).stride;
