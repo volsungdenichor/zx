@@ -2,6 +2,7 @@
 
 #include <array>
 #include <optional>
+#include <sstream>
 #include <zx/iterator_interface.hpp>
 #include <zx/mat.hpp>
 
@@ -202,6 +203,16 @@ struct shape_t
         return result;
     }
 
+    location_type adjust_location(const location_type& loc) const
+    {
+        location_type result = {};
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = loc[d] >= 0 ? loc[d] : (loc[d] + m_dims[d].size);
+        }
+        return result;
+    }
+
     flat_offset_t flat_offset(const location_type& loc) const
     {
         flat_offset_t result = 0;
@@ -290,7 +301,17 @@ struct array_view_t
 
     pointer data() const { return m_data + m_shape.flat_offset(location_type{}); }
 
-    pointer get(const location_type& loc) const { return m_data + m_shape.flat_offset(loc); }
+    pointer get(const location_type& loc) const
+    {
+        const location_type adjusted_loc = m_shape.adjust_location(loc);
+        if (!mat::contains(bounds(), adjusted_loc))
+        {
+            throw std::out_of_range{
+                (std::ostringstream() << "Location " << loc << " is out of bounds (" << size() << ")").str()
+            };
+        }
+        return m_data + m_shape.flat_offset(adjusted_loc);
+    }
 
     reference operator[](const location_type& loc) const { return *get(loc); }
 
@@ -356,13 +377,23 @@ struct array_view_t<T, 1>
 
     pointer data() const { return m_data + m_shape.flat_offset(location_type{}); }
 
-    pointer get(location_type loc) const { return m_data + m_shape.flat_offset(loc); }
+    pointer get(location_type loc) const
+    {
+        const location_type adjusted_loc = m_shape.adjust_location(loc);
+        if (!mat::contains(bounds(), adjusted_loc))
+        {
+            throw std::out_of_range{
+                (std::ostringstream() << "Location " << loc << " is out of bounds (" << size() << ")").str()
+            };
+        }
+        return m_data + m_shape.flat_offset(adjusted_loc);
+    }
 
     reference operator[](location_type loc) const { return *get(loc); }
 
     array_view_t slice(const slice_type& s) const { return array_view_t{ m_data, m_shape.slice(s) }; }
 
-    iterator begin() const { return iterator{ m_data + m_shape.dim(0).start, m_shape.dim(0).stride }; }
+    iterator begin() const { return iterator{ m_data + start(), stride() }; }
     iterator end() const { return begin() + volume(); }
 
     template <class T_ = T, std::enable_if_t<!std::is_const_v<T_>, int> = 0>
@@ -407,6 +438,13 @@ struct array_t
     array_t(const size_type size, const T& init = {})
         : m_shape{ shape_type::from_size(size) }
         , m_data(static_cast<std::size_t>(m_shape.volume()), init)
+    {
+    }
+
+    template <std::size_t D_ = D, std::enable_if_t<(D_ == 1), int> = 0>
+    explicit array_t(std::vector<T> init)
+        : m_shape{ shape_type::from_size(size_type{ static_cast<size_base_t>(init.size()) }) }
+        , m_data(std::move(init))
     {
     }
 

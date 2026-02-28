@@ -293,6 +293,19 @@ struct contains_fn
         return true;
     }
 
+    template <class T, std::size_t D>
+    constexpr auto operator()(const box_shape_t<T, D>& item, const vector_t<T, D>& other) const -> bool
+    {
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            if (!(*this)(item[d], other[d]))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     template <class T, class U, std::size_t D>
     constexpr auto operator()(const spherical_shape_t<T, D>& item, const vector_t<U, D>& other) const -> bool
     {

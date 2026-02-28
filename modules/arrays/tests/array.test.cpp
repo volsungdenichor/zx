@@ -60,6 +60,23 @@ TEST(array, array_1d)
     EXPECT_THAT(mut_view, testing::ElementsAreArray({ 0, 42, 0, 0, 0, 0, 0, 0, 0, 0 }));
 }
 
+TEST(array, array_1d_access)
+{
+    zx::arrays::array_t<int, 1> a{ 10 };
+    for (int i = 0; i < 10; ++i)
+    {
+        a[i] = i;
+    }
+    EXPECT_THAT(a[0], 0);
+    EXPECT_THAT(a[1], 1);
+    EXPECT_THAT(a[9], 9);
+
+    EXPECT_THAT(a[-1], 9);
+    EXPECT_THAT(a[-2], 8);
+
+    EXPECT_THROW(a[19], std::out_of_range);
+}
+
 TEST(array, array_1d_slice)
 {
     zx::arrays::array_t<int, 1> a{ 10 };
