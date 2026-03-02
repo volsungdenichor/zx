@@ -4,34 +4,33 @@
 
 TEST(array, slicing)
 {
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ {}, {}, {} })), (zx::arrays::dim_t{ 10, 1, 0 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ 3, {}, {} })), (zx::arrays::dim_t{ 7, 1, 3 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ {}, 7, {} })), (zx::arrays::dim_t{ 7, 1, 0 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ 2, 8, {} })), (zx::arrays::dim_t{ 6, 1, 2 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ 0, 10, 3 })), (zx::arrays::dim_t{ 4, 3, 0 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ 2, 8, 2 })), (zx::arrays::dim_t{ 3, 2, 2 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ -8, -2, {} })), (zx::arrays::dim_t{ 6, 1, 2 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ -5, {}, {} })), (zx::arrays::dim_t{ 5, 1, 5 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ {}, -3, {} })), (zx::arrays::dim_t{ 7, 1, 0 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ {}, {}, -1 })), (zx::arrays::dim_t{ 10, -1, 9 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ 8, 2, -2 })), (zx::arrays::dim_t{ 3, -2, 8 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ 9, {}, -1 })), (zx::arrays::dim_t{ 10, -1, 9 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ 0, 100, {} })), (zx::arrays::dim_t{ 10, 1, 0 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ -100, 5, {} })), (zx::arrays::dim_t{ 5, 1, 0 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 0 }.slice({ 5, 5, {} })), (zx::arrays::dim_t{ 0, 1, 5 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 2, 0 }.slice({ 1, 5, {} })), (zx::arrays::dim_t{ 4, 2, 2 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 2, 0 }.slice({ 0, 10, 2 })), (zx::arrays::dim_t{ 5, 4, 0 }));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1, 5 }.slice({ 2, 8, {} })), (zx::arrays::dim_t{ 6, 1, 7 }));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ {}, {}, {} })), testing::FieldsAre(zx::arrays::dim_t{ 10, 1 }, 0));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 3, {}, {} })), testing::FieldsAre(zx::arrays::dim_t{ 7, 1 }, 3));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ {}, 7, {} })), testing::FieldsAre(zx::arrays::dim_t{ 7, 1 }, 0));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 2, 8, {} })), testing::FieldsAre(zx::arrays::dim_t{ 6, 1 }, 2));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 0, 10, 3 })), testing::FieldsAre(zx::arrays::dim_t{ 4, 3 }, 0));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 2, 8, 2 })), testing::FieldsAre(zx::arrays::dim_t{ 3, 2 }, 2));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ -8, -2, {} })), testing::FieldsAre(zx::arrays::dim_t{ 6, 1 }, 2));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ -5, {}, {} })), testing::FieldsAre(zx::arrays::dim_t{ 5, 1 }, 5));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ {}, -3, {} })), testing::FieldsAre(zx::arrays::dim_t{ 7, 1 }, 0));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ {}, {}, -1 })), testing::FieldsAre(zx::arrays::dim_t{ 10, -1 }, 9));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 8, 2, -2 })), testing::FieldsAre(zx::arrays::dim_t{ 3, -2 }, 8));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 9, {}, -1 })), testing::FieldsAre(zx::arrays::dim_t{ 10, -1 }, 9));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 0, 100, {} })), testing::FieldsAre(zx::arrays::dim_t{ 10, 1 }, 0));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ -100, 5, {} })), testing::FieldsAre(zx::arrays::dim_t{ 5, 1 }, 0));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 5, 5, {} })), testing::FieldsAre(zx::arrays::dim_t{ 0, 1 }, 5));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 2 }.slice({ 1, 5, {} })), testing::FieldsAre(zx::arrays::dim_t{ 4, 2 }, 2));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 2 }.slice({ 0, 10, 2 })), testing::FieldsAre(zx::arrays::dim_t{ 5, 4 }, 0));
+    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 2, 8, {} })), testing::FieldsAre(zx::arrays::dim_t{ 6, 1 }, 2));
 }
 
 TEST(array, array_1d)
 {
     zx::arrays::array_t<int, 1> a{ 10 };
     a[1] = 42;
-    EXPECT_THAT(a.shape(), (zx::arrays::shape_t<1>{ { zx::arrays::dim_t{ 10, 1, 0 } } }));
+    EXPECT_THAT(a.shape(), (zx::arrays::shape_t<1>{ { zx::arrays::dim_t{ 10, 1 } } }));
     EXPECT_THAT(a.size(), 10);
     EXPECT_THAT(a.stride(), 1);
-    EXPECT_THAT(a.start(), 0);
     EXPECT_THAT(a.volume(), 10);
     EXPECT_THAT(a.bounds(), (zx::mat::interval_t<int>{ 0, 10 }));
     EXPECT_THAT(a[0], 0);
@@ -40,7 +39,6 @@ TEST(array, array_1d)
     auto view = a.view();
     EXPECT_THAT(view.size(), 10);
     EXPECT_THAT(view.stride(), 1);
-    EXPECT_THAT(view.start(), 0);
     EXPECT_THAT(view.volume(), 10);
     EXPECT_THAT(a.bounds(), (zx::mat::interval_t<int>{ 0, 10 }));
     EXPECT_THAT(view[0], 0);
@@ -51,7 +49,6 @@ TEST(array, array_1d)
     auto mut_view = a.mut_view();
     EXPECT_THAT(mut_view.size(), 10);
     EXPECT_THAT(mut_view.stride(), 1);
-    EXPECT_THAT(mut_view.start(), 0);
     EXPECT_THAT(a.bounds(), (zx::mat::interval_t<int>{ 0, 10 }));
     EXPECT_THAT(mut_view.volume(), 10);
     EXPECT_THAT(mut_view[0], 0);
@@ -87,7 +84,6 @@ TEST(array, array_1d_slice)
     auto view = a.view().slice({ 2, 8 });
     EXPECT_THAT(view.size(), 6);
     EXPECT_THAT(view.stride(), 1);
-    EXPECT_THAT(view.start(), 2);
     EXPECT_THAT(view.volume(), 6);
     EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 6 }));
     EXPECT_THAT(view[0], 2);
@@ -109,7 +105,6 @@ TEST(array, array_1d_slice_step)
     auto view = a.view().slice({ 2, 8, 2 });
     EXPECT_THAT(view.size(), 3);
     EXPECT_THAT(view.stride(), 2);
-    EXPECT_THAT(view.start(), 2);
     EXPECT_THAT(view.volume(), 3);
     EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 3 }));
     EXPECT_THAT(view[0], 2);
@@ -128,7 +123,6 @@ TEST(array, array_1d_slice_negative)
     auto view = a.view().slice({ -8, -2 });
     EXPECT_THAT(view.size(), 6);
     EXPECT_THAT(view.stride(), 1);
-    EXPECT_THAT(view.start(), 2);
     EXPECT_THAT(view.volume(), 6);
     EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 6 }));
     EXPECT_THAT(view[0], 2);
@@ -151,7 +145,6 @@ TEST(array, array_1d_slice_negative_step)
     auto view = a.view().slice({ 8, 2, -2 });
     EXPECT_THAT(view.size(), 3);
     EXPECT_THAT(view.stride(), -2);
-    EXPECT_THAT(view.start(), 8);
     EXPECT_THAT(view.volume(), 3);
     EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 3 }));
     EXPECT_THAT(view[0], 8);

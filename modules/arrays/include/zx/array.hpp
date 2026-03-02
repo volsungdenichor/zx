@@ -54,13 +54,12 @@ struct slice_base_t
 
 struct dim_t
 {
-    size_base_t size;
-    stride_base_t stride;
-    location_base_t start = {};
+    size_base_t size = 0;
+    stride_base_t stride = 1;
 
     friend bool operator==(const dim_t& lhs, const dim_t& rhs)
     {
-        return std::tie(lhs.size, lhs.stride, lhs.start) == std::tie(rhs.size, rhs.stride, rhs.start);
+        return std::tie(lhs.size, lhs.stride) == std::tie(rhs.size, rhs.stride);
     }
 
     friend bool operator!=(const dim_t& lhs, const dim_t& rhs) { return !(lhs == rhs); }
@@ -69,16 +68,15 @@ struct dim_t
     {
         return os << "{"
                   << ":size " << item.size << " "
-                  << ":stride " << item.stride << " "
-                  << ":start " << item.start << "}";
+                  << ":stride " << item.stride << "}";
     }
 
     location_base_t adjust_location(location_base_t loc) const { return loc >= 0 ? loc : (loc + size); }
     mat::interval_t<location_base_t> bounds() const { return { 0, size }; }
 
-    flat_offset_t flat_offset(const location_base_t& loc) const { return start + loc * stride; }
+    flat_offset_t flat_offset(const location_base_t& loc) const { return loc * stride; }
 
-    dim_t slice(const slice_base_t& s) const
+    std::pair<dim_t, location_base_t> slice(const slice_base_t& s) const
     {
         const auto clamp = [&](location_base_t value, location_base_t init) -> location_base_t
         { return std::max(init, std::min(value, this->size + init)); };
@@ -109,9 +107,9 @@ struct dim_t
                   : std::max(location_base_t(0), (actual_start - actual_stop - actual_step - 1) / (-actual_step));
 
         const stride_base_t new_stride = this->stride * actual_step;
-        const location_base_t new_start = this->start + actual_start * this->stride;
+        const location_base_t new_start = actual_start * this->stride;
 
-        return dim_t{ new_size, new_stride, new_start };
+        return { dim_t{ new_size, new_stride }, new_start };
     }
 };
 
@@ -145,7 +143,7 @@ struct shape_t
 
     friend std::ostream& operator<<(std::ostream& os, const shape_t& item)
     {
-        return os << "{ :size " << item.size() << " :stride " << item.stride() << " :start " << item.start() << " }";
+        return os << "{ :size " << item.size() << " :stride " << item.stride() << " }";
     }
 
     volume_t volume() const
@@ -174,16 +172,6 @@ struct shape_t
         for (std::size_t d = 0; d < D; ++d)
         {
             result[d] = m_dims[d].stride;
-        }
-        return result;
-    }
-
-    location_type start() const
-    {
-        location_type result = {};
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = m_dims[d].start;
         }
         return result;
     }
@@ -226,7 +214,6 @@ struct shape_t
         {
             const auto d = static_cast<std::size_t>(_d);
             auto& dim = result.m_dims[d];
-            dim.start = 0;
             dim.size = size[d];
             dim.stride = stride;
             stride *= dim.size;
@@ -234,14 +221,15 @@ struct shape_t
         return result;
     }
 
-    shape_t slice(const slice_type& s) const
+    std::pair<shape_t, location_type> slice(const slice_type& s) const
     {
-        shape_t result = *this;
+        shape_t new_shape = *this;
+        location_type new_start = {};
         for (std::size_t d = 0; d < D; ++d)
         {
-            result.m_dims[d] = m_dims[d].slice(s[d]);
+            std::tie(new_shape.m_dims[d], new_start[d]) = m_dims[d].slice(s[d]);
         }
-        return result;
+        return { new_shape, new_start };
     }
 
     template <std::size_t D_ = D, std::enable_if_t<(D_ > 1), int> = 0>
@@ -310,7 +298,11 @@ struct array_view_t
 
     reference operator[](const location_type& loc) const { return *get(loc); }
 
-    array_view_t slice(const slice_type& s) const { return array_view_t{ m_data, m_shape.slice(s) }; }
+    array_view_t slice(const slice_type& s) const
+    {
+        const auto [new_shape, new_start] = m_shape.slice(s);
+        return array_view_t{ get(new_start), new_shape };
+    }
 
     array_view_t<T, D - 1> sub(std::size_t d, location_base_t n) const
     {
@@ -321,7 +313,7 @@ struct array_view_t
                 (std::ostringstream() << "Index " << n << " is out of bounds (" << m_shape.dim(d).size << ")").str()
             };
         }
-        const auto offset = m_shape.dim(d).start + adjusted_loc * m_shape.dim(d).stride;
+        const auto offset = adjusted_loc * m_shape.dim(d).stride;
         return array_view_t<T, D - 1>{ m_data + offset, m_shape.erase(d) };
     }
 
@@ -330,7 +322,7 @@ struct array_view_t
     template <class T_ = T, std::enable_if_t<!std::is_const_v<T_>, int> = 0>
     void fill(const value_type& value)
     {
-        for (std::size_t i = 0; i < m_shape.dim(0).size; ++i)
+        for (size_base_t i = 0; i < m_shape.dim(0).size; ++i)
         {
             (*this)[i].fill(value);
         }
@@ -373,7 +365,6 @@ struct array_view_t<T, 1>
 
     size_type size() const { return m_shape.dim(0).size; }
     stride_type stride() const { return m_shape.dim(0).stride; }
-    location_type start() const { return m_shape.dim(0).start; }
     volume_t volume() const { return m_shape.volume(); }
     bounds_type bounds() const { return m_shape.bounds()[0]; }
 
@@ -393,9 +384,13 @@ struct array_view_t<T, 1>
 
     reference operator[](location_type loc) const { return *get(loc); }
 
-    array_view_t slice(const slice_type& s) const { return array_view_t{ m_data, m_shape.slice(s) }; }
+    array_view_t slice(const slice_type& s) const
+    {
+        const auto [new_shape, new_start] = m_shape.slice(s);
+        return array_view_t{ get(new_start), new_shape };
+    }
 
-    iterator begin() const { return iterator{ m_data + start(), stride() }; }
+    iterator begin() const { return iterator{ m_data, stride() }; }
     iterator end() const { return begin() + volume(); }
 
     template <class T_ = T, std::enable_if_t<!std::is_const_v<T_>, int> = 0>
@@ -465,7 +460,6 @@ struct array_t
 
     size_type size() const { return m_shape.size(); }
     stride_type stride() const { return m_shape.stride(); }
-    location_type start() const { return m_shape.start(); }
     volume_t volume() const { return m_shape.volume(); }
     bounds_type bounds() const { return m_shape.bounds(); }
 
