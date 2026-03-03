@@ -24,6 +24,16 @@ TEST(array, slicing)
     EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 2, 8, {} })), testing::FieldsAre(zx::arrays::dim_t{ 6, 1 }, 2));
 }
 
+TEST(array, empty_array_1d_slice)
+{
+    zx::arrays::array_t<int, 1> a{ 10 };
+    auto view = a.view().slice({ 5, 5 }).slice({ {}, {}, -1 });
+    EXPECT_THAT(view.size(), 0);
+    EXPECT_THAT(view.stride(), -1);
+    EXPECT_THAT(view.volume(), 0);
+    EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 0 }));
+}
+
 TEST(array, array_1d)
 {
     zx::arrays::array_t<int, 1> a{ 10 };

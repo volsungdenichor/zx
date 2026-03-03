@@ -301,7 +301,7 @@ struct array_view_t
     array_view_t slice(const slice_type& s) const
     {
         const auto [new_shape, new_start] = m_shape.slice(s);
-        return array_view_t{ get(new_start), new_shape };
+        return array_view_t{ m_data + m_shape.flat_offset(new_start), new_shape };
     }
 
     array_view_t<T, D - 1> sub(std::size_t d, location_base_t n) const
@@ -387,7 +387,7 @@ struct array_view_t<T, 1>
     array_view_t slice(const slice_type& s) const
     {
         const auto [new_shape, new_start] = m_shape.slice(s);
-        return array_view_t{ get(new_start), new_shape };
+        return array_view_t{ m_data + m_shape.flat_offset(new_start), new_shape };
     }
 
     iterator begin() const { return iterator{ m_data, stride() }; }

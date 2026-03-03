@@ -230,3 +230,19 @@ TEST(let, let_with_no_args_lambda_returning_move_only)
     auto result = zx::let([]() { return std::make_unique<int>(42); });
     EXPECT_THAT(*result, 42);
 }
+
+TEST(let, heron_formula)
+{
+    EXPECT_THAT(
+        zx::let(
+            3.0,
+            4.0,
+            5.0,
+            [](double a, double b, double c)
+            {
+                return zx::let(  //
+                    (a + b + c) / 2.0,
+                    [&](double s) { return std::sqrt(s * (s - a) * (s - b) * (s - c)); });
+            }),
+        6.0);
+}
