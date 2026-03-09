@@ -176,3 +176,75 @@ TEST(array, array_2d_indexing)
     EXPECT_THAT(a[1][0], 53);
     EXPECT_THAT(a.m_data, testing::ElementsAreArray({ 1, 42, 0, 0, 53, 0, 0, 0, -1, -1, -1, -1 }));
 }
+
+TEST(array, array_2d_copy)
+{
+    zx::arrays::array_t<int, 2> a{ { 3, 4 } };
+    for (std::size_t i = 0; i < 12; ++i)
+    {
+        a.m_data[i] = static_cast<int>(i);
+    }
+    zx::arrays::array_t<int, 2> b{ { 3, 4 } };
+    zx::arrays::copy(b.mut_view(), a.view());
+    EXPECT_THAT(b.m_data, testing::ElementsAreArray({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }));
+}
+
+TEST(array, array_2d_copy_with_positive_location)
+{
+    zx::arrays::array_t<int, 2> src{ { 3, 4 } };
+    for (std::size_t i = 0; i < src.m_data.size(); ++i)
+    {
+        src.m_data[i] = static_cast<int>(i);
+    }
+
+    zx::arrays::array_t<int, 2> dst{ { 4, 5 } };
+    dst.mut_view().fill(-1);
+
+    zx::arrays::copy(dst.mut_view(), src.view(), { 1, 2 });
+
+    EXPECT_THAT(
+        dst.m_data,
+        testing::ElementsAreArray({
+            -1, -1, -1, -1, -1,  // row 0
+            -1, -1, 0,  1,  2,   // row 1
+            -1, -1, 4,  5,  6,   // row 2
+            -1, -1, 8,  9,  10   // row 3
+        }));
+}
+
+TEST(array, array_2d_copy_with_negative_location)
+{
+    zx::arrays::array_t<int, 2> src{ { 3, 4 } };
+    for (std::size_t i = 0; i < src.m_data.size(); ++i)
+    {
+        src.m_data[i] = static_cast<int>(i);
+    }
+
+    zx::arrays::array_t<int, 2> dst{ { 4, 5 } };
+    dst.mut_view().fill(-1);
+
+    zx::arrays::copy(dst.mut_view(), src.view(), { -1, -2 });
+
+    EXPECT_THAT(
+        dst.m_data,
+        testing::ElementsAreArray({
+            6,  7,  -1, -1, -1,  // row 0
+            10, 11, -1, -1, -1,  // row 1
+            -1, -1, -1, -1, -1,  // row 2
+            -1, -1, -1, -1, -1   // row 3
+        }));
+}
+
+TEST(array, array_2d_copy_bounds_adjustment)
+{
+    zx::arrays::array_t<int, 2> src{ { 3, 4 } };
+    zx::arrays::array_t<int, 2> dst{ { 4, 5 } };
+
+    const auto [src_bounds, dst_bounds] = zx::arrays::adjust_bounds(dst.bounds(), src.bounds(), { -1, 2 });
+
+    EXPECT_THAT(src_bounds[0], testing::Eq((zx::mat::interval_t<zx::arrays::size_base_t>{ 1, 3 })));
+    EXPECT_THAT(src_bounds[1], testing::Eq((zx::mat::interval_t<zx::arrays::size_base_t>{ 0, 3 })));
+
+    EXPECT_THAT(dst_bounds[0], testing::Eq((zx::mat::interval_t<zx::arrays::size_base_t>{ 0, 2 })));
+    EXPECT_THAT(dst_bounds[1], testing::Eq((zx::mat::interval_t<zx::arrays::size_base_t>{ 2, 5 })));
+}

@@ -1,8 +1,11 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
+#include <numeric>
 #include <optional>
 #include <sstream>
+#include <tuple>
 #include <zx/iterator_interface.hpp>
 #include <zx/mat.hpp>
 
@@ -232,6 +235,17 @@ struct shape_t
         return { new_shape, new_start };
     }
 
+    std::pair<shape_t, location_type> region(const bounds_type& b) const
+    {
+        slice_type s = {};
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            s[d].start = mat::lower(b[d]);
+            s[d].stop = mat::upper(b[d]);
+        }
+        return slice(s);
+    }
+
     template <std::size_t D_ = D, std::enable_if_t<(D_ > 1), int> = 0>
     shape_t<D - 1> erase(std::size_t index) const
     {
@@ -301,7 +315,19 @@ struct array_view_t
     array_view_t slice(const slice_type& s) const
     {
         const auto [new_shape, new_start] = m_shape.slice(s);
-        return array_view_t{ m_data + m_shape.flat_offset(new_start), new_shape };
+        const flat_offset_t offset = std::accumulate(new_start.begin(), new_start.end(), flat_offset_t{ 0 });
+        return array_view_t{ m_data + offset, new_shape };
+    }
+
+    array_view_t region(const bounds_type& b) const
+    {
+        slice_type s = {};
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            s[d].start = mat::lower(b[d]);
+            s[d].stop = mat::upper(b[d]);
+        }
+        return slice(s);
     }
 
     array_view_t<T, D - 1> sub(std::size_t d, location_base_t n) const
@@ -387,7 +413,15 @@ struct array_view_t<T, 1>
     array_view_t slice(const slice_type& s) const
     {
         const auto [new_shape, new_start] = m_shape.slice(s);
-        return array_view_t{ m_data + m_shape.flat_offset(new_start), new_shape };
+        return array_view_t{ m_data + new_start, new_shape };
+    }
+
+    array_view_t region(const bounds_type& b) const
+    {
+        slice_type s = {};
+        s.start = mat::lower(b);
+        s.stop = mat::upper(b);
+        return slice(s);
     }
 
     iterator begin() const { return iterator{ m_data, stride() }; }
@@ -423,6 +457,7 @@ struct array_t
     using size_type = typename view_type::size_type;
     using stride_type = typename view_type::stride_type;
     using bounds_type = typename view_type::bounds_type;
+    using slice_type = typename view_type::slice_type;
 
     using const_pointer = typename view_type::pointer;
     using const_reference = typename view_type::reference;
@@ -478,6 +513,12 @@ struct array_t
         return mut_view()[n];
     }
 
+    mut_view_type slice(const slice_type& s) { return mut_view().slice(s); }
+    view_type slice(const slice_type& s) const { return view().slice(s); }
+
+    mut_view_type region(const bounds_type& b) { return mut_view().region(b); }
+    view_type region(const bounds_type& b) const { return view().region(b); }
+
     iterator begin() { return mut_view().begin(); }
     iterator end() { return mut_view().end(); }
 
@@ -489,6 +530,88 @@ struct array_t
     shape_type m_shape;
     std::vector<T> m_data;
 };
+
+struct adjust_bounds_fn
+{
+    inline auto operator()(mat::interval_t<size_base_t> dst, mat::interval_t<size_base_t> src, location_base_t location)
+        const -> std::pair<mat::interval_t<size_base_t>, mat::interval_t<size_base_t>>
+    {
+        size_base_t dst_lo = std::max(mat::lower(dst), mat::lower(src) + location);
+        size_base_t dst_up = std::min(mat::upper(dst), mat::upper(src) + location);
+        dst_lo = std::clamp(dst_lo, mat::lower(dst), mat::upper(dst));
+        dst_up = std::clamp(dst_up, mat::lower(dst), mat::upper(dst));
+        dst_up = std::max(dst_up, dst_lo);
+
+        size_base_t src_lo = dst_lo - location;
+        size_base_t src_up = dst_up - location;
+        src_lo = std::clamp(src_lo, mat::lower(src), mat::upper(src));
+        src_up = std::clamp(src_up, mat::lower(src), mat::upper(src));
+        src_up = std::max(src_up, src_lo);
+
+        return { mat::interval_t{ src_lo, src_up }, mat::interval_t{ dst_lo, dst_up } };
+    }
+
+    template <std::size_t D>
+    auto operator()(
+        mat::box_shape_t<size_base_t, D> dst,
+        mat::box_shape_t<size_base_t, D> src,
+        const mat::vector_t<location_base_t, D>& location) const
+        -> std::pair<mat::box_shape_t<size_base_t, D>, mat::box_shape_t<size_base_t, D>>
+    {
+        mat::box_shape_t<size_base_t, D> dst_copy = dst;
+        mat::box_shape_t<size_base_t, D> src_copy = src;
+
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            std::tie(src_copy[d], dst_copy[d]) = (*this)(dst[d], src[d], location[d]);
+        }
+
+        return { src_copy, dst_copy };
+    }
+};
+
+static constexpr inline auto adjust_bounds = adjust_bounds_fn{};
+
+struct copy_fn
+{
+    template <class T, class U>
+    void operator()(array_view_t<T, 1> dst, array_view_t<U, 1> src) const
+    {
+        if (dst.size() != src.size())
+        {
+            throw std::invalid_argument{ "Source and destination sizes do not match" };
+        }
+
+        for (size_base_t i = 0; i < dst.size(); ++i)
+        {
+            dst[i] = src[i];
+        }
+    }
+
+    template <class T, class U, std::size_t D>
+    void operator()(array_view_t<T, D> dst, array_view_t<U, D> src) const
+    {
+        if (dst.size() != src.size())
+        {
+            throw std::invalid_argument{ "Source and destination sizes do not match" };
+        }
+
+        for (size_base_t i = 0; i < dst.shape().dim(0).size; ++i)
+        {
+            (*this)(dst[i], src[i]);
+        }
+    }
+
+    template <class T, class U, std::size_t D>
+    void operator()(
+        array_view_t<T, D> dst, array_view_t<U, D> src, const typename array_view_t<T, D>::location_type& location) const
+    {
+        const auto [src_bounds, dst_bounds] = adjust_bounds(dst.bounds(), src.bounds(), location);
+        (*this)(dst.region(dst_bounds), src.region(src_bounds));
+    }
+};
+
+static constexpr inline auto copy = copy_fn{};
 
 }  // namespace arrays
 
