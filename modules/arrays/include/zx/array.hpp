@@ -536,19 +536,22 @@ struct adjust_bounds_fn
     inline auto operator()(mat::interval_t<size_base_t> dst, mat::interval_t<size_base_t> src, location_base_t location)
         const -> std::pair<mat::interval_t<size_base_t>, mat::interval_t<size_base_t>>
     {
-        size_base_t dst_lo = std::max(mat::lower(dst), mat::lower(src) + location);
-        size_base_t dst_up = std::min(mat::upper(dst), mat::upper(src) + location);
-        dst_lo = std::clamp(dst_lo, mat::lower(dst), mat::upper(dst));
-        dst_up = std::clamp(dst_up, mat::lower(dst), mat::upper(dst));
-        dst_up = std::max(dst_up, dst_lo);
+        constexpr auto adjust
+            = [](mat::interval_t<size_base_t> interval, size_base_t lo, size_base_t up) -> mat::interval_t<size_base_t>
+        {
+            lo = std::clamp(lo, mat::lower(interval), mat::upper(interval));
+            up = std::clamp(up, mat::lower(interval), mat::upper(interval));
+            up = std::max(up, lo);
+            return mat::interval_t<size_base_t>{ lo, up };
+        };
+        const auto new_dst = adjust(
+            dst,
+            std::max(mat::lower(dst), mat::lower(src) + location),
+            std::min(mat::upper(dst), mat::upper(src) + location));
 
-        size_base_t src_lo = dst_lo - location;
-        size_base_t src_up = dst_up - location;
-        src_lo = std::clamp(src_lo, mat::lower(src), mat::upper(src));
-        src_up = std::clamp(src_up, mat::lower(src), mat::upper(src));
-        src_up = std::max(src_up, src_lo);
+        const auto new_src = adjust(src, mat::lower(new_dst) - location, mat::upper(new_dst) - location);
 
-        return { mat::interval_t{ src_lo, src_up }, mat::interval_t{ dst_lo, dst_up } };
+        return { new_src, new_dst };
     }
 
     template <std::size_t D>
@@ -558,15 +561,15 @@ struct adjust_bounds_fn
         const mat::vector_t<location_base_t, D>& location) const
         -> std::pair<mat::box_shape_t<size_base_t, D>, mat::box_shape_t<size_base_t, D>>
     {
-        mat::box_shape_t<size_base_t, D> dst_copy = dst;
-        mat::box_shape_t<size_base_t, D> src_copy = src;
+        mat::box_shape_t<size_base_t, D> new_dst = dst;
+        mat::box_shape_t<size_base_t, D> new_src = src;
 
         for (std::size_t d = 0; d < D; ++d)
         {
-            std::tie(src_copy[d], dst_copy[d]) = (*this)(dst[d], src[d], location[d]);
+            std::tie(new_src[d], new_dst[d]) = (*this)(dst[d], src[d], location[d]);
         }
 
-        return { src_copy, dst_copy };
+        return { new_src, new_dst };
     }
 };
 
