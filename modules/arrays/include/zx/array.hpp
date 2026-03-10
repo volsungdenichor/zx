@@ -261,6 +261,57 @@ struct shape_t
     }
 };
 
+template <>
+struct shape_t<1>
+{
+    using size_type = size_base_t;
+    using stride_type = stride_base_t;
+    using location_type = location_base_t;
+    using slice_type = slice_base_t;
+    using bounds_type = zx::mat::interval_t<size_base_t>;
+
+    using dims_type = std::array<dim_t, 1>;
+
+    dims_type m_dims = {};
+
+    shape_t() = default;
+
+    shape_t(dims_type dims) : m_dims(dims) { }
+
+    shape_t(dim_t head) : m_dims{ std::move(head) } { }
+
+    const dim_t& dim(std::size_t d) const { return m_dims[d]; }
+
+    friend bool operator==(const shape_t& lhs, const shape_t& rhs) { return lhs.m_dims == rhs.m_dims; }
+    friend bool operator!=(const shape_t& lhs, const shape_t& rhs) { return !(lhs == rhs); }
+
+    friend std::ostream& operator<<(std::ostream& os, const shape_t& item)
+    {
+        return os << "{ :size " << item.size() << " :stride " << item.stride() << " }";
+    }
+
+    volume_t volume() const { return m_dims[0].size; }
+
+    size_type size() const { return m_dims[0].size; }
+
+    stride_type stride() const { return m_dims[0].stride; }
+
+    bounds_type bounds() const { return m_dims[0].bounds(); }
+
+    location_type adjust_location(const location_type& loc) const { return m_dims[0].adjust_location(loc); }
+
+    flat_offset_t flat_offset(const location_type& loc) const { return m_dims[0].flat_offset(loc); }
+
+    static shape_t from_size(const size_type& size) { return shape_t{ dim_t{ size, 1 } }; }
+
+    std::pair<shape_t, location_type> slice(const slice_type& s) const { return m_dims[0].slice(s); }
+
+    std::pair<shape_t, location_type> region(const bounds_type& b) const
+    {
+        return m_dims[0].slice(slice_type{ { mat::lower(b) }, { mat::upper(b) } });
+    }
+};
+
 template <class T, std::size_t D>
 struct array_view_t
 {
@@ -370,11 +421,11 @@ struct array_view_t<T, 1>
 
     using iterator = strided_iterator<pointer>;
 
-    using location_type = location_base_t;
-    using size_type = size_base_t;
-    using stride_type = stride_base_t;
-    using slice_type = slice_base_t;
-    using bounds_type = mat::interval_t<size_base_t>;
+    using location_type = typename shape_type::location_type;
+    using size_type = typename shape_type::size_type;
+    using stride_type = typename shape_type::stride_type;
+    using slice_type = typename shape_type::slice_type;
+    using bounds_type = typename shape_type::bounds_type;
 
     array_view_t(pointer data, shape_type shape) : m_data{ data }, m_shape{ shape } { }
     array_view_t(const array_view_t&) = default;
@@ -389,16 +440,16 @@ struct array_view_t<T, 1>
 
     operator array_view_t<std::add_const_t<T>, 1>() const { return as_const(); }
 
-    size_type size() const { return m_shape.dim(0).size; }
-    stride_type stride() const { return m_shape.dim(0).stride; }
+    size_type size() const { return m_shape.size(); }
+    stride_type stride() const { return m_shape.stride(); }
     volume_t volume() const { return m_shape.volume(); }
-    bounds_type bounds() const { return m_shape.bounds()[0]; }
+    bounds_type bounds() const { return m_shape.bounds(); }
 
     pointer data() const { return m_data + m_shape.flat_offset(location_type{}); }
 
     pointer get(location_type loc) const
     {
-        const location_type adjusted_loc = m_shape.adjust_location(loc)[0];
+        const location_type adjusted_loc = m_shape.adjust_location(loc);
         if (!mat::contains(bounds(), adjusted_loc))
         {
             throw std::out_of_range{
@@ -413,16 +464,10 @@ struct array_view_t<T, 1>
     array_view_t slice(const slice_type& s) const
     {
         const auto [new_shape, new_start] = m_shape.slice(s);
-        return array_view_t{ m_data + new_start[0], new_shape };
+        return array_view_t{ m_data + new_start, new_shape };
     }
 
-    array_view_t region(const bounds_type& b) const
-    {
-        slice_type s = {};
-        s.start = mat::lower(b);
-        s.stop = mat::upper(b);
-        return slice(s);
-    }
+    array_view_t region(const bounds_type& b) const { return slice(slice_type{ { mat::lower(b) }, { mat::upper(b) } }); }
 
     iterator begin() const { return iterator{ m_data, stride() }; }
     iterator end() const { return begin() + volume(); }
