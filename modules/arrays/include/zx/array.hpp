@@ -117,13 +117,28 @@ struct dim_t
 };
 
 template <std::size_t D>
+using size_t = zx::mat::vector_t<size_base_t, D>;
+
+template <std::size_t D>
+using stride_t = zx::mat::vector_t<stride_base_t, D>;
+
+template <std::size_t D>
+using location_t = zx::mat::vector_t<location_base_t, D>;
+
+template <std::size_t D>
+using slice_t = zx::mat::vector_t<slice_base_t, D>;
+
+template <std::size_t D>
+using bounds_t = zx::mat::box_shape_t<size_base_t, D>;
+
+template <std::size_t D>
 struct shape_t
 {
-    using size_type = zx::mat::vector_t<size_base_t, D>;
-    using stride_type = zx::mat::vector_t<stride_base_t, D>;
-    using location_type = zx::mat::vector_t<location_base_t, D>;
-    using slice_type = zx::mat::vector_t<slice_base_t, D>;
-    using bounds_type = zx::mat::box_shape_t<size_base_t, D>;
+    using size_type = size_t<D>;
+    using stride_type = stride_t<D>;
+    using location_type = location_t<D>;
+    using slice_type = slice_t<D>;
+    using bounds_type = bounds_t<D>;
 
     using dims_type = std::array<dim_t, D>;
 
@@ -235,17 +250,6 @@ struct shape_t
         return { new_shape, new_start };
     }
 
-    std::pair<shape_t, location_type> region(const bounds_type& b) const
-    {
-        slice_type s = {};
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            s[d].start = mat::lower(b[d]);
-            s[d].stop = mat::upper(b[d]);
-        }
-        return slice(s);
-    }
-
     template <std::size_t D_ = D, std::enable_if_t<(D_ > 1), int> = 0>
     shape_t<D - 1> erase(std::size_t index) const
     {
@@ -305,11 +309,6 @@ struct shape_t<1>
     static shape_t from_size(const size_type& size) { return shape_t{ dim_t{ size, 1 } }; }
 
     std::pair<shape_t, location_type> slice(const slice_type& s) const { return m_dims[0].slice(s); }
-
-    std::pair<shape_t, location_type> region(const bounds_type& b) const
-    {
-        return m_dims[0].slice(slice_type{ { mat::lower(b) }, { mat::upper(b) } });
-    }
 };
 
 template <class T, std::size_t D>
@@ -368,17 +367,6 @@ struct array_view_t
         const auto [new_shape, new_start] = m_shape.slice(s);
         const flat_offset_t offset = std::accumulate(new_start.begin(), new_start.end(), flat_offset_t{ 0 });
         return array_view_t{ m_data + offset, new_shape };
-    }
-
-    array_view_t region(const bounds_type& b) const
-    {
-        slice_type s = {};
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            s[d].start = mat::lower(b[d]);
-            s[d].stop = mat::upper(b[d]);
-        }
-        return slice(s);
     }
 
     array_view_t<T, D - 1> sub(std::size_t d, location_base_t n) const
@@ -466,8 +454,6 @@ struct array_view_t<T, 1>
         const auto [new_shape, new_start] = m_shape.slice(s);
         return array_view_t{ m_data + new_start, new_shape };
     }
-
-    array_view_t region(const bounds_type& b) const { return slice(slice_type{ { mat::lower(b) }, { mat::upper(b) } }); }
 
     iterator begin() const { return iterator{ m_data, stride() }; }
     iterator end() const { return begin() + volume(); }
@@ -561,9 +547,6 @@ struct array_t
     mut_view_type slice(const slice_type& s) { return mut_view().slice(s); }
     view_type slice(const slice_type& s) const { return view().slice(s); }
 
-    mut_view_type region(const bounds_type& b) { return mut_view().region(b); }
-    view_type region(const bounds_type& b) const { return view().region(b); }
-
     iterator begin() { return mut_view().begin(); }
     iterator end() { return mut_view().end(); }
 
@@ -650,12 +633,28 @@ struct copy_fn
         }
     }
 
+    static slice_base_t to_slice(const mat::interval_t<size_base_t>& bounds)
+    {
+        return slice_base_t{ mat::lower(bounds), mat::upper(bounds) };
+    }
+
+    template <std::size_t D>
+    static slice_t<D> to_slice(const bounds_t<D>& bounds)
+    {
+        slice_t<D> result = {};
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = to_slice(bounds[d]);
+        }
+        return result;
+    }
+
     template <class T, class U, std::size_t D>
     void operator()(
         array_view_t<T, D> dst, array_view_t<U, D> src, const typename array_view_t<T, D>::location_type& location) const
     {
         const auto [src_bounds, dst_bounds] = adjust_bounds(dst.bounds(), src.bounds(), location);
-        (*this)(dst.region(dst_bounds), src.region(src_bounds));
+        (*this)(dst.slice(to_slice(dst_bounds)), src.slice(to_slice(src_bounds)));
     }
 };
 
