@@ -29,12 +29,6 @@ struct vector_t : public std::array<T, D>
         static_assert(sizeof...(tail) + 1 == D, "Invalid number of arguments to vector_t constructor");
     }
 
-    template <std::size_t D_ = D, std::enable_if_t<D_ == 1, int> = 0>
-    constexpr operator T() const
-    {
-        return (*this)[0];
-    }
-
     friend std::ostream& operator<<(std::ostream& os, const vector_t& item)
     {
         os << "[";

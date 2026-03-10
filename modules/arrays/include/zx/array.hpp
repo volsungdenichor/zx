@@ -398,7 +398,7 @@ struct array_view_t<T, 1>
 
     pointer get(location_type loc) const
     {
-        const location_type adjusted_loc = m_shape.adjust_location(loc);
+        const location_type adjusted_loc = m_shape.adjust_location(loc)[0];
         if (!mat::contains(bounds(), adjusted_loc))
         {
             throw std::out_of_range{
@@ -413,7 +413,7 @@ struct array_view_t<T, 1>
     array_view_t slice(const slice_type& s) const
     {
         const auto [new_shape, new_start] = m_shape.slice(s);
-        return array_view_t{ m_data + new_start, new_shape };
+        return array_view_t{ m_data + new_start[0], new_shape };
     }
 
     array_view_t region(const bounds_type& b) const
@@ -493,10 +493,10 @@ struct array_t
     operator view_type() const { return view(); }
     operator mut_view_type() { return mut_view(); }
 
-    size_type size() const { return m_shape.size(); }
-    stride_type stride() const { return m_shape.stride(); }
-    volume_t volume() const { return m_shape.volume(); }
-    bounds_type bounds() const { return m_shape.bounds(); }
+    size_type size() const { return view().size(); }
+    stride_type stride() const { return view().stride(); }
+    volume_t volume() const { return view().volume(); }
+    bounds_type bounds() const { return view().bounds(); }
 
     const_reference operator[](const location_type& loc) const { return view()[loc]; }
     reference operator[](const location_type& loc) { return mut_view()[loc]; }
