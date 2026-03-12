@@ -1502,7 +1502,7 @@ struct zip_fn
 struct vec_fn
 {
     template <class T, class... Tail>
-    auto operator()(T head, Tail&&... tail) const -> sequence_t<const T&>
+    auto operator()(T head, Tail&&... tail) const
     {
         return owning_fn{}(std::vector<T>{ std::move(head), std::forward<Tail>(tail)... });
     }
@@ -1511,7 +1511,7 @@ struct vec_fn
 struct init_fn
 {
     template <class Func, class Out = std::invoke_result_t<Func, std::ptrdiff_t>>
-    auto operator()(std::ptrdiff_t n, Func&& func) const -> sequence_t<Out>
+    auto operator()(std::ptrdiff_t n, Func&& func) const
     {
         return range_fn{}(n).transform(std::forward<Func>(func));
     }
@@ -1520,7 +1520,7 @@ struct init_fn
 struct init_infinite_fn
 {
     template <class Func, class Out = std::invoke_result_t<Func, std::ptrdiff_t>>
-    auto operator()(Func&& func) const -> sequence_t<Out>
+    auto operator()(Func&& func) const
     {
         return iota_fn{}(std::ptrdiff_t{ 0 }).transform(std::forward<Func>(func));
     }

@@ -347,3 +347,12 @@ TEST(sequence_t, join)
 
     EXPECT_THAT(result, testing::ElementsAre(1, 2, 3, 4, 5, 6));
 }
+
+TEST(sequence_t, multiple_operators)
+{
+    const std::vector<int> result = zx::seq::range(1, 10)
+                                        .filter([](int value) { return value % 2 == 0; })
+                                        .transform([](int value) { return value * value; })
+                                        .take(3);
+    EXPECT_THAT(result, testing::ElementsAre(4, 16, 36));
+}
