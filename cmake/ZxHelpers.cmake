@@ -43,7 +43,7 @@ endfunction()
 function(zx_add_module)
     set(options INTERFACE)
     set(oneValueArgs NAME)
-    set(multiValueArgs HEADERS SOURCES TEST_SOURCES)
+    set(multiValueArgs HEADERS SOURCES TEST_SOURCES BENCHMARK_SOURCES)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get dependencies from ZX_MODULE_DEPENDENCIES
@@ -103,5 +103,17 @@ function(zx_add_module)
 
         add_test(NAME ${ARG_NAME}_tests COMMAND ${ARG_NAME}_tests)
         gtest_discover_tests(${ARG_NAME}_tests)
+    endif()
+
+    # Add benchmarks if specified and benchmarking is enabled
+    if(ARG_BENCHMARK_SOURCES AND ZX_BUILD_BENCHMARKS)
+        add_executable(${ARG_NAME}_benchmarks ${ARG_BENCHMARK_SOURCES})
+        target_link_libraries(${ARG_NAME}_benchmarks PRIVATE
+            zx::${ARG_NAME}
+            benchmark::benchmark
+            benchmark::benchmark_main
+        )
+        target_compile_features(${ARG_NAME}_benchmarks PRIVATE cxx_std_17)
+        zx_set_strict_warnings(${ARG_NAME}_benchmarks)
     endif()
 endfunction()

@@ -2,6 +2,7 @@
 
 #include <zx/iterator_interface.hpp>
 #include <zx/maybe.hpp>
+#include <memory>
 
 namespace zx
 {

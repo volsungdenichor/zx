@@ -49,6 +49,7 @@ foreach(MODULE ${ZX_ALL_MODULES})
 endforeach()
 
 option(ZX_BUILD_TESTS "Build zx tests" ${ZX_IS_TOPLEVEL})
+option(ZX_BUILD_BENCHMARKS "Build zx benchmarks" ${ZX_IS_TOPLEVEL})
 
 if(ZX_BUILD_ALL)
     foreach(MODULE ${ZX_ALL_MODULES})
@@ -65,6 +66,7 @@ foreach(MODULE ${ZX_ALL_MODULES})
 endforeach()
 
 message(STATUS "  ZX_BUILD_TESTS = ${ZX_BUILD_TESTS}")
+message(STATUS "  ZX_BUILD_BENCHMARKS = ${ZX_BUILD_BENCHMARKS}")
 
 if(ZX_BUILD_TESTS)
     enable_testing()
@@ -79,6 +81,18 @@ if(ZX_BUILD_TESTS)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(googletest)
     include(GoogleTest)
+endif()
+
+if(ZX_BUILD_BENCHMARKS)
+    include(FetchContent)
+
+    FetchContent_Declare(
+        googlebenchmark
+        GIT_REPOSITORY https://github.com/google/benchmark.git
+        GIT_TAG v1.8.3
+    )
+    set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googlebenchmark)
 endif()
 
 function(zx_get_module_dependencies MODULE_NAME OUT_VAR)

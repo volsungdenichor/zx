@@ -4,4 +4,7 @@ zx_add_module(
 
     TEST_SOURCES
     tests/sequence.test.cpp
+
+    BENCHMARK_SOURCES
+    benchmarks/sequence.bench.cpp
 )
