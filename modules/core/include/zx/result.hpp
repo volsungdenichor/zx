@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <utility>
 #include <variant>
+#include <zx/type_traits.hpp>
 
 namespace zx
 {
@@ -83,6 +84,8 @@ struct bad_result_access : std::runtime_error
 template <class T, class E>
 struct result_t
 {
+    static_assert(!std::is_rvalue_reference_v<T>, "result_t element type must not be an rvalue reference");
+
     using value_type = T;
     using error_type = E;
     using value_storage = value_type;
@@ -187,7 +190,10 @@ struct result_t
 
     constexpr bool has_error() const noexcept { return !has_value(); }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const T&>, class Result = FuncResult>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const T&>>,
+        class Result = FuncResult>
     constexpr auto and_then(Func&& func) const& -> Result
     {
         static_assert(
@@ -197,7 +203,10 @@ struct result_t
                    : detail::to_error<Result>(*this);
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, T&&>, class Result = FuncResult>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&&>>,
+        class Result = FuncResult>
     constexpr auto and_then(Func&& func) && -> Result
     {
         static_assert(
@@ -207,7 +216,10 @@ struct result_t
                    : detail::to_error<Result>(std::move(*this));
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const T&>, class Result = result_t<FuncResult, E>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const T&>>,
+        class Result = result_t<FuncResult, E>>
     constexpr auto transform(Func&& func) const& -> Result
     {
         return *this  //
@@ -215,7 +227,10 @@ struct result_t
                    : detail::to_error<Result>(*this);
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, T&&>, class Result = result_t<FuncResult, E>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&&>>,
+        class Result = result_t<FuncResult, E>>
     constexpr auto transform(Func&& func) && -> Result
     {
         return *this  //
@@ -225,7 +240,7 @@ struct result_t
 
     template <
         class Func,
-        class FuncResult = std::invoke_result_t<Func, const E&>,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
         class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
     constexpr auto or_else(Func&& func) const& -> Result
     {
@@ -247,7 +262,7 @@ struct result_t
 
     template <
         class Func,
-        class FuncResult = std::invoke_result_t<Func, const E&>,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
         class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
     constexpr auto or_else(Func&& func) && -> Result
     {
@@ -267,7 +282,10 @@ struct result_t
         }
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result_t<T, FuncResult>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
+        class Result = result_t<T, FuncResult>>
     constexpr auto transform_error(Func&& func) const& -> Result
     {
         return *this  //
@@ -275,7 +293,10 @@ struct result_t
                    : Result{ zx::error(std::invoke(std::forward<Func>(func), error())) };
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result_t<T, FuncResult>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
+        class Result = result_t<T, FuncResult>>
     constexpr auto transform_error(Func&& func) && -> Result
     {
         return *this  //
@@ -378,7 +399,10 @@ struct result_t<T&, E>
 
     constexpr bool has_error() const noexcept { return !has_value(); }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, T&>, class Result = FuncResult>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&>>,
+        class Result = FuncResult>
     constexpr auto and_then(Func&& func) const& -> Result
     {
         static_assert(
@@ -388,7 +412,10 @@ struct result_t<T&, E>
                    : detail::to_error<Result>(*this);
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, T&>, class Result = FuncResult>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&&>>,
+        class Result = FuncResult>
     constexpr auto and_then(Func&& func) && -> Result
     {
         static_assert(
@@ -398,7 +425,10 @@ struct result_t<T&, E>
                    : detail::to_error<Result>(std::move(*this));
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, T&>, class Result = result_t<FuncResult, E>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&>>,
+        class Result = result_t<FuncResult, E>>
     constexpr auto transform(Func&& func) const& -> Result
     {
         return *this  //
@@ -406,17 +436,20 @@ struct result_t<T&, E>
                    : detail::to_error<Result>(*this);
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, T&>, class Result = result_t<FuncResult, E>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&&>>,
+        class Result = result_t<FuncResult, E>>
     constexpr auto transform(Func&& func) && -> Result
     {
         return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), get())
+                   ? detail::to_ok<Result>(std::forward<Func>(func), std::move(*this).get())
                    : detail::to_error<Result>(std::move(*this));
     }
 
     template <
         class Func,
-        class FuncResult = std::invoke_result_t<Func, const E&>,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
         class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
     constexpr auto or_else(Func&& func) const& -> Result
     {
@@ -438,7 +471,7 @@ struct result_t<T&, E>
 
     template <
         class Func,
-        class FuncResult = std::invoke_result_t<Func, const E&>,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
         class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
     constexpr auto or_else(Func&& func) && -> Result
     {
@@ -458,7 +491,10 @@ struct result_t<T&, E>
         }
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result_t<T, FuncResult>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
+        class Result = result_t<T, FuncResult>>
     constexpr auto transform_error(Func&& func) const& -> Result
     {
         return *this  //
@@ -466,7 +502,10 @@ struct result_t<T&, E>
                    : Result{ zx::error(std::invoke(std::forward<Func>(func), error())) };
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result_t<T, FuncResult>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
+        class Result = result_t<T, FuncResult>>
     constexpr auto transform_error(Func&& func) && -> Result
     {
         return *this  //
@@ -550,7 +589,10 @@ struct result_t<void, E>
 
     constexpr bool has_error() const noexcept { return !has_value(); }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func>, class Result = FuncResult>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
+        class Result = FuncResult>
     constexpr auto and_then(Func&& func) const& -> Result
     {
         static_assert(
@@ -560,7 +602,10 @@ struct result_t<void, E>
                    : detail::to_error<Result>(*this);
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func>, class Result = FuncResult>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
+        class Result = FuncResult>
     constexpr auto and_then(Func&& func) && -> Result
     {
         static_assert(
@@ -570,7 +615,10 @@ struct result_t<void, E>
                    : detail::to_error<Result>(std::move(*this));
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func>, class Result = result_t<FuncResult, E>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
+        class Result = result_t<FuncResult, E>>
     constexpr auto transform(Func&& func) const& -> Result
     {
         return *this  //
@@ -578,7 +626,10 @@ struct result_t<void, E>
                    : detail::to_error<Result>(*this);
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func>, class Result = result_t<FuncResult, E>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
+        class Result = result_t<FuncResult, E>>
     constexpr auto transform(Func&& func) && -> Result
     {
         return *this  //
@@ -588,7 +639,7 @@ struct result_t<void, E>
 
     template <
         class Func,
-        class FuncResult = std::invoke_result_t<Func, const E&>,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
         class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<void, E>, FuncResult>>
     constexpr auto or_else(Func&& func) const& -> Result
     {
@@ -610,7 +661,7 @@ struct result_t<void, E>
 
     template <
         class Func,
-        class FuncResult = std::invoke_result_t<Func, const E&>,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
         class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<void, E>, FuncResult>>
     constexpr auto or_else(Func&& func) && -> Result
     {
@@ -630,7 +681,10 @@ struct result_t<void, E>
         }
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result_t<void, FuncResult>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
+        class Result = result_t<void, FuncResult>>
     constexpr auto transform_error(Func&& func) const& -> Result
     {
         return *this  //
@@ -638,7 +692,10 @@ struct result_t<void, E>
                    : Result{ zx::error(std::invoke(std::forward<Func>(func), error())) };
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const E&>, class Result = result_t<void, FuncResult>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
+        class Result = result_t<void, FuncResult>>
     constexpr auto transform_error(Func&& func) && -> Result
     {
         return *this  //

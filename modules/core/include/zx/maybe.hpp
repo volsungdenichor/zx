@@ -3,8 +3,8 @@
 #include <exception>
 #include <functional>
 #include <optional>
-#include <type_traits>
 #include <utility>
+#include <zx/type_traits.hpp>
 
 namespace zx
 {
@@ -53,6 +53,8 @@ static constexpr none_t none{};
 template <class T>
 struct maybe_t
 {
+    static_assert(!std::is_rvalue_reference_v<T>, "maybe_t element type must not be an rvalue reference");
+
     using value_type = T;
 
     constexpr maybe_t() : m_storage() { }
@@ -135,7 +137,10 @@ struct maybe_t
 
     constexpr bool has_value() const noexcept { return static_cast<bool>(*this); }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const T&>, class Result = FuncResult>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const T&>>,
+        class Result = FuncResult>
     constexpr auto and_then(Func&& func) const& -> Result
     {
         static_assert(
@@ -145,7 +150,10 @@ struct maybe_t
                    : Result{};
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, T&&>, class Result = FuncResult>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&&>>,
+        class Result = FuncResult>
     constexpr auto and_then(Func&& func) && -> Result
     {
         static_assert(
@@ -155,7 +163,10 @@ struct maybe_t
                    : Result{};
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, const T&>, class Result = maybe_t<FuncResult>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const T&>>,
+        class Result = maybe_t<FuncResult>>
     constexpr auto transform(Func&& func) const& -> Result
     {
         return *this  //
@@ -163,7 +174,10 @@ struct maybe_t
                    : Result{};
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, T&&>, class Result = maybe_t<FuncResult>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&&>>,
+        class Result = maybe_t<FuncResult>>
     constexpr auto transform(Func&& func) && -> Result
     {
         return *this  //
@@ -173,7 +187,7 @@ struct maybe_t
 
     template <
         class Func,
-        class FuncResult = std::invoke_result_t<Func>,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
         class Result = std::conditional_t<std::is_void_v<FuncResult>, maybe_t<T>, FuncResult>>
     constexpr auto or_else(Func&& func) const& -> Result
     {
@@ -195,7 +209,7 @@ struct maybe_t
 
     template <
         class Func,
-        class FuncResult = std::invoke_result_t<Func>,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
         class Result = std::conditional_t<std::is_void_v<FuncResult>, maybe_t<T>, FuncResult>>
     constexpr auto or_else(Func&& func) && -> Result
     {
@@ -286,7 +300,10 @@ struct maybe_t<T&>
 
     constexpr bool has_value() const noexcept { return static_cast<bool>(*this); }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, T&>, class Result = FuncResult>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&>>,
+        class Result = FuncResult>
     constexpr auto and_then(Func&& func) const -> Result
     {
         static_assert(
@@ -296,7 +313,10 @@ struct maybe_t<T&>
                    : Result{};
     }
 
-    template <class Func, class FuncResult = std::invoke_result_t<Func, T&>, class Result = maybe_t<FuncResult>>
+    template <
+        class Func,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&>>,
+        class Result = maybe_t<FuncResult>>
     constexpr auto transform(Func&& func) const -> Result
     {
         return *this  //
@@ -306,7 +326,7 @@ struct maybe_t<T&>
 
     template <
         class Func,
-        class FuncResult = std::invoke_result_t<Func>,
+        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
         class Result = std::conditional_t<std::is_void_v<FuncResult>, maybe_t<T>, FuncResult>>
     constexpr auto or_else(Func&& func) const -> Result
     {

@@ -118,4 +118,7 @@ struct is_random_access_range : is_random_access_iterator<iterator_t<T>>
 {
 };
 
+template <class T>
+using remove_rvalue_reference_t = std::conditional_t<std::is_rvalue_reference_v<T>, std::remove_reference_t<T>, T>;
+
 }  // namespace zx

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <memory>
 #include <zx/iterator_interface.hpp>
 #include <zx/maybe.hpp>
-#include <memory>
 
 namespace zx
 {
@@ -116,7 +116,7 @@ struct transform_mixin
 
     template <
         class Func,
-        class Res = std::invoke_result_t<Func, T>,
+        class Res = remove_rvalue_reference_t<std::invoke_result_t<Func, T>>,
         class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
     auto transform(Func&& func) const& -> Seq
     {
@@ -127,7 +127,7 @@ struct transform_mixin
 
     template <
         class Func,
-        class Res = std::invoke_result_t<Func, T>,
+        class Res = remove_rvalue_reference_t<std::invoke_result_t<Func, T>>,
         class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
     auto transform(Func&& func) && -> Seq
     {
@@ -160,7 +160,7 @@ struct transform_indexed_mixin
 
     template <
         class Func,
-        class Res = std::invoke_result_t<Func, std::ptrdiff_t, T>,
+        class Res = remove_rvalue_reference_t<std::invoke_result_t<Func, std::ptrdiff_t, T>>,
         class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
     auto transform_indexed(Func&& func) const& -> Seq
     {
@@ -171,7 +171,7 @@ struct transform_indexed_mixin
 
     template <
         class Func,
-        class Res = std::invoke_result_t<Func, std::ptrdiff_t, T>,
+        class Res = remove_rvalue_reference_t<std::invoke_result_t<Func, std::ptrdiff_t, T>>,
         class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
     auto transform_indexed(Func&& func) && -> Seq
     {
@@ -212,7 +212,7 @@ struct transform_maybe_mixin
 
     template <
         class Func,
-        class Res = maybe_underlying_type_t<std::invoke_result_t<Func, T>>,
+        class Res = remove_rvalue_reference_t<maybe_underlying_type_t<std::invoke_result_t<Func, T>>>,
         class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
     auto transform_maybe(Func&& func) const& -> Seq
     {
@@ -223,7 +223,7 @@ struct transform_maybe_mixin
 
     template <
         class Func,
-        class Res = maybe_underlying_type_t<std::invoke_result_t<Func, T>>,
+        class Res = remove_rvalue_reference_t<maybe_underlying_type_t<std::invoke_result_t<Func, T>>>,
         class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
     auto transform_maybe(Func&& func) && -> Seq
     {
@@ -265,7 +265,7 @@ struct transform_maybe_indexed_mixin
 
     template <
         class Func,
-        class Res = maybe_underlying_type_t<std::invoke_result_t<Func, std::ptrdiff_t, T>>,
+        class Res = remove_rvalue_reference_t<maybe_underlying_type_t<std::invoke_result_t<Func, std::ptrdiff_t, T>>>,
         class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
     auto transform_maybe_indexed(Func&& func) const& -> Seq
     {
@@ -276,7 +276,7 @@ struct transform_maybe_indexed_mixin
 
     template <
         class Func,
-        class Res = maybe_underlying_type_t<std::invoke_result_t<Func, std::ptrdiff_t, T>>,
+        class Res = remove_rvalue_reference_t<maybe_underlying_type_t<std::invoke_result_t<Func, std::ptrdiff_t, T>>>,
         class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
     auto transform_maybe_indexed(Func&& func) && -> Seq
     {
@@ -1021,6 +1021,8 @@ struct sequence_t : detail::inspect_mixin<T, NextFn>,
                     detail::for_each_mixin<T, NextFn>,
                     detail::for_each_indexed_mixin<T, NextFn>
 {
+    static_assert(!std::is_rvalue_reference_v<T>, "sequence_t element type must not be an rvalue reference");
+
     using iterator = detail::sequence_iterator<T, NextFn>;
     using next_function_type = typename iterator::next_function_type;
     using value_type = typename iterator::value_type;
@@ -1531,6 +1533,9 @@ struct init_infinite_fn
 
 namespace seq
 {
+
+template <class T>
+static constexpr inline auto empty = sequence_t<T, detail::empty_sequence<T>>{};
 
 static constexpr inline auto iota = detail::iota_fn{};
 static constexpr inline auto range = detail::range_fn{};
