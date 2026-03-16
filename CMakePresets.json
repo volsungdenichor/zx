@@ -1,0 +1,60 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 23,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "ninja-debug",
+            "displayName": "Ninja Debug",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/ninja-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "ZX_BUILD_ALL": "ON",
+                "ZX_BUILD_TESTS": "ON",
+                "ZX_BUILD_BENCHMARKS": "OFF"
+            }
+        },
+        {
+            "name": "ninja-release",
+            "displayName": "Ninja Release",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/ninja-release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "ZX_BUILD_ALL": "ON",
+                "ZX_BUILD_TESTS": "ON",
+                "ZX_BUILD_BENCHMARKS": "OFF"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "ninja-debug",
+            "configurePreset": "ninja-debug"
+        },
+        {
+            "name": "ninja-release",
+            "configurePreset": "ninja-release"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "ninja-debug",
+            "configurePreset": "ninja-debug",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "ninja-release",
+            "configurePreset": "ninja-release",
+            "output": {
+                "outputOnFailure": true
+            }
+        }
+    ]
+}

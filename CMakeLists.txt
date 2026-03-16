@@ -22,6 +22,7 @@ set(ZX_MODULE_DEPENDENCIES "
         [arrays [core mat]]
         [ansi [core arrays]]
         [images [arrays]]
+        [geometry [mat sequence]]
     ]
 ")
 

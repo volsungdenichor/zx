@@ -1529,13 +1529,19 @@ struct init_infinite_fn
     }
 };
 
+template <class T>
+struct empty_fn
+{
+    auto operator()() const -> sequence_t<T, empty_sequence<T>> { return sequence_t<T, empty_sequence<T>>{}; }
+};
+
 }  // namespace detail
 
 namespace seq
 {
 
 template <class T>
-static constexpr inline auto empty = sequence_t<T, detail::empty_sequence<T>>{};
+static const inline auto empty = detail::empty_fn<T>{};
 
 static constexpr inline auto iota = detail::iota_fn{};
 static constexpr inline auto range = detail::range_fn{};
