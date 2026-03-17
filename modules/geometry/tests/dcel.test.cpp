@@ -27,10 +27,92 @@ void PrintTo(const sequence_t<T, NextFn>& seq, std::ostream* os)
 constexpr auto IdIs = [](auto&& matcher)
 {
     return testing::ResultOf(
-        "Id", [](const auto& item) { return item.id; }, std::forward<decltype(matcher)>(matcher));
+        "id", [](const auto& item) { return item.id; }, std::forward<decltype(matcher)>(matcher));
 };
 
-cons
+constexpr auto LocationIs = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "location", [](const auto& item) { return item.location(); }, std::forward<decltype(matcher)>(matcher));
+};
+
+constexpr auto OutHalfedgesAre = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "out_halfedges", [](const auto& item) { return item.out_halfedges(); }, std::forward<decltype(matcher)>(matcher));
+};
+
+constexpr auto InHalfedgesAre = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "in_halfedges", [](const auto& item) { return item.in_halfedges(); }, std::forward<decltype(matcher)>(matcher));
+};
+
+constexpr auto IncidentFacesAre = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "incident_faces", [](const auto& item) { return item.incident_faces(); }, std::forward<decltype(matcher)>(matcher));
+};
+
+constexpr auto HalfedgeIs = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "halfedge", [](const auto& item) { return item.halfedge(); }, std::forward<decltype(matcher)>(matcher));
+};
+
+constexpr auto HalfedgesAre = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "halfedges", [](const auto& item) { return item.halfedges(); }, std::forward<decltype(matcher)>(matcher));
+};
+
+constexpr auto VerticesAre = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "vertices", [](const auto& item) { return item.vertices(); }, std::forward<decltype(matcher)>(matcher));
+};
+
+constexpr auto AsPolygonIs = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "as_polygon", [](const auto& item) { return item.as_polygon(); }, std::forward<decltype(matcher)>(matcher));
+};
+
+constexpr auto TwinHalfedgeIs = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "twin_halfedge", [](const auto& item) { return item.twin_halfedge(); }, std::forward<decltype(matcher)>(matcher));
+};
+
+constexpr auto NextHalfedgeIs = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "next_halfedge", [](const auto& item) { return item.next_halfedge(); }, std::forward<decltype(matcher)>(matcher));
+};
+
+constexpr auto PrevHalfedgeIs = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "prev_halfedge", [](const auto& item) { return item.prev_halfedge(); }, std::forward<decltype(matcher)>(matcher));
+};
+
+constexpr auto VertexFromIs = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "vertex_from", [](const auto& item) { return item.vertex_from(); }, std::forward<decltype(matcher)>(matcher));
+};
+
+constexpr auto VertexToIs = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "vertex_to", [](const auto& item) { return item.vertex_to(); }, std::forward<decltype(matcher)>(matcher));
+};
+
+constexpr auto IncidentFaceIs = [](auto&& matcher)
+{
+    return testing::ResultOf(
+        "incident_face", [](const auto& item) { return item.incident_face(); }, std::forward<decltype(matcher)>(matcher));
+};
 
 TEST(dcel, access)
 {
@@ -75,138 +157,130 @@ TEST(dcel, access)
 
     dcel.m_boundary_halfedge = 3;
 
-    const auto vertices = std::vector<testing::Matcher<D::vertex_t>>{
-        testing::AllOf(
-            IdIs(0),
-            testing::Property("location", &D::vertex_t::location, zx::mat::vector(648, 112)),
-            testing::Property("out_halfedges", &D::vertex_t::out_halfedges, testing::ElementsAre(IdIs(0), IdIs(7), IdIs(5))),
-            testing::Property("in_halfedges", &D::vertex_t::in_halfedges, testing::ElementsAre(IdIs(1), IdIs(6), IdIs(4))),
-            testing::Property("incident_faces", &D::vertex_t::incident_faces, testing::ElementsAre(IdIs(1), IdIs(0)))),
-        testing::AllOf(
-            IdIs(1),
-            testing::Property("location", &D::vertex_t::location, zx::mat::vector(385, 147)),
-            testing::Property("out_halfedges", &D::vertex_t::out_halfedges, testing::ElementsAre(IdIs(2), IdIs(1))),
-            testing::Property("in_halfedges", &D::vertex_t::in_halfedges, testing::ElementsAre(IdIs(3), IdIs(0))),
-            testing::Property("incident_faces", &D::vertex_t::incident_faces, testing::ElementsAre(IdIs(0)))),
-        testing::AllOf(
-            IdIs(2),
-            testing::Property("location", &D::vertex_t::location, zx::mat::vector(459, 303)),
-            testing::Property("out_halfedges", &D::vertex_t::out_halfedges, testing::ElementsAre(IdIs(4), IdIs(8), IdIs(3))),
-            testing::Property("in_halfedges", &D::vertex_t::in_halfedges, testing::ElementsAre(IdIs(5), IdIs(9), IdIs(2))),
-            testing::Property("incident_faces", &D::vertex_t::incident_faces, testing::ElementsAre(IdIs(1), IdIs(0)))),
-        testing::AllOf(
-            IdIs(3),
-            testing::Property("location", &D::vertex_t::location, zx::mat::vector(656, 330)),
-            testing::Property("out_halfedges", &D::vertex_t::out_halfedges, testing::ElementsAre(IdIs(6), IdIs(9))),
-            testing::Property("in_halfedges", &D::vertex_t::in_halfedges, testing::ElementsAre(IdIs(7), IdIs(8))),
-            testing::Property("incident_faces", &D::vertex_t::incident_faces, testing::ElementsAre(IdIs(1))))
-    };
+    const auto vertices
+        = std::vector<testing::Matcher<D::vertex_t>>{ testing::AllOf(
+                                                          IdIs(0),
+                                                          LocationIs(zx::mat::vector(648, 112)),
+                                                          OutHalfedgesAre(testing::ElementsAre(IdIs(0), IdIs(7), IdIs(5))),
+                                                          InHalfedgesAre(testing::ElementsAre(IdIs(1), IdIs(6), IdIs(4))),
+                                                          IncidentFacesAre(testing::ElementsAre(IdIs(1), IdIs(0)))),
+                                                      testing::AllOf(
+                                                          IdIs(1),
+                                                          LocationIs(zx::mat::vector(385, 147)),
+                                                          OutHalfedgesAre(testing::ElementsAre(IdIs(2), IdIs(1))),
+                                                          InHalfedgesAre(testing::ElementsAre(IdIs(3), IdIs(0))),
+                                                          IncidentFacesAre(testing::ElementsAre(IdIs(0)))),
+                                                      testing::AllOf(
+                                                          IdIs(2),
+                                                          LocationIs(zx::mat::vector(459, 303)),
+                                                          OutHalfedgesAre(testing::ElementsAre(IdIs(4), IdIs(8), IdIs(3))),
+                                                          InHalfedgesAre(testing::ElementsAre(IdIs(5), IdIs(9), IdIs(2))),
+                                                          IncidentFacesAre(testing::ElementsAre(IdIs(1), IdIs(0)))),
+                                                      testing::AllOf(
+                                                          IdIs(3),
+                                                          LocationIs(zx::mat::vector(656, 330)),
+                                                          OutHalfedgesAre(testing::ElementsAre(IdIs(6), IdIs(9))),
+                                                          InHalfedgesAre(testing::ElementsAre(IdIs(7), IdIs(8))),
+                                                          IncidentFacesAre(testing::ElementsAre(IdIs(1)))) };
 
     const auto faces = std::vector<testing::Matcher<D::face_t>>{
         testing::AllOf(
             IdIs(0),
-            testing::Property("halfedge", &D::face_t::halfedge, IdIs(0)),
-            testing::Property("halfedges", &D::face_t::halfedges, testing::ElementsAre(IdIs(0), IdIs(2), IdIs(4))),
-            testing::Property("vertices", &D::face_t::vertices, testing::ElementsAre(IdIs(0), IdIs(1), IdIs(2))),
-            testing::Property(
-                "as_polygon",
-                &D::face_t::as_polygon,
-                zx::mat::polygon_t<int, 2>{
-                    zx::mat::vector(648, 112), zx::mat::vector(385, 147), zx::mat::vector(459, 303) })),
+            HalfedgeIs(IdIs(0)),
+            HalfedgesAre(testing::ElementsAre(IdIs(0), IdIs(2), IdIs(4))),
+            VerticesAre(testing::ElementsAre(IdIs(0), IdIs(1), IdIs(2))),
+            AsPolygonIs(zx::mat::polygon_t<int, 2>{
+                zx::mat::vector(648, 112), zx::mat::vector(385, 147), zx::mat::vector(459, 303) })),
         testing::AllOf(
             IdIs(1),
-            testing::Property("halfedge", &D::face_t::halfedge, IdIs(6)),
-            testing::Property("halfedges", &D::face_t::halfedges, testing::ElementsAre(IdIs(6), IdIs(5), IdIs(8))),
-            testing::Property("vertices", &D::face_t::vertices, testing::ElementsAre(IdIs(3), IdIs(0), IdIs(2))),
-            testing::Property(
-                "as_polygon",
-                &D::face_t::as_polygon,
-                zx::mat::polygon_t<int, 2>{
-                    zx::mat::vector(656, 330), zx::mat::vector(648, 112), zx::mat::vector(459, 303) }))
+            HalfedgeIs(IdIs(6)),
+            HalfedgesAre(testing::ElementsAre(IdIs(6), IdIs(5), IdIs(8))),
+            VerticesAre(testing::ElementsAre(IdIs(3), IdIs(0), IdIs(2))),
+            AsPolygonIs(zx::mat::polygon_t<int, 2>{
+                zx::mat::vector(656, 330), zx::mat::vector(648, 112), zx::mat::vector(459, 303) }))
     };
 
-    const auto halfedges = std::vector<testing::Matcher<D::halfedge_t>>{
-        testing::AllOf(
-            IdIs(0),
-            testing::Property("twin_halfedge", &D::halfedge_t::twin_halfedge, IdIs(1)),
-            testing::Property("next_halfedge", &D::halfedge_t::next_halfedge, IdIs(2)),
-            testing::Property("prev_halfedge", &D::halfedge_t::prev_halfedge, IdIs(4)),
-            testing::Property("incident_face", &D::halfedge_t::incident_face, testing::Optional(IdIs(0))),
-            testing::Property("vertex_from", &D::halfedge_t::vertex_from, IdIs(0)),
-            testing::Property("vertex_to", &D::halfedge_t::vertex_to, IdIs(1))),
-        testing::AllOf(
-            IdIs(1),
-            testing::Property("twin_halfedge", &D::halfedge_t::twin_halfedge, IdIs(0)),
-            testing::Property("next_halfedge", &D::halfedge_t::next_halfedge, IdIs(7)),
-            testing::Property("prev_halfedge", &D::halfedge_t::prev_halfedge, IdIs(3)),
-            testing::Property("incident_face", &D::halfedge_t::incident_face, testing::Eq(zx::none)),
-            testing::Property("vertex_from", &D::halfedge_t::vertex_from, IdIs(1)),
-            testing::Property("vertex_to", &D::halfedge_t::vertex_to, IdIs(0))),
-        testing::AllOf(
-            IdIs(2),
-            testing::Property("twin_halfedge", &D::halfedge_t::twin_halfedge, IdIs(3)),
-            testing::Property("next_halfedge", &D::halfedge_t::next_halfedge, IdIs(4)),
-            testing::Property("prev_halfedge", &D::halfedge_t::prev_halfedge, IdIs(0)),
-            testing::Property("incident_face", &D::halfedge_t::incident_face, testing::Optional(IdIs(0))),
-            testing::Property("vertex_from", &D::halfedge_t::vertex_from, IdIs(1)),
-            testing::Property("vertex_to", &D::halfedge_t::vertex_to, IdIs(2))),
-        testing::AllOf(
-            IdIs(3),
-            testing::Property("twin_halfedge", &D::halfedge_t::twin_halfedge, IdIs(2)),
-            testing::Property("next_halfedge", &D::halfedge_t::next_halfedge, IdIs(1)),
-            testing::Property("prev_halfedge", &D::halfedge_t::prev_halfedge, IdIs(9)),
-            testing::Property("incident_face", &D::halfedge_t::incident_face, testing::Eq(zx::none)),
-            testing::Property("vertex_from", &D::halfedge_t::vertex_from, IdIs(2)),
-            testing::Property("vertex_to", &D::halfedge_t::vertex_to, IdIs(1))),
-        testing::AllOf(
-            IdIs(4),
-            testing::Property("twin_halfedge", &D::halfedge_t::twin_halfedge, IdIs(5)),
-            testing::Property("next_halfedge", &D::halfedge_t::next_halfedge, IdIs(0)),
-            testing::Property("prev_halfedge", &D::halfedge_t::prev_halfedge, IdIs(2)),
-            testing::Property("incident_face", &D::halfedge_t::incident_face, testing::Optional(IdIs(0))),
-            testing::Property("vertex_from", &D::halfedge_t::vertex_from, IdIs(2)),
-            testing::Property("vertex_to", &D::halfedge_t::vertex_to, IdIs(0))),
-        testing::AllOf(
-            IdIs(5),
-            testing::Property("twin_halfedge", &D::halfedge_t::twin_halfedge, IdIs(4)),
-            testing::Property("next_halfedge", &D::halfedge_t::next_halfedge, IdIs(8)),
-            testing::Property("prev_halfedge", &D::halfedge_t::prev_halfedge, IdIs(6)),
-            testing::Property("incident_face", &D::halfedge_t::incident_face, testing::Optional(IdIs(1))),
-            testing::Property("vertex_from", &D::halfedge_t::vertex_from, IdIs(0)),
-            testing::Property("vertex_to", &D::halfedge_t::vertex_to, IdIs(2))),
-        testing::AllOf(
-            IdIs(6),
-            testing::Property("twin_halfedge", &D::halfedge_t::twin_halfedge, IdIs(7)),
-            testing::Property("next_halfedge", &D::halfedge_t::next_halfedge, IdIs(5)),
-            testing::Property("prev_halfedge", &D::halfedge_t::prev_halfedge, IdIs(8)),
-            testing::Property("incident_face", &D::halfedge_t::incident_face, testing::Optional(IdIs(1))),
-            testing::Property("vertex_from", &D::halfedge_t::vertex_from, IdIs(3)),
-            testing::Property("vertex_to", &D::halfedge_t::vertex_to, IdIs(0))),
-        testing::AllOf(
-            IdIs(7),
-            testing::Property("twin_halfedge", &D::halfedge_t::twin_halfedge, IdIs(6)),
-            testing::Property("next_halfedge", &D::halfedge_t::next_halfedge, IdIs(9)),
-            testing::Property("prev_halfedge", &D::halfedge_t::prev_halfedge, IdIs(1)),
-            testing::Property("incident_face", &D::halfedge_t::incident_face, testing::Eq(zx::none)),
-            testing::Property("vertex_from", &D::halfedge_t::vertex_from, IdIs(0)),
-            testing::Property("vertex_to", &D::halfedge_t::vertex_to, IdIs(3))),
-        testing::AllOf(
-            IdIs(8),
-            testing::Property("twin_halfedge", &D::halfedge_t::twin_halfedge, IdIs(9)),
-            testing::Property("next_halfedge", &D::halfedge_t::next_halfedge, IdIs(6)),
-            testing::Property("prev_halfedge", &D::halfedge_t::prev_halfedge, IdIs(5)),
-            testing::Property("incident_face", &D::halfedge_t::incident_face, testing::Optional(IdIs(1))),
-            testing::Property("vertex_from", &D::halfedge_t::vertex_from, IdIs(2)),
-            testing::Property("vertex_to", &D::halfedge_t::vertex_to, IdIs(3))),
-        testing::AllOf(
-            IdIs(9),
-            testing::Property("twin_halfedge", &D::halfedge_t::twin_halfedge, IdIs(8)),
-            testing::Property("next_halfedge", &D::halfedge_t::next_halfedge, IdIs(3)),
-            testing::Property("prev_halfedge", &D::halfedge_t::prev_halfedge, IdIs(7)),
-            testing::Property("incident_face", &D::halfedge_t::incident_face, testing::Eq(zx::none)),
-            testing::Property("vertex_from", &D::halfedge_t::vertex_from, IdIs(3)),
-            testing::Property("vertex_to", &D::halfedge_t::vertex_to, IdIs(2)))
-    };
+    const auto halfedges
+        = std::vector<testing::Matcher<D::halfedge_t>>{ testing::AllOf(
+                                                            IdIs(0),
+                                                            TwinHalfedgeIs(IdIs(1)),
+                                                            NextHalfedgeIs(IdIs(2)),
+                                                            PrevHalfedgeIs(IdIs(4)),
+                                                            IncidentFaceIs(testing::Optional(IdIs(0))),
+                                                            VertexFromIs(IdIs(0)),
+                                                            VertexToIs(IdIs(1))),
+                                                        testing::AllOf(
+                                                            IdIs(1),
+                                                            TwinHalfedgeIs(IdIs(0)),
+                                                            NextHalfedgeIs(IdIs(7)),
+                                                            PrevHalfedgeIs(IdIs(3)),
+                                                            IncidentFaceIs(testing::Eq(zx::none)),
+                                                            VertexFromIs(IdIs(1)),
+                                                            VertexToIs(IdIs(0))),
+                                                        testing::AllOf(
+                                                            IdIs(2),
+                                                            TwinHalfedgeIs(IdIs(3)),
+                                                            NextHalfedgeIs(IdIs(4)),
+                                                            PrevHalfedgeIs(IdIs(0)),
+                                                            IncidentFaceIs(testing::Optional(IdIs(0))),
+                                                            VertexFromIs(IdIs(1)),
+                                                            VertexToIs(IdIs(2))),
+                                                        testing::AllOf(
+                                                            IdIs(3),
+                                                            TwinHalfedgeIs(IdIs(2)),
+                                                            NextHalfedgeIs(IdIs(1)),
+                                                            PrevHalfedgeIs(IdIs(9)),
+                                                            IncidentFaceIs(testing::Eq(zx::none)),
+                                                            VertexFromIs(IdIs(2)),
+                                                            VertexToIs(IdIs(1))),
+                                                        testing::AllOf(
+                                                            IdIs(4),
+                                                            TwinHalfedgeIs(IdIs(5)),
+                                                            NextHalfedgeIs(IdIs(0)),
+                                                            PrevHalfedgeIs(IdIs(2)),
+                                                            IncidentFaceIs(testing::Optional(IdIs(0))),
+                                                            VertexFromIs(IdIs(2)),
+                                                            VertexToIs(IdIs(0))),
+                                                        testing::AllOf(
+                                                            IdIs(5),
+                                                            TwinHalfedgeIs(IdIs(4)),
+                                                            NextHalfedgeIs(IdIs(8)),
+                                                            PrevHalfedgeIs(IdIs(6)),
+                                                            IncidentFaceIs(testing::Optional(IdIs(1))),
+                                                            VertexFromIs(IdIs(0)),
+                                                            VertexToIs(IdIs(2))),
+                                                        testing::AllOf(
+                                                            IdIs(6),
+                                                            TwinHalfedgeIs(IdIs(7)),
+                                                            NextHalfedgeIs(IdIs(5)),
+                                                            PrevHalfedgeIs(IdIs(8)),
+                                                            IncidentFaceIs(testing::Optional(IdIs(1))),
+                                                            VertexFromIs(IdIs(3)),
+                                                            VertexToIs(IdIs(0))),
+                                                        testing::AllOf(
+                                                            IdIs(7),
+                                                            TwinHalfedgeIs(IdIs(6)),
+                                                            NextHalfedgeIs(IdIs(9)),
+                                                            PrevHalfedgeIs(IdIs(1)),
+                                                            IncidentFaceIs(testing::Eq(zx::none)),
+                                                            VertexFromIs(IdIs(0)),
+                                                            VertexToIs(IdIs(3))),
+                                                        testing::AllOf(
+                                                            IdIs(8),
+                                                            TwinHalfedgeIs(IdIs(9)),
+                                                            NextHalfedgeIs(IdIs(6)),
+                                                            PrevHalfedgeIs(IdIs(5)),
+                                                            IncidentFaceIs(testing::Optional(IdIs(1))),
+                                                            VertexFromIs(IdIs(2)),
+                                                            VertexToIs(IdIs(3))),
+                                                        testing::AllOf(
+                                                            IdIs(9),
+                                                            TwinHalfedgeIs(IdIs(8)),
+                                                            NextHalfedgeIs(IdIs(3)),
+                                                            PrevHalfedgeIs(IdIs(7)),
+                                                            IncidentFaceIs(testing::Eq(zx::none)),
+                                                            VertexFromIs(IdIs(3)),
+                                                            VertexToIs(IdIs(2))) };
 
     EXPECT_THAT(dcel.vertices(), testing::ElementsAreArray(vertices));
     EXPECT_THAT(dcel.vertex(0), vertices[0]);
