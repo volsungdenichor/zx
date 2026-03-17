@@ -18,50 +18,53 @@ using generator_t = std::function<void(std::function<bool(Args...)>)>;
 namespace detail
 {
 
-using dcel_vertex_id_t = int;
-using dcel_face_id_t = int;
-using dcel_halfedge_id_t = int;
-
-struct vertex_info_t
+struct dcel_base_t
 {
-    dcel_vertex_id_t id;
-    dcel_halfedge_id_t halfedge = dcel_halfedge_id_t{ -1 };
+    using vertex_id_type = int;
+    using face_id_type = int;
+    using halfedge_id_type = int;
 
-    friend std::ostream& operator<<(std::ostream& os, const vertex_info_t& item)
+    struct vertex_info_t
     {
-        return os << "V[" << item.id << "] he=" << item.halfedge;
-    }
-};
+        vertex_id_type id;
+        halfedge_id_type halfedge = halfedge_id_type{ -1 };
 
-struct face_info_t
-{
-    dcel_face_id_t id;
-    dcel_halfedge_id_t halfedge = dcel_halfedge_id_t{ -1 };
+        friend std::ostream& operator<<(std::ostream& os, const vertex_info_t& item)
+        {
+            return os << "V[" << item.id << "] he=" << item.halfedge;
+        }
+    };
 
-    friend std::ostream& operator<<(std::ostream& os, const face_info_t& item)
+    struct face_info_t
     {
-        return os << "F[" << item.id << "] he=" << item.halfedge;
-    }
-};
+        face_id_type id;
+        halfedge_id_type halfedge = halfedge_id_type{ -1 };
 
-struct halfedge_info_t
-{
-    dcel_halfedge_id_t id;
-    dcel_vertex_id_t vertex_from = dcel_vertex_id_t{ -1 };
-    dcel_halfedge_id_t twin_halfedge = dcel_halfedge_id_t{ -1 };
-    dcel_halfedge_id_t next_halfedge = dcel_halfedge_id_t{ -1 };
-    dcel_halfedge_id_t prev_halfedge = dcel_halfedge_id_t{ -1 };
-    dcel_face_id_t face = dcel_face_id_t{ -1 };
+        friend std::ostream& operator<<(std::ostream& os, const face_info_t& item)
+        {
+            return os << "F[" << item.id << "] he=" << item.halfedge;
+        }
+    };
 
-    friend std::ostream& operator<<(std::ostream& os, const halfedge_info_t& item)
+    struct halfedge_info_t
     {
-        return os << "HE[" << item.id << "] from_v=" << item.vertex_from << " twin_he=" << item.twin_halfedge << " "
-                  << item.prev_halfedge << ">" << item.id << ">" << item.next_halfedge << " F=" << item.face;
-    }
+        halfedge_id_type id;
+        vertex_id_type vertex_from = vertex_id_type{ -1 };
+        halfedge_id_type twin_halfedge = halfedge_id_type{ -1 };
+        halfedge_id_type next_halfedge = halfedge_id_type{ -1 };
+        halfedge_id_type prev_halfedge = halfedge_id_type{ -1 };
+        face_id_type face = face_id_type{ -1 };
+
+        friend std::ostream& operator<<(std::ostream& os, const halfedge_info_t& item)
+        {
+            return os << "HE[" << item.id << "] from_v=" << item.vertex_from << " twin_he=" << item.twin_halfedge << " "
+                      << item.prev_halfedge << ">" << item.id << ">" << item.next_halfedge << " F=" << item.face;
+        }
+    };
 };
 
 template <class T>
-class dcel_t
+class dcel_t : public detail::dcel_base_t
 {
 public:
     using location_type = mat::vector_t<T, 2>;
@@ -74,14 +77,14 @@ public:
 
     dcel_t() : m_vertices{}, m_locations{}, m_faces{}, m_halfedges{}, m_edges{}, m_boundary_halfedge{ -1 } { }
 
-    dcel_vertex_id_t add_vertex(const location_type& location)
+    vertex_id_type add_vertex(const location_type& location)
     {
         vertex_info_t& v = new_vertex();
         set_location(v.id, location);
         return v.id;
     }
 
-    dcel_face_id_t add_face(const std::vector<dcel_vertex_id_t>& vertices)
+    face_id_type add_face(const std::vector<vertex_id_type>& vertices)
     {
         if (vertices.size() < 3)
         {
@@ -94,9 +97,9 @@ public:
 
     void add_boundary() { m_boundary_halfedge = build_face(hull(), nullptr); }
 
-    vertex_t vertex(dcel_vertex_id_t id) const { return vertex_t{ this, id }; }
-    face_t face(dcel_face_id_t id) const { return face_t{ this, id }; }
-    halfedge_t halfedge(dcel_halfedge_id_t id) const { return halfedge_t{ this, id }; }
+    vertex_t vertex(vertex_id_type id) const { return vertex_t{ this, id }; }
+    face_t face(face_id_type id) const { return face_t{ this, id }; }
+    halfedge_t halfedge(halfedge_id_type id) const { return halfedge_t{ this, id }; }
 
     sequence_t<vertex_t> vertices() const
     {
@@ -115,7 +118,7 @@ public:
 
     sequence_t<halfedge_t> outer_halfedges() const
     {
-        if (m_boundary_halfedge == dcel_halfedge_id_t{ -1 })
+        if (m_boundary_halfedge == halfedge_id_type{ -1 })
         {
             return seq::empty<halfedge_t>();
         }
@@ -123,7 +126,7 @@ public:
         struct next_fn
         {
             mutable halfedge_t next;
-            const dcel_halfedge_id_t first_id;
+            const halfedge_id_type first_id;
             mutable bool done = false;
 
             maybe_t<halfedge_t> operator()()
@@ -147,7 +150,7 @@ public:
     struct vertex_t
     {
         const dcel_t* m_self;
-        dcel_vertex_id_t id;
+        vertex_id_type id;
 
         const location_type& location() const { return m_self->get_location(id); }
 
@@ -156,7 +159,7 @@ public:
             struct next_fn
             {
                 mutable halfedge_t next;
-                const dcel_halfedge_id_t first_id;
+                const halfedge_id_type first_id;
                 mutable bool done = false;
 
                 maybe_t<halfedge_t> operator()()
@@ -182,7 +185,7 @@ public:
             struct next_fn
             {
                 mutable halfedge_t next;
-                const dcel_halfedge_id_t first_id;
+                const halfedge_id_type first_id;
                 mutable bool done = false;
 
                 maybe_t<halfedge_t> operator()()
@@ -208,7 +211,7 @@ public:
             struct next_fn
             {
                 mutable halfedge_t next;
-                const dcel_halfedge_id_t first_id;
+                const halfedge_id_type first_id;
                 mutable bool done = false;
 
                 maybe_t<face_t> operator()()
@@ -247,93 +250,97 @@ public:
     struct face_t
     {
         const dcel_t* m_self;
-        dcel_face_id_t id;
+        face_id_type id;
 
         halfedge_t halfedge() const { return halfedge_t{ m_self, info().halfedge }; }
 
-        sequence_t<halfedge_t> out_halfedges() const
+        sequence_t<halfedge_t> halfedges() const
         {
             struct next_fn
             {
                 mutable halfedge_t next;
-                const dcel_halfedge_id_t first_id;
+                const halfedge_id_type first_id;
+                mutable bool done = false;
 
                 maybe_t<halfedge_t> operator()()
                 {
-                    while (true)
+                    if (done)
                     {
-                        auto current = next;
-                        next = next.next_halfedge();
-                        if (next.id == first_id)
-                        {
-                            return {};
-                        }
-                        return current;
+                        return {};
                     }
+
+                    auto current = next;
+                    next = next.next_halfedge();
+                    done = (next.id == first_id);
+                    return current;
                 }
             };
 
-            halfedge_t next = halfedge_t{ m_self, info().halfedge };
+            halfedge_t next = halfedge();
             return sequence_t<halfedge_t>{ next_fn{ next, next.id } };
         }
 
-        generator_t<vertex_t> outer_vertices() const
+        sequence_t<vertex_t> vertices() const
         {
-            return [&](auto yield)
+            struct next_fn
             {
-                auto next = halfedge_t{ m_self, info().halfedge };
-                const auto first_id = next.id;
-                while (true)
+                mutable halfedge_t next;
+                const halfedge_id_type first_id;
+                mutable bool done = false;
+
+                maybe_t<vertex_t> operator()()
                 {
+                    if (done)
+                    {
+                        return {};
+                    }
+
                     auto current = next;
                     next = next.next_halfedge();
-                    if (!yield(current.vertex_from()))
-                    {
-                        return;
-                    }
-                    if (next.id == first_id)
-                    {
-                        return;
-                    }
+                    done = (next.id == first_id);
+                    return current.vertex_from();
                 }
             };
+
+            halfedge_t next = halfedge();
+            return sequence_t<vertex_t>{ next_fn{ next, next.id } };
         }
 
-        generator_t<face_t> adjacent_faces() const
+        sequence_t<face_t> adjacent_faces() const
         {
-            return [&](auto yield)
+            struct next_fn
             {
-                auto next = halfedge_t{ m_self, info().halfedge };
-                const auto first_id = next.id;
-                while (true)
+                mutable halfedge_t next;
+                const halfedge_id_type first_id;
+                mutable bool done = false;
+
+                maybe_t<face_t> operator()()
                 {
-                    auto current = next;
-                    next = next.next.next_halfedge();
-                    if (auto f = next->twin_halfedge().incident_face())
+                    while (true)
                     {
-                        if (!yield(*f))
+                        if (done)
                         {
-                            return;
+                            return {};
                         }
-                    }
-                    if (next.id == first_id)
-                    {
-                        return;
+
+                        auto current = next;
+                        next = next.next_halfedge();
+                        done = (next.id == first_id);
+                        if (auto face = current.twin_halfedge().incident_face())
+                        {
+                            return face;
+                        }
                     }
                 }
             };
+
+            halfedge_t next = m_self->halfedge(info().halfedge);
+            return sequence_t<face_t>{ next_fn{ next, next.id } };
         }
 
         polygon_type as_polygon() const
         {
-            polygon_type out;
-            outer_vertices()(
-                [&out](const vertex_t& v)
-                {
-                    out.push_back(v.location());
-                    return true;
-                });
-            return out;
+            return vertices().transform([](const vertex_t& v) { return v.location(); });
         }
 
         friend std::ostream& operator<<(std::ostream& os, const face_t& item) { return os << "F " << item.id; }
@@ -345,12 +352,12 @@ public:
     struct halfedge_t
     {
         const dcel_t* m_self;
-        dcel_halfedge_id_t id;
+        halfedge_id_type id;
 
         maybe_t<face_t> incident_face() const
         {
             const auto& i = info();
-            if (i.face == dcel_face_id_t{ -1 })
+            if (i.face == face_id_type{ -1 })
             {
                 return {};
             }
@@ -380,20 +387,20 @@ public:
     std::vector<location_type> m_locations;
     std::vector<face_info_t> m_faces;
     std::vector<halfedge_info_t> m_halfedges;
-    std::map<std::pair<dcel_vertex_id_t, dcel_vertex_id_t>, dcel_halfedge_id_t> m_edges;
-    dcel_halfedge_id_t m_boundary_halfedge;
+    std::map<std::pair<vertex_id_type, vertex_id_type>, halfedge_id_type> m_edges;
+    halfedge_id_type m_boundary_halfedge;
 
 private:
-    const location_type& get_location(dcel_vertex_id_t id) const { return m_locations.at(static_cast<std::size_t>(id)); }
+    const location_type& get_location(vertex_id_type id) const { return m_locations.at(static_cast<std::size_t>(id)); }
 
-    const vertex_info_t& get_vertex(dcel_vertex_id_t id) const { return m_vertices.at(static_cast<std::size_t>(id)); }
-    vertex_info_t& get_vertex(dcel_vertex_id_t id) { return m_vertices.at(static_cast<std::size_t>(id)); }
+    const vertex_info_t& get_vertex(vertex_id_type id) const { return m_vertices.at(static_cast<std::size_t>(id)); }
+    vertex_info_t& get_vertex(vertex_id_type id) { return m_vertices.at(static_cast<std::size_t>(id)); }
 
-    const halfedge_info_t& get_halfedge(dcel_halfedge_id_t id) const { return m_halfedges.at(static_cast<std::size_t>(id)); }
-    halfedge_info_t& get_halfedge(dcel_halfedge_id_t id) { return m_halfedges.at(static_cast<std::size_t>(id)); }
+    const halfedge_info_t& get_halfedge(halfedge_id_type id) const { return m_halfedges.at(static_cast<std::size_t>(id)); }
+    halfedge_info_t& get_halfedge(halfedge_id_type id) { return m_halfedges.at(static_cast<std::size_t>(id)); }
 
-    const face_info_t& get_face(dcel_face_id_t id) const { return m_faces.at(static_cast<std::size_t>(id)); }
-    face_info_t& get_face(dcel_face_id_t id) { return m_faces.at(static_cast<std::size_t>(id)); }
+    const face_info_t& get_face(face_id_type id) const { return m_faces.at(static_cast<std::size_t>(id)); }
+    face_info_t& get_face(face_id_type id) { return m_faces.at(static_cast<std::size_t>(id)); }
 
     template <class IdType, class Type, class Func>
     static Type& new_item(std::vector<Type>& container, Func func)
@@ -405,10 +412,10 @@ private:
 
     vertex_info_t& new_vertex()
     {
-        return new_item<dcel_vertex_id_t>(m_vertices, [](dcel_vertex_id_t id) { return vertex_info_t{ id }; });
+        return new_item<vertex_id_type>(m_vertices, [](vertex_id_type id) { return vertex_info_t{ id }; });
     }
 
-    void set_location(dcel_vertex_id_t id, const location_type& location)
+    void set_location(vertex_id_type id, const location_type& location)
     {
         m_locations.resize(static_cast<std::size_t>(id + 1));
         m_locations.at(static_cast<std::size_t>(id)) = location;
@@ -416,16 +423,16 @@ private:
 
     face_info_t& new_face()
     {
-        return new_item<dcel_face_id_t>(m_faces, [](dcel_face_id_t id) { return face_info_t{ id }; });
+        return new_item<face_id_type>(m_faces, [](face_id_type id) { return face_info_t{ id }; });
     }
 
-    dcel_halfedge_id_t build_face(const std::vector<dcel_vertex_id_t>& vertices, face_info_t* face)
+    halfedge_id_type build_face(const std::vector<vertex_id_type>& vertices, face_info_t* face)
     {
         const auto buffer_begin = std::begin(vertices);
         const auto buffer_end = std::end(vertices);
         const auto buffer_size = static_cast<int>(std::distance(buffer_begin, buffer_end));
 
-        const auto get = [=](int n) -> dcel_vertex_id_t
+        const auto get = [=](int n) -> vertex_id_type
         {
             while (n < 0)
             {
@@ -445,7 +452,7 @@ private:
             halfedge_info_t& h0 = get_halfedge(*find_halfedge(get(i + 0), get(i + 1)));
             halfedge_info_t& h1 = get_halfedge(*find_halfedge(get(i + 1), get(i + 2)));
 
-            if (vertex_info_t& v = get_vertex(get(i)); v.halfedge == dcel_halfedge_id_t{ -1 })
+            if (vertex_info_t& v = get_vertex(get(i)); v.halfedge == halfedge_id_type{ -1 })
             {
                 v.halfedge = h0.id;
             }
@@ -467,7 +474,7 @@ private:
         return m_edges.at(std::pair{ get(0), get(1) });
     }
 
-    std::optional<dcel_halfedge_id_t> find_halfedge(dcel_vertex_id_t from, dcel_vertex_id_t to)
+    std::optional<halfedge_id_type> find_halfedge(vertex_id_type from, vertex_id_type to)
     {
         const auto key = std::pair{ from, to };
         if (const auto iter = m_edges.find(key); iter != m_edges.end())
@@ -477,7 +484,7 @@ private:
         return {};
     }
 
-    std::pair<dcel_halfedge_id_t, dcel_halfedge_id_t> connect(dcel_vertex_id_t from_vertex, dcel_vertex_id_t to_vertex)
+    std::pair<halfedge_id_type, halfedge_id_type> connect(vertex_id_type from_vertex, vertex_id_type to_vertex)
     {
         const auto f = find_halfedge(from_vertex, to_vertex);
         const auto t = find_halfedge(to_vertex, from_vertex);
@@ -508,16 +515,16 @@ private:
     {
         for (int i = 0; i < count; ++i)
         {
-            new_item<dcel_halfedge_id_t>(m_halfedges, [](dcel_halfedge_id_t id) { return halfedge_info_t{ id }; });
+            new_item<halfedge_id_type>(m_halfedges, [](halfedge_id_type id) { return halfedge_info_t{ id }; });
         }
         return { m_halfedges.end() - count, m_halfedges.end() };
     }
 
-    std::vector<dcel_vertex_id_t> hull() const
+    std::vector<vertex_id_type> hull() const
     {
-        std::vector<dcel_vertex_id_t> result;
+        std::vector<vertex_id_type> result;
 
-        std::unordered_map<dcel_vertex_id_t, dcel_vertex_id_t> outer_halfedges;
+        std::unordered_map<vertex_id_type, vertex_id_type> outer_halfedges;
         for (halfedge_t h : halfedges())
         {
             if (!h.incident_face().has_value())
@@ -531,11 +538,11 @@ private:
             throw std::runtime_error{ "error on creating hull" };
         }
 
-        dcel_vertex_id_t cur = std::begin(outer_halfedges)->first;
+        vertex_id_type cur = std::begin(outer_halfedges)->first;
 
         while (result.size() != outer_halfedges.size())
         {
-            dcel_vertex_id_t n = outer_halfedges.at(cur);
+            vertex_id_type n = outer_halfedges.at(cur);
             result.push_back(n);
             cur = n;
         }
