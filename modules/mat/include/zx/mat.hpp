@@ -667,6 +667,7 @@ using detail::lower;
 using detail::max;
 using detail::min;
 using detail::norm;
+using detail::orientation;
 using detail::orthocenter;
 using detail::perpendicular;
 using detail::projection;
