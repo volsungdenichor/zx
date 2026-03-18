@@ -41,6 +41,42 @@ using ray_t = linear_shape_t<detail::ray_tag, T, D>;
 template <class T, std::size_t D>
 using segment_t = linear_shape_t<detail::segment_tag, T, D>;
 
+namespace detail
+{
+
+struct line_fn
+{
+    template <class T, std::size_t D>
+    auto operator()(vector_t<T, D> p0, vector_t<T, D> p1) const -> line_t<T, D>
+    {
+        return line_t<T, D>{ p0, p1 };
+    }
+};
+
+struct segment_fn
+{
+    template <class T, std::size_t D>
+    auto operator()(vector_t<T, D> p0, vector_t<T, D> p1) const -> segment_t<T, D>
+    {
+        return segment_t<T, D>{ p0, p1 };
+    }
+};
+
+struct ray_fn
+{
+    template <class T, std::size_t D>
+    auto operator()(vector_t<T, D> p0, vector_t<T, D> p1) const -> ray_t<T, D>
+    {
+        return ray_t<T, D>{ p0, p1 };
+    }
+};
+
+}  // namespace detail
+
+static constexpr inline auto line = detail::line_fn{};
+static constexpr inline auto segment = detail::segment_fn{};
+static constexpr inline auto ray = detail::ray_fn{};
+
 template <class T, std::size_t D>
 std::ostream& operator<<(std::ostream& os, const line_t<T, D>& item)
 {

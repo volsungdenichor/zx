@@ -70,6 +70,8 @@ message(STATUS "  ZX_BUILD_TESTS = ${ZX_BUILD_TESTS}")
 message(STATUS "  ZX_BUILD_BENCHMARKS = ${ZX_BUILD_BENCHMARKS}")
 
 if(ZX_BUILD_TESTS)
+    # Include CTest to generate dashboard metadata (e.g. DartConfiguration.tcl).
+    include(CTest)
     enable_testing()
 
     include(FetchContent)
