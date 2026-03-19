@@ -15,31 +15,24 @@ struct voronoi_fn
     dcel_t<T> operator()(const dcel_t<T>& input) const
     {
         using dcel_vertex_id = typename dcel_t<T>::vertex_id_type;
+        using vertex_t = typename dcel_t<T>::vertex_t;
+        using halfedge_t = typename dcel_t<T>::halfedge_t;
+        using face_t = typename dcel_t<T>::face_t;
 
-        const std::vector<dcel_vertex_id> outer = input.outer_halfedges().transform(
-            [](const typename dcel_t<T>::halfedge_t& halfedge) { return halfedge.vertex_from().id; });
+        const std::vector<dcel_vertex_id> outer
+            = input.outer_halfedges().transform([](const halfedge_t& halfedge) { return halfedge.vertex_from().id; });
 
-        const auto is_outer_vertex = [&](const typename dcel_t<T>::vertex_t& vertex)
-        { return std::find(outer.begin(), outer.end(), vertex.id) != outer.end(); };
+        const auto is_outer_vertex
+            = [&](const vertex_t& vertex) { return std::find(outer.begin(), outer.end(), vertex.id) != outer.end(); };
 
         std::unordered_map<typename dcel_t<T>::face_id_type, dcel_vertex_id> centers;
 
-        const auto is_outer_face = [&](const typename dcel_t<T>::face_t& face) -> bool
-        {
-            bool result = false;
-            for (const typename dcel_t<T>::halfedge_t& halfedge : face.halfedges())
-            {
-                result |= (is_outer_vertex(halfedge.vertex_from()) && is_outer_vertex(halfedge.vertex_to()));
-            }
-            return result;
-        };
-
         dcel_t<T> result;
 
-        const auto add_face = [&](const typename dcel_t<T>::vertex_t& vertex)
+        const auto add_face = [&](const vertex_t& vertex)
         {
             std::vector<dcel_vertex_id> vertices;
-            for (const typename dcel_t<T>::face_t& face : vertex.incident_faces())
+            for (const face_t& face : vertex.incident_faces())
             {
                 dcel_vertex_id v;
                 if (auto it = centers.find(face.id); it != centers.end())
@@ -61,12 +54,9 @@ struct voronoi_fn
             }
         };
 
-        for (const typename dcel_t<T>::vertex_t& vertex : input.vertices())
+        for (const vertex_t& vertex : input.vertices().filter(std::not_fn(is_outer_vertex)))
         {
-            if (!is_outer_vertex(vertex))
-            {
-                add_face(vertex);
-            }
+            add_face(vertex);
         }
 
         result.add_boundary();
