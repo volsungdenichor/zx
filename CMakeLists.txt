@@ -23,6 +23,7 @@ set(ZX_MODULE_DEPENDENCIES "
         [ansi [core arrays]]
         [images [arrays]]
         [geometry [mat sequence]]
+        [nested_text [core iterator]]
     ]
 ")
 
