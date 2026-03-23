@@ -214,7 +214,7 @@ class parser_t
 
             if (m_stream.eof())
             {
-                throw parse_error(error_message, start_loc);
+                throw parse_error{ error_message, start_loc };
             }
 
             if (m_stream.peek().value == close_delim)

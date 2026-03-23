@@ -23,7 +23,14 @@ template <class T>
 T decode(const value_t& value)
 {
     static const codec_t<T> codec = {};
-    return codec.decode(value);
+    try
+    {
+        return codec.decode(value);
+    }
+    catch (const std::exception& e)
+    {
+        std::throw_with_nested(std::runtime_error{ str("Failed to decode value: ", e.what()) });
+    }
 }
 
 template <>
@@ -31,14 +38,7 @@ struct codec_t<std::string>
 {
     value_t encode(const std::string& in) const { return in; }
 
-    std::string decode(const value_t& in) const
-    {
-        if (const auto maybe_string = in.if_string())
-        {
-            return *maybe_string;
-        }
-        throw std::runtime_error{ "Expected string" };
-    }
+    std::string decode(const value_t& in) const { return in.as_string(); }
 };
 
 template <class T>
@@ -53,15 +53,12 @@ struct ostream_codec_t
 
     T decode(const value_t& in) const
     {
-        if (const auto maybe_string = in.if_string())
+        std::istringstream is(in.as_string());
+        T result;
+        is >> result;
+        if (is)
         {
-            std::istringstream is(*maybe_string);
-            T result;
-            is >> result;
-            if (is)
-            {
-                return result;
-            }
+            return result;
         }
         throw std::runtime_error{ "Expected string that can be decoded to the target type" };
     }
@@ -89,17 +86,14 @@ struct codec_t<std::vector<T>>
 
     std::vector<T> decode(const value_t& in) const
     {
-        if (const auto maybe_list = in.if_list())
+        const list_t& list = in.as_list();
+        std::vector<T> out;
+        out.reserve(list.size());
+        for (const value_t& item : list)
         {
-            std::vector<T> out;
-            out.reserve(maybe_list->size());
-            for (const value_t& item : *maybe_list)
-            {
-                out.push_back(nested_text::decode<T>(item));
-            }
-            return out;
+            out.push_back(nested_text::decode<T>(item));
         }
-        throw std::runtime_error{ "Expected list" };
+        return out;
     }
 };
 

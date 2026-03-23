@@ -8,6 +8,7 @@
 #include <string_view>
 #include <variant>
 #include <vector>
+#include <zx/format.hpp>
 
 namespace zx
 {
@@ -218,6 +219,27 @@ struct tagged_element_t
     friend std::ostream& operator<<(std::ostream& os, const tagged_element_t& item);
 };
 
+enum class value_type_t
+{
+    string,
+    list,
+    map,
+    tagged_element,
+};
+
+inline std::ostream& operator<<(std::ostream& os, const value_type_t item)
+{
+    switch (item)
+    {
+        case value_type_t::string: os << "string"; break;
+        case value_type_t::list: os << "list"; break;
+        case value_type_t::map: os << "map"; break;
+        case value_type_t::tagged_element: os << "tagged_element"; break;
+    }
+
+    return os;
+}
+
 struct value_t
 {
     using data_type = std::variant<string_t, box_t<list_t>, box_t<map_t>, tagged_element_t>;
@@ -237,6 +259,18 @@ struct value_t
     value_t& operator=(const value_t& other) = default;
     value_t& operator=(value_t&&) noexcept = default;
 
+    value_type_t type() const
+    {
+        switch (m_data.index())
+        {
+            case 0: return value_type_t::string;
+            case 1: return value_type_t::list;
+            case 2: return value_type_t::map;
+            case 3: return value_type_t::tagged_element;
+            default: throw std::logic_error{ "Invalid variant index" };
+        }
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const value_t& item);
 
     friend constexpr bool operator==(const value_t& lhs, const value_t& rhs);
@@ -248,6 +282,15 @@ struct value_t
 
     constexpr const string_t* if_string() const { return std::get_if<string_t>(&m_data); }
 
+    constexpr const string_t& as_string() const
+    {
+        if (const auto maybe_string = if_string())
+        {
+            return *maybe_string;
+        }
+        throw std::runtime_error{ zx::str("expected type: string, actual: ", type()) };
+    }
+
     constexpr const list_t* if_list() const
     {
         if (auto ptr = std::get_if<box_t<list_t>>(&m_data))
@@ -255,6 +298,15 @@ struct value_t
             return &ptr->get();
         }
         return nullptr;
+    }
+
+    constexpr const list_t& as_list() const
+    {
+        if (const auto maybe_list = if_list())
+        {
+            return *maybe_list;
+        }
+        throw std::runtime_error{ zx::str("expected type: list, actual: ", type()) };
     }
 
     constexpr const map_t* if_map() const
@@ -265,7 +317,26 @@ struct value_t
         }
         return nullptr;
     }
+
+    constexpr const map_t& as_map() const
+    {
+        if (const auto maybe_map = if_map())
+        {
+            return *maybe_map;
+        }
+        throw std::runtime_error{ zx::str("expected type: map, actual: ", type()) };
+    }
+
     constexpr const tagged_element_t* if_tagged_element() const { return std::get_if<tagged_element_t>(&m_data); }
+
+    constexpr const tagged_element_t& as_tagged_element() const
+    {
+        if (const auto maybe_tagged_element = if_tagged_element())
+        {
+            return *maybe_tagged_element;
+        }
+        throw std::runtime_error{ zx::str("expected type: tagged_element, actual: ", type()) };
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const list_t& item)
