@@ -121,7 +121,7 @@ TEST(nested_text, parse_empty)
 
 TEST(nested_text, parse_string_with_escapes)
 {
-    EXPECT_THAT(zx::nested_text::parse(R"("line\n\t\"\\")"), testing::Eq(zx::nested_text::value_t{ "line\n\t\"\\" }));
+    EXPECT_THAT(zx::nested_text::parse("\"line\\n\\t\\\"\\\\\""), testing::Eq(zx::nested_text::value_t{ "line\n\t\"\\" }));
 }
 
 TEST(nested_text, parse_list_with_comments_and_commas)
