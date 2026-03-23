@@ -94,22 +94,22 @@ TEST(nested_text, tree)
     EXPECT_THAT(
         (zx::nested_text::value_t{ zx::nested_text::list_t{
             "World",
-            zx::nested_text::list_t{ zx::nested_text::list_t{
+            zx::nested_text::list_t{
                 "Europe",
                 zx::nested_text::list_t{
                     "Germany",
                     "Poland",
                     "France",
                 },
-            } },
-            zx::nested_text::list_t{ zx::nested_text::list_t{
+            },
+            zx::nested_text::list_t{
                 "Asia",
                 zx::nested_text::list_t{
                     "China",
                     "Japan",
                     "India",
                 },
-            } },
+            },
         } }),
         WhenSerialized(R"([World [Europe [Germany Poland France]] [Asia [China Japan India]]])"));
 }
@@ -167,22 +167,22 @@ TEST(nested_text, tree_pretty_print)
     EXPECT_THAT(
         (zx::nested_text::to_pretty_string(zx::nested_text::value_t{ zx::nested_text::list_t{
             "World",
-            zx::nested_text::list_t{ zx::nested_text::list_t{
+            zx::nested_text::list_t{
                 "Europe",
                 zx::nested_text::list_t{
                     "Germany",
                     "Poland",
                     "France",
                 },
-            } },
-            zx::nested_text::list_t{ zx::nested_text::list_t{
+            },
+            zx::nested_text::list_t{
                 "Asia",
                 zx::nested_text::list_t{
                     "China",
                     "Japan",
                     "India",
                 },
-            } },
+            },
         } })),
         WhenLineSplit(testing::ElementsAre(
             "[",
