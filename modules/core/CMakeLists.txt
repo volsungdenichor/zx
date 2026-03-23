@@ -8,4 +8,9 @@ zx_add_module(
     tests/iterator_range.test.cpp
     tests/maybe.test.cpp
     tests/result.test.cpp
+    tests/type_name.test.cpp
 )
+
+if(WIN32)
+    target_link_libraries(core INTERFACE dbghelp)
+endif()
