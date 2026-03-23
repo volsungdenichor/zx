@@ -1,6 +1,6 @@
 #pragma once
 
-#include <zx/nested_value.hpp>
+#include <zx/nested_text/value.hpp>
 
 namespace zx
 {

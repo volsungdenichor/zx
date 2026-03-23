@@ -28,6 +28,10 @@ constexpr auto WhenLineSplit = [](auto&& matcher)
             std::string line;
             while (std::getline(is, line))
             {
+                if (!line.empty() && line.back() == '\r')
+                {
+                    line.pop_back();
+                }
                 lines.push_back(line);
             }
             return lines;

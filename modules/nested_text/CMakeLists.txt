@@ -4,4 +4,5 @@ zx_add_module(
 
     TEST_SOURCES
     tests/nested_text.test.cpp
+    tests/serialization.test.cpp
 )
