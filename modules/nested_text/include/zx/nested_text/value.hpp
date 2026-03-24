@@ -88,7 +88,7 @@ struct ordered_map
         auto it = find(key);
         if (it == end())
         {
-            throw std::out_of_range{ str("key not found in map_t: ", key) };
+            throw std::out_of_range{ str("key '", key, "' not found in map_t") };
         }
         return it->second;
     }

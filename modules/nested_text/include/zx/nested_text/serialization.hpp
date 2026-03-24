@@ -42,7 +42,7 @@ struct codec_t<std::string>
 };
 
 template <class T>
-struct ostream_codec_t
+struct stream_encooder_t
 {
     value_t encode(const T& in) const
     {
@@ -50,7 +50,11 @@ struct ostream_codec_t
         os << in;
         return os.str();
     }
+};
 
+template <class T>
+struct stream_decoder_t
+{
     T decode(const value_t& in) const
     {
         std::istringstream is(in.as_string());
@@ -65,7 +69,12 @@ struct ostream_codec_t
 };
 
 template <class T>
-struct codec_t<T, std::enable_if_t<std::is_integral_v<T>>> : ostream_codec_t<T>
+struct stream_codec_t : stream_encooder_t<T>, stream_decoder_t<T>
+{
+};
+
+template <class T>
+struct codec_t<T, std::enable_if_t<std::is_integral_v<T>>> : stream_codec_t<T>
 {
     static_assert(std::is_integral_v<T>, "codec_t<T> requires T to be an integral type");
 };
@@ -97,10 +106,24 @@ struct codec_t<std::vector<T>>
     }
 };
 
+using offset_t = std::ptrdiff_t;
+
 template <class Type, class T>
-std::ptrdiff_t offset_of(T Type::*member)
+offset_t offset_of(T Type::*member)
 {
-    return reinterpret_cast<std::ptrdiff_t>(&(reinterpret_cast<Type*>(0)->*member));
+    return reinterpret_cast<offset_t>(&(reinterpret_cast<Type*>(0)->*member));
+}
+
+template <class T>
+const T& cast(const void* ptr, offset_t offset)
+{
+    return *reinterpret_cast<const T*>(reinterpret_cast<const char*>(ptr) + offset);
+}
+
+template <class T>
+T& cast(void* ptr, offset_t offset)
+{
+    return *reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) + offset);
 }
 
 template <class T>
@@ -108,11 +131,12 @@ struct struct_codec_t
 {
     struct member_t
     {
-        using encode_fn_t = std::function<value_t(const void*, std::ptrdiff_t)>;
-        using decode_fn_t = std::function<void(void*, std::ptrdiff_t, const value_t&)>;
+        using encode_fn_t = std::function<value_t(const void*, offset_t)>;
+
+        using decode_fn_t = std::function<void(void*, offset_t, const value_t&)>;
 
         std::string m_name;
-        std::ptrdiff_t m_offset;
+        offset_t m_offset;
 
         encode_fn_t m_encode_fn;
         decode_fn_t m_decode_fn;
@@ -121,13 +145,21 @@ struct struct_codec_t
         member_t(std::string name, Type T::*member)
             : m_name{ std::move(name) }
             , m_offset{ offset_of(member) }
-            , m_encode_fn{ [](const void* obj, std::ptrdiff_t offset) -> value_t {
-                return nested_text::encode(*reinterpret_cast<const Type*>(reinterpret_cast<const char*>(obj) + offset));
-            } }
-            , m_decode_fn{ [](void* obj, std::ptrdiff_t offset, const value_t& value) {
-                *reinterpret_cast<Type*>(reinterpret_cast<char*>(obj) + offset) = nested_text::decode<Type>(value);
-            } }
+            , m_encode_fn{ &encode_thunk<Type> }
+            , m_decode_fn{ &decode_thunk<Type> }
         {
+        }
+
+        template <class Type>
+        static value_t encode_thunk(const void* obj, offset_t offset)
+        {
+            return nested_text::encode(cast<const Type>(obj, offset));
+        }
+
+        template <class Type>
+        static void decode_thunk(void* obj, offset_t offset, const value_t& value)
+        {
+            cast<Type>(obj, offset) = nested_text::decode<Type>(value);
         }
     };
 
