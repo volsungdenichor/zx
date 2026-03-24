@@ -178,17 +178,6 @@ struct value_t;
 
 using string_t = std::string;
 
-struct keyword_t : public std::string
-{
-    using base_t = std::string;
-    using base_t::base_t;
-
-    friend std::ostream& operator<<(std::ostream& os, const keyword_t& item)
-    {
-        return os << ":" << static_cast<const base_t&>(item);
-    }
-};
-
 struct list_t : public std::vector<value_t>
 {
     using base_t = std::vector<value_t>;
@@ -197,26 +186,12 @@ struct list_t : public std::vector<value_t>
     friend std::ostream& operator<<(std::ostream& os, const list_t& item);
 };
 
-struct map_t : public ordered_map<keyword_t, value_t>
+struct map_t : public ordered_map<string_t, value_t>
 {
-    using base_t = ordered_map<keyword_t, value_t>;
+    using base_t = ordered_map<string_t, value_t>;
     using base_t::base_t;
 
     friend std::ostream& operator<<(std::ostream& os, const map_t& item);
-};
-
-struct tagged_element_t
-{
-    string_t m_tag;
-    box_t<value_t> m_element;
-
-    tagged_element_t(string_t tag, const value_t& element) : m_tag(std::move(tag)), m_element(element) { }
-
-    const string_t& tag() const { return m_tag; }
-
-    const value_t& element() const { return m_element.get(); }
-
-    friend std::ostream& operator<<(std::ostream& os, const tagged_element_t& item);
 };
 
 enum class value_type_t
@@ -224,7 +199,6 @@ enum class value_type_t
     string,
     list,
     map,
-    tagged_element,
 };
 
 inline std::ostream& operator<<(std::ostream& os, const value_type_t item)
@@ -234,7 +208,6 @@ inline std::ostream& operator<<(std::ostream& os, const value_type_t item)
         case value_type_t::string: os << "string"; break;
         case value_type_t::list: os << "list"; break;
         case value_type_t::map: os << "map"; break;
-        case value_type_t::tagged_element: os << "tagged_element"; break;
     }
 
     return os;
@@ -242,7 +215,7 @@ inline std::ostream& operator<<(std::ostream& os, const value_type_t item)
 
 struct value_t
 {
-    using data_type = std::variant<string_t, box_t<list_t>, box_t<map_t>, tagged_element_t>;
+    using data_type = std::variant<string_t, box_t<list_t>, box_t<map_t>>;
 
     data_type m_data;
 
@@ -251,7 +224,6 @@ struct value_t
     value_t(const char* value) : m_data(std::string(value)) { }
     value_t(list_t value) : m_data(std::move(value)) { }
     value_t(map_t value) : m_data(std::move(value)) { }
-    value_t(tagged_element_t value) : m_data(std::move(value)) { }
 
     value_t(const value_t&) = default;
     value_t(value_t&&) noexcept = default;
@@ -266,7 +238,6 @@ struct value_t
             case 0: return value_type_t::string;
             case 1: return value_type_t::list;
             case 2: return value_type_t::map;
-            case 3: return value_type_t::tagged_element;
             default: throw std::logic_error{ "Invalid variant index" };
         }
     }
@@ -326,17 +297,6 @@ struct value_t
         }
         throw std::runtime_error{ zx::str("expected type: map, actual: ", type()) };
     }
-
-    constexpr const tagged_element_t* if_tagged_element() const { return std::get_if<tagged_element_t>(&m_data); }
-
-    constexpr const tagged_element_t& as_tagged_element() const
-    {
-        if (const auto maybe_tagged_element = if_tagged_element())
-        {
-            return *maybe_tagged_element;
-        }
-        throw std::runtime_error{ zx::str("expected type: tagged_element, actual: ", type()) };
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const list_t& item)
@@ -363,15 +323,10 @@ inline std::ostream& operator<<(std::ostream& os, const map_t& item)
         {
             os << " ";
         }
-        os << it->first << " " << it->second;
+        os << ":" << it->first << " " << it->second;
     }
     os << "}";
     return os;
-}
-
-inline std::ostream& operator<<(std::ostream& os, const tagged_element_t& item)
-{
-    return os << "#" << item.tag() << " " << item.element();
 }
 
 namespace detail
@@ -383,7 +338,7 @@ struct print_visitor_t
 
     void operator()(const string_t& v) const
     {
-        if (std::any_of(v.begin(), v.end(), [](char ch) { return std::isspace(ch) || ch == '"' || ch == '#'; }))
+        if (v.empty() || std::any_of(v.begin(), v.end(), [](char ch) { return std::isspace(ch) || ch == '"'; }))
         {
             os << std::quoted(v);
         }
@@ -394,7 +349,6 @@ struct print_visitor_t
     }
     void operator()(const list_t& v) const { os << v; }
     void operator()(const map_t& v) const { os << v; }
-    void operator()(const tagged_element_t& v) const { os << v; }
 };
 
 struct eq_visitor_t
@@ -402,10 +356,6 @@ struct eq_visitor_t
     bool operator()(const string_t& lt, const string_t& rt) const { return lt == rt; }
     bool operator()(const list_t& lt, const list_t& rt) const { return lt == rt; }
     bool operator()(const map_t& lt, const map_t& rt) const { return lt == rt; }
-    bool operator()(const tagged_element_t& lt, const tagged_element_t& rt) const
-    {
-        return std::tie(lt.tag(), lt.element()) == std::tie(rt.tag(), rt.element());
-    }
 
     template <class L, class R>
     bool operator()(const L&, const R&) const
@@ -419,10 +369,6 @@ struct lt_visitor_t
     bool operator()(const string_t& lt, const string_t& rt) const { return lt < rt; }
     bool operator()(const list_t& lt, const list_t& rt) const { return lt < rt; }
     bool operator()(const map_t& lt, const map_t& rt) const { return lt < rt; }
-    bool operator()(const tagged_element_t& lt, const tagged_element_t& rt) const
-    {
-        return std::tie(lt.tag(), lt.element()) < std::tie(rt.tag(), rt.element());
-    }
 
     template <class L, class R>
     bool operator()(const L&, const R&) const
@@ -462,6 +408,12 @@ inline constexpr bool operator<=(const value_t& lhs, const value_t& rhs)
 inline constexpr bool operator>=(const value_t& lhs, const value_t& rhs)
 {
     return !(lhs < rhs);
+}
+
+template <class... Args>
+value_t text(const Args&... args)
+{
+    return str(args...);
 }
 
 }  // namespace nested_text

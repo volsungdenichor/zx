@@ -83,12 +83,6 @@ TEST(nested_text, map)
         WhenSerialized(R"({:a 123 :b [X "Y y"]})"));
 }
 
-TEST(nested_text, tagged_element)
-{
-    EXPECT_THAT(
-        (zx::nested_text::value_t{ zx::nested_text::tagged_element_t{ "mytag", "123" } }), WhenSerialized(R"(#mytag 123)"));
-}
-
 TEST(nested_text, tree)
 {
     EXPECT_THAT(
@@ -144,11 +138,11 @@ TEST(nested_text, parse_map_with_nested_values)
 TEST(nested_text, parse_multiple_top_level_values_as_list)
 {
     EXPECT_THAT(
-        zx::nested_text::parse(R"(123 "two words" #tag x)"),
+        zx::nested_text::parse(R"(123 "two words" x)"),
         testing::Eq(zx::nested_text::value_t{ zx::nested_text::list_t{
             "123",
             "two words",
-            zx::nested_text::tagged_element_t{ "tag", "x" },
+            "x",
         } }));
 }
 

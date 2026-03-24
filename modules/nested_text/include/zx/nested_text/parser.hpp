@@ -181,12 +181,12 @@ class parser_t
         throw parse_error{ "Unterminated string", start_loc };
     }
 
-    keyword_t parse_keyword()
+    string_t parse_keyword()
     {
         const location_t start_loc = m_stream.location();
         m_stream.get();
 
-        std::string name = {};
+        string_t name = {};
         while (!m_stream.eof() && !is_delimiter(m_stream.peek().value))
         {
             name += m_stream.get().value;
@@ -196,7 +196,7 @@ class parser_t
         {
             throw parse_error{ "Empty keyword", start_loc };
         }
-        return keyword_t{ name.c_str() };
+        return name;
     }
 
     template <class T>
@@ -256,7 +256,7 @@ class parser_t
                 throw parse_error{ "Map keys must be keywords", m_stream.location() };
             }
 
-            keyword_t key = parse_keyword();
+            string_t key = parse_keyword();
 
             m_stream.skip_whitespace_and_comments();
             if (m_stream.eof() || m_stream.peek().value == '}')
@@ -266,31 +266,6 @@ class parser_t
 
             result[std::move(key)] = parse_value();
         }
-    }
-
-    value_t parse_hash()
-    {
-        const location_t start_loc = m_stream.location();
-        m_stream.get();  // consume '#'
-
-        m_stream.skip_whitespace_and_comments();
-
-        if (m_stream.eof())
-        {
-            throw parse_error{ "Unexpected end after #", start_loc };
-        }
-
-        // m_stream.peek().value;
-
-        const auto [tag_name, tag_loc] = read_token();
-
-        if (tag_name.empty())
-        {
-            throw parse_error{ "Expected tag name after #", start_loc };
-        }
-
-        value_t element = parse_value();
-        return tagged_element_t{ tag_name, std::move(element) };
     }
 
 public:
@@ -304,7 +279,6 @@ public:
             { '"', &parser_t::parse_string },
             { '[', &parser_t::parse_list },
             { '{', &parser_t::parse_map },
-            { '#', &parser_t::parse_hash },
         };
 
         m_stream.skip_whitespace_and_comments();

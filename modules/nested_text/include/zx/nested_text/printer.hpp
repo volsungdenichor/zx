@@ -111,9 +111,7 @@ class pretty_printer_t
                 {
                     m_os << " ";
                 }
-                m_os << it->first;
-                m_os << " ";
-                m_os << it->second;
+                m_os << ":" << it->first << " " << it->second;
             }
         }
         else
@@ -123,8 +121,7 @@ class pretty_printer_t
             for (auto it = item.begin(); it != item.end(); ++it)
             {
                 write_newline().write_indent();
-                m_os << it->first;
-                m_os << " ";
+                m_os << ":" << it->first << " ";
                 print_value(it->second, true);
             }
             m_current_indent -= indent_increment;
@@ -143,11 +140,6 @@ class pretty_printer_t
         else if (const auto maybe_map = item.if_map())
         {
             print(*maybe_map, inline_mode);
-        }
-        else if (const auto maybe_tagged_element = item.if_tagged_element())
-        {
-            m_os << "#" << maybe_tagged_element->tag() << " ";
-            print_value(maybe_tagged_element->element(), inline_mode);
         }
         else
         {
