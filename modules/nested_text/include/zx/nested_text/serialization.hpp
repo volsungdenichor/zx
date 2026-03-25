@@ -57,14 +57,15 @@ struct stream_decoder_t
 {
     T decode(const value_t& in) const
     {
-        std::istringstream is(in.as_string());
+        const string_t& s = in.as_string();
+        std::istringstream is(s);
         T result;
         is >> result;
         if (is)
         {
             return result;
         }
-        throw std::runtime_error{ "Expected string that can be decoded to the target type" };
+        throw std::runtime_error{ str("Expected string that can be decoded to the target type, actual: '", s, "'") };
     }
 };
 
