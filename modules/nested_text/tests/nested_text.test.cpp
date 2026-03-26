@@ -55,7 +55,7 @@ void ExpectParseError(std::string_view text, std::string_view message)
 
 TEST(nested_text, empty)
 {
-    EXPECT_THAT(zx::nested_text::value_t{}, WhenSerialized(""));
+    EXPECT_THAT(zx::nested_text::value_t{}, WhenSerialized(R"("")"));
 }
 
 TEST(nested_text, initial)
