@@ -48,6 +48,7 @@ struct ordered_map
     constexpr const_iterator cend() const { return end(); }
     constexpr bool empty() const { return m_items.empty(); }
     constexpr std::size_t size() const { return m_items.size(); }
+    constexpr std::size_t count(const key_type& key) const { return find(key) == end() ? 0U : 1U; }
 
     const_iterator find(const key_type& key) const
     {
