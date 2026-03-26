@@ -211,3 +211,30 @@ TEST(nested_text, tree_pretty_print)
             "  ]",
             "]")));
 }
+
+TEST(nested_text, path_based_access)
+{
+    zx::nested_text::value_t data = zx::nested_text::parse(R"(
+        [
+            { :name "Alice" :age 30 }
+            { :name "Bob" :age 25 }
+        ]
+    )");
+
+    EXPECT_THAT(
+        data.get(zx::nested_text::path_t{ std::size_t{ 0 }, std::string{ "name" } }),
+        testing::Optional(zx::nested_text::string_t{ "Alice" }));
+    EXPECT_THAT(
+        data.get(zx::nested_text::path_t{ std::size_t{ 0 }, std::string{ "age" } }),
+        testing::Optional(zx::nested_text::string_t{ "30" }));
+    EXPECT_THAT(
+        data.get(zx::nested_text::path_t{ std::size_t{ 1 }, std::string{ "name" } }),
+        testing::Optional(zx::nested_text::string_t{ "Bob" }));
+    EXPECT_THAT(
+        data.get(zx::nested_text::path_t{ std::size_t{ 1 }, std::string{ "age" } }),
+        testing::Optional(zx::nested_text::string_t{ "25" }));
+
+    EXPECT_THAT(data.get(zx::nested_text::path_t{ std::size_t{ 2 }, std::string{ "name" } }), testing::Eq(std::nullopt));
+    EXPECT_THAT(
+        data.get(zx::nested_text::path_t{ std::size_t{ 0 }, std::string{ "nonexistent" } }), testing::Eq(std::nullopt));
+}

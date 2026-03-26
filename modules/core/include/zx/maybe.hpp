@@ -2,6 +2,7 @@
 
 #include <exception>
 #include <functional>
+#include <iostream>
 #include <optional>
 #include <utility>
 #include <zx/type_traits.hpp>
@@ -430,6 +431,44 @@ template <class T>
 constexpr bool operator!=(none_t, const maybe_t<T>& m)
 {
     return m.has_value();
+}
+
+template <class T>
+constexpr bool operator==(const maybe_t<T>& m, std::nullopt_t)
+{
+    return !m.has_value();
+}
+
+template <class T>
+constexpr bool operator!=(const maybe_t<T>& m, std::nullopt_t)
+{
+    return m.has_value();
+}
+
+template <class T>
+constexpr bool operator==(std::nullopt_t, const maybe_t<T>& m)
+{
+    return !m.has_value();
+}
+
+template <class T>
+constexpr bool operator!=(std::nullopt_t, const maybe_t<T>& m)
+{
+    return m.has_value();
+}
+
+template <class T>
+std::ostream& operator<<(std::ostream& os, const maybe_t<T>& item)
+{
+    if (item)
+    {
+        os << "maybe(" << *item << ")";
+    }
+    else
+    {
+        os << "none";
+    }
+    return os;
 }
 
 }  // namespace zx

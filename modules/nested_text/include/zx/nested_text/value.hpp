@@ -9,6 +9,7 @@
 #include <variant>
 #include <vector>
 #include <zx/format.hpp>
+#include <zx/maybe.hpp>
 #include <zx/type_name.hpp>
 
 namespace zx
@@ -16,6 +17,13 @@ namespace zx
 
 namespace nested_text
 {
+
+using path_item_t = std::variant<std::string, std::size_t>;
+
+struct path_t : public std::vector<path_item_t>
+{
+    explicit path_t(std::initializer_list<path_item_t> items) : std::vector<path_item_t>(items) { }
+};
 
 template <class K, class V>
 struct ordered_map
@@ -297,6 +305,51 @@ struct value_t
             return *maybe_map;
         }
         throw std::runtime_error{ zx::str("expected type: map, actual: ", type()) };
+    }
+
+    maybe_t<const value_t&> get(const path_t& path) const
+    {
+        const value_t* current = this;
+        for (const path_item_t& item : path)
+        {
+            if (std::holds_alternative<std::string>(item))
+            {
+                const std::string& key = std::get<std::string>(item);
+                if (const map_t* map = current->if_map())
+                {
+                    if (auto it = map->find(key); it != map->end())
+                    {
+                        current = &it->second;
+                        continue;
+                    }
+
+                    return none;
+                }
+                else
+                {
+                    return none;
+                }
+            }
+            else
+            {
+                std::size_t index = std::get<std::size_t>(item);
+                if (const list_t* list = current->if_list())
+                {
+                    if (index < list->size())
+                    {
+                        current = &(*list)[index];
+                        continue;
+                    }
+
+                    return none;
+                }
+                else
+                {
+                    return none;
+                }
+            }
+        }
+        return current ? maybe_t<const value_t&>{ *current } : none;
     }
 };
 
