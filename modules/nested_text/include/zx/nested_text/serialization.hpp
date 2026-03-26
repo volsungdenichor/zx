@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+#include <cstring>
 #include <zx/nested_text/value.hpp>
 
 namespace zx
@@ -106,60 +108,46 @@ struct codec_t<std::vector<T>>
     }
 };
 
-using offset_t = std::ptrdiff_t;
-
-template <class Type, class T>
-offset_t offset_of(T Type::*member)
-{
-    return reinterpret_cast<offset_t>(&(reinterpret_cast<Type*>(0)->*member));
-}
-
-template <class T>
-const T& cast(const void* ptr, offset_t offset)
-{
-    return *reinterpret_cast<const T*>(reinterpret_cast<const char*>(ptr) + offset);
-}
-
-template <class T>
-T& cast(void* ptr, offset_t offset)
-{
-    return *reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) + offset);
-}
-
 template <class T>
 struct struct_codec_t
 {
     struct member_t
     {
-        using encode_fn_t = std::function<value_t(const void*, offset_t)>;
-
-        using decode_fn_t = std::function<void(void*, offset_t, const value_t&)>;
+        using encode_fn_t = value_t (*)(const T&, const void*);
+        using decode_fn_t = void (*)(T&, const value_t&, const void*);
 
         std::string m_name;
-        offset_t m_offset;
+        std::uintptr_t m_member[2];
 
         encode_fn_t m_encode_fn;
         decode_fn_t m_decode_fn;
 
         template <class Type>
-        member_t(std::string name, Type T::*member)
+        member_t(std::string name, Type T::* member)
             : m_name{ std::move(name) }
-            , m_offset{ offset_of(member) }
+            , m_member{}
             , m_encode_fn{ &encode_thunk<Type> }
             , m_decode_fn{ &decode_thunk<Type> }
         {
+            static_assert(sizeof(member) <= sizeof(m_member),
+                          "Pointer-to-member too large for inline storage; increase m_member size");
+            std::memcpy(m_member, &member, sizeof(member));
         }
 
         template <class Type>
-        static value_t encode_thunk(const void* obj, offset_t offset)
+        static value_t encode_thunk(const T& obj, const void* ptr)
         {
-            return nested_text::encode(cast<const Type>(obj, offset));
+            Type T::* member;
+            std::memcpy(&member, ptr, sizeof(member));
+            return nested_text::encode(obj.*member);
         }
 
         template <class Type>
-        static void decode_thunk(void* obj, offset_t offset, const value_t& value)
+        static void decode_thunk(T& obj, const value_t& value, const void* ptr)
         {
-            cast<Type>(obj, offset) = nested_text::decode<Type>(value);
+            Type T::* member;
+            std::memcpy(&member, ptr, sizeof(member));
+            obj.*member = nested_text::decode<Type>(value);
         }
     };
 
@@ -172,7 +160,7 @@ struct struct_codec_t
         map_t out;
         for (const member_t& member : m_members)
         {
-            out.emplace(member.m_name, member.m_encode_fn(&in, member.m_offset));
+            out.emplace(member.m_name, member.m_encode_fn(in, &member.m_member));
         }
         return out;
     }
@@ -183,7 +171,7 @@ struct struct_codec_t
         T out{};
         for (const member_t& member : m_members)
         {
-            member.m_decode_fn(&out, member.m_offset, map.at(member.m_name));
+            member.m_decode_fn(out, map.at(member.m_name), &member.m_member);
         }
         return out;
     }

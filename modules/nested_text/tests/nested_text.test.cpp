@@ -156,6 +156,11 @@ TEST(nested_text, parse_map_without_value_reports_error)
     ExpectParseError("{:a}", "Map requires an even number of elements");
 }
 
+TEST(nested_text, parse_top_level_colon_reports_error)
+{
+    ExpectParseError(":", "Unexpected delimiter: :");
+}
+
 TEST(nested_text, tree_pretty_print)
 {
     EXPECT_THAT(

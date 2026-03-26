@@ -117,7 +117,7 @@ class parser_t
 
     bool is_delimiter(char ch) const
     {
-        static const std::string delimiters = "[]{};,\"\\:#'";
+        static const std::string delimiters = "[]{};,\"\\:";
         return std::isspace(ch) || delimiters.find(ch) != std::string::npos;
     }
 
@@ -303,7 +303,13 @@ public:
             throw parse_error{ std::string("Unexpected closing delimiter: ") + ch, m_stream.location() };
         }
 
+        if (is_delimiter(ch))
+        {
+            throw parse_error{ std::string("Unexpected delimiter: ") + ch, m_stream.location() };
+        }
+
         auto [token, start_loc] = read_token();
+        (void)start_loc;
         return token;
     }
 };
