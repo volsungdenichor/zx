@@ -22,7 +22,76 @@ using path_item_t = std::variant<std::string, std::size_t>;
 
 struct path_t : public std::vector<path_item_t>
 {
+    path_t() = default;
+    path_t(const path_t&) = default;
+    path_t(path_t&&) noexcept = default;
+
     explicit path_t(std::initializer_list<path_item_t> items) : std::vector<path_item_t>(items) { }
+
+    friend std::ostream& operator<<(std::ostream& os, const path_t& item)
+    {
+        for (std::size_t i = 0; i < item.size(); ++i)
+        {
+            const auto& it = item[i];
+
+            if (std::holds_alternative<std::string>(it))
+            {
+                os << (i > 0 ? "." : "") << std::get<std::string>(it);
+            }
+            else
+            {
+                os << "[" << std::get<std::size_t>(it) << "]";
+            }
+        }
+        return os;
+    }
+
+    static path_t parse(std::string_view text)
+    {
+        path_t result;
+
+        std::size_t pos = 0;
+        while (pos < text.size())
+        {
+            if (text[pos] == '.')
+            {
+                ++pos;
+            }
+            else if (text[pos] == '[')
+            {
+                ++pos;
+                std::size_t end_pos = text.find(']', pos);
+                if (end_pos == std::string_view::npos)
+                {
+                    throw std::runtime_error{ str("Invalid path: missing closing ']' in '", text, "'") };
+                }
+                const auto index_str = text.substr(pos, end_pos - pos);
+                try
+                {
+                    std::size_t index = std::stoul(std::string(index_str));
+                    result.emplace_back(index);
+                }
+                catch (const std::exception&)
+                {
+                    throw std::runtime_error{ str("Invalid path: invalid list index '", index_str, "' in '", text, "'") };
+                }
+                pos = end_pos + 1;
+            }
+            else
+            {
+                std::size_t end_pos = text.find_first_of(".[", pos);
+                if (end_pos == std::string_view::npos)
+                {
+                    end_pos = text.size();
+                }
+                const auto key = text.substr(pos, end_pos - pos);
+                result.emplace_back(std::string(key));
+                pos = end_pos;
+            }
+        }
+
+        return result;
+    }
 };
 
 template <class K, class V>

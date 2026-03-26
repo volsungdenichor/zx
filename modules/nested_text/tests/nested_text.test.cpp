@@ -238,3 +238,17 @@ TEST(nested_text, path_based_access)
     EXPECT_THAT(
         data.get(zx::nested_text::path_t{ std::size_t{ 0 }, std::string{ "nonexistent" } }), testing::Eq(std::nullopt));
 }
+
+TEST(nested_text, path_formatting)
+{
+    EXPECT_THAT((zx::nested_text::path_t{ "users", std::size_t{ 0 }, "name" }), WhenSerialized("users[0].name"));
+}
+
+TEST(nested_text, path_parsing)
+{
+    EXPECT_THAT(zx::nested_text::path_t::parse("users[0].name"), testing::ElementsAre(
+        zx::nested_text::path_item_t{ "users" },
+        zx::nested_text::path_item_t{ std::size_t{ 0 } },
+        zx::nested_text::path_item_t{ "name" }
+    ));
+}
