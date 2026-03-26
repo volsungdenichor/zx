@@ -22,10 +22,44 @@ struct validation_result_t
         value_info_t actual;
         nested_text::value_t failure_message;
 
+        static bool is_expected_failure(const nested_text::value_t& item)
+        {
+            const auto maybe_list = item.if_list();
+            return maybe_list != nullptr && maybe_list->size() == 2 && (*maybe_list)[0].if_string() != nullptr
+                   && *(*maybe_list)[0].if_string() == "expected";
+        }
+
+        static bool is_actual_value_relevant(const nested_text::value_t& message)
+        {
+            if (is_expected_failure(message))
+            {
+                return true;
+            }
+
+            const auto maybe_map = message.if_map();
+            if (maybe_map == nullptr)
+            {
+                return false;
+            }
+
+            // Direct predicate mismatches should keep the compared value.
+            if (maybe_map->count("failed_predicates") > 0U)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         nested_text::value_t format() const
         {
-            return nested_text::map_t{ { "actual",
-                                         nested_text::map_t{ { "type", actual.type_name }, { "value", actual.value } } },
+            nested_text::map_t actual_info{ { "type", actual.type_name } };
+            if (is_actual_value_relevant(failure_message))
+            {
+                actual_info.insert({ "value", actual.value });
+            }
+
+            return nested_text::map_t{ { "actual", std::move(actual_info) },
                                        { "failing_predicate", failing_predicate },
                                        { "failure_message", failure_message } };
         }
@@ -508,8 +542,7 @@ struct each_element_fn
                 if (!result.is_success())
                 {
                     failed_elements.push_back(nested_text::map_t{ { "index", nested_text::encode(index) },
-                                                                  // { "value", nested_text::encode(element) },
-                                                                  { "failure_message", result.get_failure()->format() } });
+                                                                  { "failure_message", result.get_failure()->failure_message } });
                 }
                 ++index;
                 ++size;
@@ -616,7 +649,11 @@ struct result_of_fn
             {
                 return validation_result_t::success();
             }
-            return validation_result_t::failure(format(), get_value_info(item), result.get_failure()->format());
+            return validation_result_t::failure(
+                format(),
+                get_value_info(item),
+                nested_text::map_t{ { "member", nested_text::string_t{ m_name } },
+                                    { "failure_message", result.get_failure()->failure_message } });
         }
 
         nested_text::value_t format() const { return nested_text::list_t{ str(":", m_name), fmt(m_pred) }; }
