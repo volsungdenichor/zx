@@ -161,6 +161,21 @@ TEST(nested_text, parse_top_level_colon_reports_error)
     ExpectParseError(":", "Unexpected delimiter: :");
 }
 
+TEST(nested_text, mixed_type_ordering)
+{
+    const zx::nested_text::value_t as_string{ "s" };
+    const zx::nested_text::value_t as_list{ zx::nested_text::list_t{ "s" } };
+    const zx::nested_text::value_t as_map{ zx::nested_text::map_t{ { "k", "v" } } };
+
+    EXPECT_TRUE(as_string < as_list);
+    EXPECT_TRUE(as_list < as_map);
+    EXPECT_TRUE(as_string < as_map);
+
+    EXPECT_FALSE(as_list < as_string);
+    EXPECT_FALSE(as_map < as_list);
+    EXPECT_FALSE(as_map < as_string);
+}
+
 TEST(nested_text, tree_pretty_print)
 {
     EXPECT_THAT(

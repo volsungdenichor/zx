@@ -9,6 +9,7 @@
 #include <variant>
 #include <vector>
 #include <zx/format.hpp>
+#include <zx/type_name.hpp>
 
 namespace zx
 {
@@ -332,6 +333,23 @@ inline std::ostream& operator<<(std::ostream& os, const map_t& item)
 namespace detail
 {
 
+template <class T>
+value_type_t type(const T&)
+{
+    if constexpr (std::is_same_v<T, string_t>)
+    {
+        return value_type_t::string;
+    }
+    else if constexpr (std::is_same_v<T, list_t>)
+    {
+        return value_type_t::list;
+    }
+    else if constexpr (std::is_same_v<T, map_t>)
+    {
+        return value_type_t::map;
+    }
+}
+
 struct print_visitor_t
 {
     std::ostream& os;
@@ -353,9 +371,9 @@ struct print_visitor_t
 
 struct eq_visitor_t
 {
-    bool operator()(const string_t& lt, const string_t& rt) const { return lt == rt; }
-    bool operator()(const list_t& lt, const list_t& rt) const { return lt == rt; }
-    bool operator()(const map_t& lt, const map_t& rt) const { return lt == rt; }
+    bool operator()(const string_t& lhs, const string_t& rhs) const { return lhs == rhs; }
+    bool operator()(const list_t& lhs, const list_t& rhs) const { return lhs == rhs; }
+    bool operator()(const map_t& lhs, const map_t& rhs) const { return lhs == rhs; }
 
     template <class L, class R>
     bool operator()(const L&, const R&) const
@@ -366,14 +384,14 @@ struct eq_visitor_t
 
 struct lt_visitor_t
 {
-    bool operator()(const string_t& lt, const string_t& rt) const { return lt < rt; }
-    bool operator()(const list_t& lt, const list_t& rt) const { return lt < rt; }
-    bool operator()(const map_t& lt, const map_t& rt) const { return lt < rt; }
+    bool operator()(const string_t& lhs, const string_t& rhs) const { return lhs < rhs; }
+    bool operator()(const list_t& lhs, const list_t& rhs) const { return lhs < rhs; }
+    bool operator()(const map_t& lhs, const map_t& rhs) const { return lhs < rhs; }
 
     template <class L, class R>
-    bool operator()(const L&, const R&) const
+    bool operator()(const L& lhs, const R& rhs) const
     {
-        return false;
+        return type(lhs) < type(rhs);
     }
 };
 

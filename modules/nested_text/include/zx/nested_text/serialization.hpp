@@ -59,14 +59,15 @@ struct stream_decoder_t
 {
     T decode(const value_t& in) const
     {
-        std::istringstream is(in.as_string());
-        T result;
-        is >> result;
-        if (is)
+        const auto s = in.as_string();
+        std::istringstream is(s);
+        T result{};
+        is >> result >> std::ws;
+        if (!is.eof())
         {
-            return result;
+            throw std::runtime_error{ str("Cannot decode ", type_name<T>(), " from '", s, "'") };
         }
-        throw std::runtime_error{ "Expected string that can be decoded to the target type" };
+        return result;
     }
 };
 
@@ -123,21 +124,22 @@ struct struct_codec_t
         decode_fn_t m_decode_fn;
 
         template <class Type>
-        member_t(std::string name, Type T::* member)
+        member_t(std::string name, Type T::*member)
             : m_name{ std::move(name) }
             , m_member{}
             , m_encode_fn{ &encode_thunk<Type> }
             , m_decode_fn{ &decode_thunk<Type> }
         {
-            static_assert(sizeof(member) <= sizeof(m_member),
-                          "Pointer-to-member too large for inline storage; increase m_member size");
+            static_assert(
+                sizeof(member) <= sizeof(m_member),
+                "Pointer-to-member too large for inline storage; increase m_member size");
             std::memcpy(m_member, &member, sizeof(member));
         }
 
         template <class Type>
         static value_t encode_thunk(const T& obj, const void* ptr)
         {
-            Type T::* member;
+            Type T::*member;
             std::memcpy(&member, ptr, sizeof(member));
             return nested_text::encode(obj.*member);
         }
@@ -145,7 +147,7 @@ struct struct_codec_t
         template <class Type>
         static void decode_thunk(T& obj, const value_t& value, const void* ptr)
         {
-            Type T::* member;
+            Type T::*member;
             std::memcpy(&member, ptr, sizeof(member));
             obj.*member = nested_text::decode<Type>(value);
         }

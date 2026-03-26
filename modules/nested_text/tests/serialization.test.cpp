@@ -28,6 +28,11 @@ TEST(nested_text_serialization, integer)
     EXPECT_THAT((zx::nested_text::decode<int>(zx::nested_text::value_t{ "123" })), testing::Eq(123));
 }
 
+TEST(nested_text_serialization, integer_rejects_trailing_garbage)
+{
+    EXPECT_THROW((void)zx::nested_text::decode<int>(zx::nested_text::value_t{ "123abc" }), std::runtime_error);
+}
+
 TEST(nested_text_serialization, string)
 {
     EXPECT_THAT(zx::nested_text::encode(std::string{ "Hello" }), testing::Eq(zx::nested_text::value_t{ "Hello" }));
