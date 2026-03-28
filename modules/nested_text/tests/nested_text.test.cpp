@@ -222,33 +222,22 @@ TEST(nested_text, path_based_access)
     )");
 
     EXPECT_THAT(
-        data.get(zx::nested_text::path_t{ std::size_t{ 0 }, std::string{ "name" } }),
+        data.get(zx::nested_text::list_t{ "0",  "name" }),
         testing::Optional(zx::nested_text::string_t{ "Alice" }));
     EXPECT_THAT(
-        data.get(zx::nested_text::path_t{ std::size_t{ 0 }, std::string{ "age" } }),
+        data.get(zx::nested_text::list_t{ "0", "age" }),
         testing::Optional(zx::nested_text::string_t{ "30" }));
     EXPECT_THAT(
-        data.get(zx::nested_text::path_t{ std::size_t{ 1 }, std::string{ "name" } }),
+        data.get(zx::nested_text::list_t{ "1", "name" }),
         testing::Optional(zx::nested_text::string_t{ "Bob" }));
     EXPECT_THAT(
-        data.get(zx::nested_text::path_t{ std::size_t{ 1 }, std::string{ "age" } }),
+        data.get(zx::nested_text::list_t{ "1", "age" }),
+        testing::Optional(zx::nested_text::string_t{ "25" }));
+    EXPECT_THAT(
+        data.get(zx::nested_text::parse(R"([1 age])").as_list()),
         testing::Optional(zx::nested_text::string_t{ "25" }));
 
-    EXPECT_THAT(data.get(zx::nested_text::path_t{ std::size_t{ 2 }, std::string{ "name" } }), testing::Eq(std::nullopt));
+    EXPECT_THAT(data.get(zx::nested_text::list_t{ "2", "name" }), testing::Eq(std::nullopt));
     EXPECT_THAT(
-        data.get(zx::nested_text::path_t{ std::size_t{ 0 }, std::string{ "nonexistent" } }), testing::Eq(std::nullopt));
-}
-
-TEST(nested_text, path_formatting)
-{
-    EXPECT_THAT((zx::nested_text::path_t{ "users", std::size_t{ 0 }, "name" }), WhenSerialized("users[0].name"));
-}
-
-TEST(nested_text, path_parsing)
-{
-    EXPECT_THAT(zx::nested_text::path_t::parse("users[0].name"), testing::ElementsAre(
-        zx::nested_text::path_item_t{ "users" },
-        zx::nested_text::path_item_t{ std::size_t{ 0 } },
-        zx::nested_text::path_item_t{ "name" }
-    ));
+        data.get(zx::nested_text::list_t{ "0", "nonexistent" }), testing::Eq(std::nullopt));
 }
