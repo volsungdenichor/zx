@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include <memory>
 #include <zx/iterator_interface.hpp>
 #include <zx/maybe.hpp>
