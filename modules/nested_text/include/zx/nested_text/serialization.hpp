@@ -1,7 +1,9 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <cstring>
+#include <vector>
 #include <zx/nested_text/node.hpp>
 
 namespace zx
@@ -136,6 +138,36 @@ struct codec_t<std::vector<T>>
         for (const node_t& item : list)
         {
             out.push_back(nested_text::decode<T>(item));
+        }
+        return out;
+    }
+};
+
+template <class T, std::size_t N>
+struct codec_t<std::array<T, N>>
+{
+    node_t encode(const std::array<T, N>& in) const
+    {
+        list_t out;
+        out.reserve(in.size());
+        for (const T& item : in)
+        {
+            out.push_back(nested_text::encode(item));
+        }
+        return out;
+    }
+
+    std::array<T, N> decode(const node_t& in) const
+    {
+        const list_t& list = in.as_list();
+        if (list.size() != N)
+        {
+            throw std::runtime_error{ str("Expected array of size ", N, ", got list of size ", list.size()) };
+        }
+        std::array<T, N> out;
+        for (std::size_t i = 0; i < N; ++i)
+        {
+            out[i] = nested_text::decode<T>(list[i]);
         }
         return out;
     }
