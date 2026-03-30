@@ -1,6 +1,6 @@
 #pragma once
 
-#include <zx/nested_text/value.hpp>
+#include <zx/nested_text/node.hpp>
 
 namespace zx
 {
@@ -36,9 +36,9 @@ class pretty_printer_t
         return *this;
     }
 
-    static bool is_simple_value(const value_t& item) { return !item.if_list() && !item.if_map(); }
+    static bool is_simple_value(const node_t& item) { return !item.if_list() && !item.if_map(); }
 
-    std::size_t estimate_length(const value_t& item) const
+    std::size_t estimate_length(const node_t& item) const
     {
         std::ostringstream temp;
         temp << item;
@@ -63,7 +63,7 @@ class pretty_printer_t
 
         const bool should_inline = inline_mode || is_compact(item);
 
-        if (should_inline && estimate_length(value_t(item)) < m_options.max_inline_length)
+        if (should_inline && estimate_length(node_t(item)) < m_options.max_inline_length)
         {
             for (auto it = item.begin(); it != item.end(); ++it)
             {
@@ -131,7 +131,7 @@ class pretty_printer_t
         m_os << "}";
     }
 
-    void print_value(const value_t& item, bool inline_mode)
+    void print_value(const node_t& item, bool inline_mode)
     {
         if (const auto maybe_list = item.if_list())
         {
@@ -150,7 +150,7 @@ class pretty_printer_t
 public:
     pretty_printer_t(std::ostream& os, const pretty_print_options_t& options) : m_os{ os }, m_options{ options } { }
 
-    std::ostream& operator()(const value_t& item)
+    std::ostream& operator()(const node_t& item)
     {
         print_value(item, false);
         write_newline();
@@ -160,13 +160,13 @@ public:
 
 }  // namespace detail
 
-inline void pretty_print(std::ostream& os, const value_t& item, const pretty_print_options_t& options = {})
+inline void pretty_print(std::ostream& os, const node_t& item, const pretty_print_options_t& options = {})
 {
     detail::pretty_printer_t printer(os, options);
     printer(item);
 }
 
-inline std::string to_pretty_string(const value_t& item, const pretty_print_options_t& options = {})
+inline std::string to_pretty_string(const node_t& item, const pretty_print_options_t& options = {})
 {
     std::ostringstream ss;
     pretty_print(ss, item, options);

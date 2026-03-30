@@ -18,6 +18,11 @@ namespace zx
 namespace nested_text
 {
 
+inline bool is_space(char ch)
+{
+    return std::isspace(static_cast<unsigned char>(ch));
+}
+
 template <class K, class V>
 struct ordered_map
 {
@@ -176,82 +181,82 @@ struct unboxing_visitor_t
 template <class Visitor>
 unboxing_visitor_t(Visitor&&) -> unboxing_visitor_t<std::decay_t<Visitor>>;
 
-struct value_t;
+struct node_t;
 
 using string_t = std::string;
 
-struct list_t : public std::vector<value_t>
+struct list_t : public std::vector<node_t>
 {
-    using base_t = std::vector<value_t>;
+    using base_t = std::vector<node_t>;
     using base_t::base_t;
 
     friend std::ostream& operator<<(std::ostream& os, const list_t& item);
 };
 
-struct map_t : public ordered_map<string_t, value_t>
+struct map_t : public ordered_map<string_t, node_t>
 {
-    using base_t = ordered_map<string_t, value_t>;
+    using base_t = ordered_map<string_t, node_t>;
     using base_t::base_t;
 
     friend std::ostream& operator<<(std::ostream& os, const map_t& item);
 };
 
-enum class value_type_t
+enum class node_type_t
 {
     string,
     list,
     map,
 };
 
-inline std::ostream& operator<<(std::ostream& os, const value_type_t item)
+inline std::ostream& operator<<(std::ostream& os, const node_type_t item)
 {
     switch (item)
     {
-        case value_type_t::string: os << "string"; break;
-        case value_type_t::list: os << "list"; break;
-        case value_type_t::map: os << "map"; break;
+        case node_type_t::string: os << "string"; break;
+        case node_type_t::list: os << "list"; break;
+        case node_type_t::map: os << "map"; break;
     }
 
     return os;
 }
 
-struct value_t
+struct node_t
 {
     using data_type = std::variant<string_t, box_t<list_t>, box_t<map_t>>;
 
     data_type m_data;
 
-    value_t() : value_t{ "" } { }
-    value_t(string_t value) : m_data(std::move(value)) { }
-    value_t(const char* value) : m_data(std::string(value)) { }
-    value_t(list_t value) : m_data(std::move(value)) { }
-    value_t(map_t value) : m_data(std::move(value)) { }
+    node_t() : node_t{ "" } { }
+    node_t(string_t value) : m_data(std::move(value)) { }
+    node_t(const char* value) : m_data(std::string(value)) { }
+    node_t(list_t value) : m_data(std::move(value)) { }
+    node_t(map_t value) : m_data(std::move(value)) { }
 
-    value_t(const value_t&) = default;
-    value_t(value_t&&) noexcept = default;
+    node_t(const node_t&) = default;
+    node_t(node_t&&) noexcept = default;
 
-    value_t& operator=(const value_t& other) = default;
-    value_t& operator=(value_t&&) noexcept = default;
+    node_t& operator=(const node_t& other) = default;
+    node_t& operator=(node_t&&) noexcept = default;
 
-    value_type_t type() const
+    node_type_t type() const
     {
         switch (m_data.index())
         {
-            case 0: return value_type_t::string;
-            case 1: return value_type_t::list;
-            case 2: return value_type_t::map;
+            case 0: return node_type_t::string;
+            case 1: return node_type_t::list;
+            case 2: return node_type_t::map;
             default: throw std::logic_error{ "Invalid variant index" };
         }
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const value_t& item);
+    friend std::ostream& operator<<(std::ostream& os, const node_t& item);
 
-    friend constexpr bool operator==(const value_t& lhs, const value_t& rhs);
-    friend constexpr bool operator!=(const value_t& lhs, const value_t& rhs);
-    friend constexpr bool operator<(const value_t& lhs, const value_t& rhs);
-    friend constexpr bool operator>(const value_t& lhs, const value_t& rhs);
-    friend constexpr bool operator<=(const value_t& lhs, const value_t& rhs);
-    friend constexpr bool operator>=(const value_t& lhs, const value_t& rhs);
+    friend constexpr bool operator==(const node_t& lhs, const node_t& rhs);
+    friend constexpr bool operator!=(const node_t& lhs, const node_t& rhs);
+    friend constexpr bool operator<(const node_t& lhs, const node_t& rhs);
+    friend constexpr bool operator>(const node_t& lhs, const node_t& rhs);
+    friend constexpr bool operator<=(const node_t& lhs, const node_t& rhs);
+    friend constexpr bool operator>=(const node_t& lhs, const node_t& rhs);
 
     constexpr const string_t* if_string() const { return std::get_if<string_t>(&m_data); }
 
@@ -300,10 +305,10 @@ struct value_t
         throw std::runtime_error{ zx::str("expected type: map, actual: ", type()) };
     }
 
-    maybe_t<const value_t&> get(const list_t& path) const
+    maybe_t<const node_t&> get(const list_t& path) const
     {
-        const value_t* current = this;
-        for (const value_t& item : path)
+        const node_t* current = this;
+        for (const node_t& item : path)
         {
             const string_t& key = item.as_string();
             if (const map_t* map = current->if_map())
@@ -320,17 +325,18 @@ struct value_t
             }
             else if (const list_t* list = current->if_list())
             {
-                const maybe_t<std::size_t> index = std::invoke([&]() -> maybe_t<std::size_t>
-                {
-                    try
+                const maybe_t<std::size_t> index = std::invoke(
+                    [&]() -> maybe_t<std::size_t>
                     {
-                        return std::stoul(key);
-                    }
-                    catch (const std::exception&)
-                    {
-                        return none;
-                    }
-                });
+                        try
+                        {
+                            return std::stoul(key);
+                        }
+                        catch (const std::exception&)
+                        {
+                            return none;
+                        }
+                    });
                 if (index && *index < list->size())
                 {
                     current = &(*list)[*index];
@@ -346,57 +352,27 @@ struct value_t
                 return none;
             }
         }
-        return current ? maybe_t<const value_t&>{ *current } : none;
+        return current ? maybe_t<const node_t&>{ *current } : none;
     }
 };
-
-inline std::ostream& operator<<(std::ostream& os, const list_t& item)
-{
-    os << "[";
-    for (auto it = item.begin(); it != item.end(); ++it)
-    {
-        if (it != item.begin())
-        {
-            os << " ";
-        }
-        os << *it;
-    }
-    os << "]";
-    return os;
-}
-
-inline std::ostream& operator<<(std::ostream& os, const map_t& item)
-{
-    os << "{";
-    for (auto it = item.begin(); it != item.end(); ++it)
-    {
-        if (it != item.begin())
-        {
-            os << " ";
-        }
-        os << ":" << it->first << " " << it->second;
-    }
-    os << "}";
-    return os;
-}
 
 namespace detail
 {
 
 template <class T>
-value_type_t type(const T&)
+node_type_t type(const T&)
 {
     if constexpr (std::is_same_v<T, string_t>)
     {
-        return value_type_t::string;
+        return node_type_t::string;
     }
     else if constexpr (std::is_same_v<T, list_t>)
     {
-        return value_type_t::list;
+        return node_type_t::list;
     }
     else if constexpr (std::is_same_v<T, map_t>)
     {
-        return value_type_t::map;
+        return node_type_t::map;
     }
 }
 
@@ -404,19 +380,48 @@ struct print_visitor_t
 {
     std::ostream& os;
 
-    void operator()(const string_t& v) const
+    void operator()(const string_t& item) const
     {
-        if (v.empty() || std::any_of(v.begin(), v.end(), [](char ch) { return std::isspace(ch) || ch == '"'; }))
+        if (item.empty() || std::any_of(item.begin(), item.end(), [](char ch) { return is_space(ch) || ch == '"'; }))
         {
-            os << std::quoted(v);
+            os << std::quoted(item);
         }
         else
         {
-            os << v;
+            os << item;
         }
     }
-    void operator()(const list_t& v) const { os << v; }
-    void operator()(const map_t& v) const { os << v; }
+
+    void operator()(const list_t& item) const
+    {
+        os << "[";
+        for (auto it = item.begin(); it != item.end(); ++it)
+        {
+            if (it != item.begin())
+            {
+                os << " ";
+            }
+            (*this)(*it);
+        }
+        os << "]";
+    }
+
+    void operator()(const map_t& item) const
+    {
+        os << "{";
+        for (auto it = item.begin(); it != item.end(); ++it)
+        {
+            if (it != item.begin())
+            {
+                os << " ";
+            }
+            os << ":" << it->first << " ";
+            (*this)(it->second);
+        }
+        os << "}";
+    }
+
+    void operator()(const node_t& item) const { std::visit(unboxing_visitor_t{ *this }, item.m_data); }
 };
 
 struct eq_visitor_t
@@ -447,39 +452,51 @@ struct lt_visitor_t
 
 }  // namespace detail
 
-inline std::ostream& operator<<(std::ostream& os, const value_t& item)
+inline std::ostream& operator<<(std::ostream& os, const list_t& item)
 {
-    std::visit(unboxing_visitor_t{ detail::print_visitor_t{ os } }, item.m_data);
+    detail::print_visitor_t{ os }(item);
     return os;
 }
 
-inline constexpr bool operator==(const value_t& lhs, const value_t& rhs)
+inline std::ostream& operator<<(std::ostream& os, const map_t& item)
+{
+    detail::print_visitor_t{ os }(item);
+    return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const node_t& item)
+{
+    detail::print_visitor_t{ os }(item);
+    return os;
+}
+
+inline constexpr bool operator==(const node_t& lhs, const node_t& rhs)
 {
     return std::visit(unboxing_visitor_t{ detail::eq_visitor_t{} }, lhs.m_data, rhs.m_data);
 }
 
-inline constexpr bool operator<(const value_t& lhs, const value_t& rhs)
+inline constexpr bool operator<(const node_t& lhs, const node_t& rhs)
 {
     return std::visit(unboxing_visitor_t{ detail::lt_visitor_t{} }, lhs.m_data, rhs.m_data);
 }
 
-inline constexpr bool operator>(const value_t& lhs, const value_t& rhs)
+inline constexpr bool operator>(const node_t& lhs, const node_t& rhs)
 {
     return rhs < lhs;
 }
 
-inline constexpr bool operator<=(const value_t& lhs, const value_t& rhs)
+inline constexpr bool operator<=(const node_t& lhs, const node_t& rhs)
 {
     return !(lhs > rhs);
 }
 
-inline constexpr bool operator>=(const value_t& lhs, const value_t& rhs)
+inline constexpr bool operator>=(const node_t& lhs, const node_t& rhs)
 {
     return !(lhs < rhs);
 }
 
 template <class... Args>
-value_t text(const Args&... args)
+node_t text(const Args&... args)
 {
     return str(args...);
 }

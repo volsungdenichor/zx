@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <cstring>
-#include <zx/nested_text/value.hpp>
+#include <zx/nested_text/node.hpp>
 
 namespace zx
 {
@@ -15,14 +15,20 @@ struct codec_t
 };
 
 template <class T>
-value_t encode(const T& value)
+node_t encode(const T& value)
 {
     static const codec_t<T> codec = {};
     return codec.encode(value);
 }
 
 template <class T>
-T decode(const value_t& value)
+void encode(node_t& out, const T& in)
+{
+    out = encode(in);
+}
+
+template <class T>
+T decode(const node_t& value)
 {
     static const codec_t<T> codec = {};
     try
@@ -35,18 +41,24 @@ T decode(const value_t& value)
     }
 }
 
+template <class T>
+void decode(T& out, const node_t& in)
+{
+    out = decode<T>(in);
+}
+
 template <>
 struct codec_t<std::string>
 {
-    value_t encode(const std::string& in) const { return in; }
+    node_t encode(const std::string& in) const { return in; }
 
-    std::string decode(const value_t& in) const { return in.as_string(); }
+    std::string decode(const node_t& in) const { return in.as_string(); }
 };
 
 template <class T>
-struct stream_encooder_t
+struct stream_encoder_t
 {
-    value_t encode(const T& in) const
+    node_t encode(const T& in) const
     {
         std::ostringstream os;
         os << in;
@@ -57,7 +69,7 @@ struct stream_encooder_t
 template <class T>
 struct stream_decoder_t
 {
-    T decode(const value_t& in) const
+    T decode(const node_t& in) const
     {
         const auto s = in.as_string();
         std::istringstream is(s);
@@ -72,7 +84,7 @@ struct stream_decoder_t
 };
 
 template <class T>
-struct stream_codec_t : stream_encooder_t<T>, stream_decoder_t<T>
+struct stream_codec_t : stream_encoder_t<T>, stream_decoder_t<T>
 {
 };
 
@@ -85,7 +97,7 @@ struct codec_t<T, std::enable_if_t<std::is_integral_v<T>>> : stream_codec_t<T>
 template <class T>
 struct codec_t<std::vector<T>>
 {
-    value_t encode(const std::vector<T>& in) const
+    node_t encode(const std::vector<T>& in) const
     {
         list_t out;
         out.reserve(in.size());
@@ -96,12 +108,12 @@ struct codec_t<std::vector<T>>
         return out;
     }
 
-    std::vector<T> decode(const value_t& in) const
+    std::vector<T> decode(const node_t& in) const
     {
         const list_t& list = in.as_list();
         std::vector<T> out;
         out.reserve(list.size());
-        for (const value_t& item : list)
+        for (const node_t& item : list)
         {
             out.push_back(nested_text::decode<T>(item));
         }
@@ -114,8 +126,8 @@ struct struct_codec_t
 {
     struct member_t
     {
-        using encode_fn_t = value_t (*)(const T&, const void*);
-        using decode_fn_t = void (*)(T&, const value_t&, const void*);
+        using encode_fn_t = node_t (*)(const T&, const void*);
+        using decode_fn_t = void (*)(T&, const node_t&, const void*);
 
         std::string m_name;
         std::uintptr_t m_member[2];
@@ -137,7 +149,7 @@ struct struct_codec_t
         }
 
         template <class Type>
-        static value_t encode_thunk(const T& obj, const void* ptr)
+        static node_t encode_thunk(const T& obj, const void* ptr)
         {
             Type T::*member;
             std::memcpy(&member, ptr, sizeof(member));
@@ -145,7 +157,7 @@ struct struct_codec_t
         }
 
         template <class Type>
-        static void decode_thunk(T& obj, const value_t& value, const void* ptr)
+        static void decode_thunk(T& obj, const node_t& value, const void* ptr)
         {
             Type T::*member;
             std::memcpy(&member, ptr, sizeof(member));
@@ -157,7 +169,7 @@ struct struct_codec_t
 
     struct_codec_t(std::vector<member_t> members) : m_members(std::move(members)) { }
 
-    value_t encode(const T& in) const
+    node_t encode(const T& in) const
     {
         map_t out;
         for (const member_t& member : m_members)
@@ -167,7 +179,7 @@ struct struct_codec_t
         return out;
     }
 
-    T decode(const value_t& in) const
+    T decode(const node_t& in) const
     {
         const map_t& map = in.as_map();
         T out{};

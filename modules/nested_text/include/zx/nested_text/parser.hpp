@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdexcept>
-#include <zx/nested_text/value.hpp>
+#include <zx/nested_text/node.hpp>
 
 namespace zx
 {
@@ -92,7 +92,7 @@ public:
         {
             const char ch = m_content[m_pos];
 
-            if (std::isspace(ch) || ch == ',')
+            if (is_space(ch) || ch == ',')
             {
                 get();
             }
@@ -118,7 +118,7 @@ class parser_t
     bool is_delimiter(char ch) const
     {
         static const std::string delimiters = "[]{};,\"\\:";
-        return std::isspace(ch) || delimiters.find(ch) != std::string::npos;
+        return is_space(ch) || delimiters.find(ch) != std::string::npos;
     }
 
     std::tuple<std::string, location_t> read_token()
@@ -139,7 +139,7 @@ class parser_t
         return { std::move(token), start_loc };
     }
 
-    value_t parse_string()
+    node_t parse_string()
     {
         const location_t start_loc = m_stream.location();
         m_stream.get();
@@ -227,9 +227,9 @@ class parser_t
         }
     }
 
-    value_t parse_list() { return parse_collection<list_t>('[', ']', "Unterminated list").first; }
+    node_t parse_list() { return parse_collection<list_t>('[', ']', "Unterminated list").first; }
 
-    value_t parse_map()
+    node_t parse_map()
     {
         const location_t start_loc = m_stream.location();
         m_stream.get();
@@ -271,9 +271,9 @@ class parser_t
 public:
     parser_t(stream_t& stream) : m_stream(stream) { }
 
-    value_t parse_value()
+    node_t parse_value()
     {
-        using parse_fn = value_t (parser_t::*)();
+        using parse_fn = node_t (parser_t::*)();
 
         static const std::vector<std::tuple<char, parse_fn>> parsers = {
             { '"', &parser_t::parse_string },
@@ -316,12 +316,12 @@ public:
 
 struct parse_fn
 {
-    value_t operator()(std::string_view text) const
+    node_t operator()(std::string_view text) const
     {
-        std::vector<value_t> values = read_values(text);
+        std::vector<node_t> values = read_values(text);
         if (values.empty())
         {
-            return value_t{};
+            return node_t{};
         }
         else if (values.size() == 1)
         {
@@ -335,12 +335,12 @@ struct parse_fn
         }
     }
 
-    static std::vector<value_t> read_values(std::string_view text)
+    static std::vector<node_t> read_values(std::string_view text)
     {
         stream_t stream(text);
         parser_t parser(stream);
 
-        std::vector<value_t> values = {};
+        std::vector<node_t> values = {};
 
         while (true)
         {

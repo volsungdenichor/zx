@@ -55,30 +55,30 @@ void ExpectParseError(std::string_view text, std::string_view message)
 
 TEST(nested_text, empty)
 {
-    EXPECT_THAT(zx::nested_text::value_t{}, WhenSerialized(R"("")"));
+    EXPECT_THAT(zx::nested_text::node_t{}, WhenSerialized(R"("")"));
 }
 
 TEST(nested_text, initial)
 {
-    EXPECT_THAT(zx::nested_text::value_t{ "123" }, WhenSerialized("123"));
+    EXPECT_THAT(zx::nested_text::node_t{ "123" }, WhenSerialized("123"));
 }
 
 TEST(nested_text, quoted)
 {
-    EXPECT_THAT(zx::nested_text::value_t{ "Z Y" }, WhenSerialized(R"("Z Y")"));
+    EXPECT_THAT(zx::nested_text::node_t{ "Z Y" }, WhenSerialized(R"("Z Y")"));
 }
 
 TEST(nested_text, list)
 {
     EXPECT_THAT(
-        (zx::nested_text::value_t{ zx::nested_text::list_t{ "123", zx::nested_text::list_t{ "X", "Y y" } } }),
+        (zx::nested_text::node_t{ zx::nested_text::list_t{ "123", zx::nested_text::list_t{ "X", "Y y" } } }),
         WhenSerialized(R"([123 [X "Y y"]])"));
 }
 
 TEST(nested_text, map)
 {
     EXPECT_THAT(
-        (zx::nested_text::value_t{
+        (zx::nested_text::node_t{
             zx::nested_text::map_t{ { "a", "123" }, { "b", zx::nested_text::list_t{ "X", "Y y" } } } }),
         WhenSerialized(R"({:a 123 :b [X "Y y"]})"));
 }
@@ -86,7 +86,7 @@ TEST(nested_text, map)
 TEST(nested_text, tree)
 {
     EXPECT_THAT(
-        (zx::nested_text::value_t{ zx::nested_text::list_t{
+        (zx::nested_text::node_t{ zx::nested_text::list_t{
             "World",
             zx::nested_text::list_t{
                 "Europe",
@@ -110,26 +110,26 @@ TEST(nested_text, tree)
 
 TEST(nested_text, parse_empty)
 {
-    EXPECT_THAT(zx::nested_text::parse(""), testing::Eq(zx::nested_text::value_t{}));
+    EXPECT_THAT(zx::nested_text::parse(""), testing::Eq(zx::nested_text::node_t{}));
 }
 
 TEST(nested_text, parse_string_with_escapes)
 {
-    EXPECT_THAT(zx::nested_text::parse("\"line\\n\\t\\\"\\\\\""), testing::Eq(zx::nested_text::value_t{ "line\n\t\"\\" }));
+    EXPECT_THAT(zx::nested_text::parse("\"line\\n\\t\\\"\\\\\""), testing::Eq(zx::nested_text::node_t{ "line\n\t\"\\" }));
 }
 
 TEST(nested_text, parse_list_with_comments_and_commas)
 {
     EXPECT_THAT(
         zx::nested_text::parse("[alpha, ; ignore this\n \"beta gamma\"]"),
-        testing::Eq(zx::nested_text::value_t{ zx::nested_text::list_t{ "alpha", "beta gamma" } }));
+        testing::Eq(zx::nested_text::node_t{ zx::nested_text::list_t{ "alpha", "beta gamma" } }));
 }
 
 TEST(nested_text, parse_map_with_nested_values)
 {
     EXPECT_THAT(
         zx::nested_text::parse(R"({:a 123 :b [X "Y y"]})"),
-        testing::Eq(zx::nested_text::value_t{ zx::nested_text::map_t{
+        testing::Eq(zx::nested_text::node_t{ zx::nested_text::map_t{
             { "a", "123" },
             { "b", zx::nested_text::list_t{ "X", "Y y" } },
         } }));
@@ -139,7 +139,7 @@ TEST(nested_text, parse_multiple_top_level_values_as_list)
 {
     EXPECT_THAT(
         zx::nested_text::parse(R"(123 "two words" x)"),
-        testing::Eq(zx::nested_text::value_t{ zx::nested_text::list_t{
+        testing::Eq(zx::nested_text::node_t{ zx::nested_text::list_t{
             "123",
             "two words",
             "x",
@@ -163,9 +163,9 @@ TEST(nested_text, parse_top_level_colon_reports_error)
 
 TEST(nested_text, mixed_type_ordering)
 {
-    const zx::nested_text::value_t as_string{ "s" };
-    const zx::nested_text::value_t as_list{ zx::nested_text::list_t{ "s" } };
-    const zx::nested_text::value_t as_map{ zx::nested_text::map_t{ { "k", "v" } } };
+    const zx::nested_text::node_t as_string{ "s" };
+    const zx::nested_text::node_t as_list{ zx::nested_text::list_t{ "s" } };
+    const zx::nested_text::node_t as_map{ zx::nested_text::map_t{ { "k", "v" } } };
 
     EXPECT_TRUE(as_string < as_list);
     EXPECT_TRUE(as_list < as_map);
@@ -179,7 +179,7 @@ TEST(nested_text, mixed_type_ordering)
 TEST(nested_text, tree_pretty_print)
 {
     EXPECT_THAT(
-        (zx::nested_text::to_pretty_string(zx::nested_text::value_t{ zx::nested_text::list_t{
+        (zx::nested_text::to_pretty_string(zx::nested_text::node_t{ zx::nested_text::list_t{
             "World",
             zx::nested_text::list_t{
                 "Europe",
@@ -214,7 +214,7 @@ TEST(nested_text, tree_pretty_print)
 
 TEST(nested_text, path_based_access)
 {
-    zx::nested_text::value_t data = zx::nested_text::parse(R"(
+    zx::nested_text::node_t data = zx::nested_text::parse(R"(
         [
             { :name "Alice" :age 30 }
             { :name "Bob" :age 25 }
