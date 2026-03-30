@@ -49,6 +49,18 @@ TEST(nested_text_serialization, vector)
         testing::Eq(std::vector<int>{ 1, 2, 3 }));
 }
 
+TEST(nested_text_serialization, bool)
+{
+    EXPECT_THAT(zx::nested_text::encode(true), testing::Eq(zx::nested_text::node_t{ "true" }));
+    EXPECT_THAT(zx::nested_text::encode(false), testing::Eq(zx::nested_text::node_t{ "false" }));
+    EXPECT_THAT((zx::nested_text::decode<bool>(zx::nested_text::node_t{ "true" })), testing::Eq(true));
+    EXPECT_THAT((zx::nested_text::decode<bool>(zx::nested_text::node_t{ "false" })), testing::Eq(false));
+    EXPECT_THAT(
+        []() { zx::nested_text::decode<bool>(zx::nested_text::list_t{ "not a bool" }); },
+        testing::ThrowsMessage<std::runtime_error>(
+            testing::HasSubstr("Failed to decode bool: expected type: string, actual: list")));
+}
+
 TEST(nested_text_serialization, struct)
 {
     TestStruct test_struct{ 42, "Answer", { 1, 2, 3 } };

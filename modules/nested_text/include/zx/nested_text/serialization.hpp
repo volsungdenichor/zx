@@ -37,7 +37,7 @@ T decode(const node_t& value)
     }
     catch (const std::exception& e)
     {
-        std::throw_with_nested(std::runtime_error{ str("Failed to decode value: ", e.what()) });
+        throw std::runtime_error{ str("Failed to decode ", type_name<T>(), ": ", e.what()) };
     }
 }
 
@@ -53,6 +53,26 @@ struct codec_t<std::string>
     node_t encode(const std::string& in) const { return in; }
 
     std::string decode(const node_t& in) const { return in.as_string(); }
+};
+
+template <>
+struct codec_t<bool>
+{
+    node_t encode(const bool in) const { return in ? "true" : "false"; }
+
+    bool decode(const node_t& in) const
+    {
+        const auto s = in.as_string();
+        if (s == "true")
+        {
+            return true;
+        }
+        if (s == "false")
+        {
+            return false;
+        }
+        throw std::runtime_error{ str("Expected 'true' or 'false', got '", s, "'") };
+    }
 };
 
 template <class T>
