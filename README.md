@@ -70,7 +70,7 @@ include(FetchContent)
 
 FetchContent_Declare(
     zx
-    GIT_REPOSITORY https://github.com/<user>/zx.git
+    GIT_REPOSITORY git@github.com:volsungdenichor/zx.git
     GIT_TAG        main
 )
 
