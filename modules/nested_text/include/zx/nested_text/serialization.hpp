@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <optional>
 #include <vector>
 #include <zx/nested_text/node.hpp>
 
@@ -24,12 +25,6 @@ node_t encode(const T& value)
 }
 
 template <class T>
-void encode(node_t& out, const T& in)
-{
-    out = encode(in);
-}
-
-template <class T>
 T decode(const node_t& value)
 {
     static const codec_t<T> codec = {};
@@ -41,12 +36,6 @@ T decode(const node_t& value)
     {
         throw std::runtime_error{ str("Failed to decode ", type_name<T>(), ": ", e.what()) };
     }
-}
-
-template <class T>
-void decode(T& out, const node_t& in)
-{
-    out = decode<T>(in);
 }
 
 template <>
@@ -113,7 +102,11 @@ struct stream_codec_t : stream_encoder_t<T>, stream_decoder_t<T>
 template <class T>
 struct codec_t<T, std::enable_if_t<std::is_integral_v<T>>> : stream_codec_t<T>
 {
-    static_assert(std::is_integral_v<T>, "codec_t<T> requires T to be an integral type");
+};
+
+template <class T>
+struct codec_t<T, std::enable_if_t<std::is_floating_point_v<T>>> : stream_codec_t<T>
+{
 };
 
 template <class T>
@@ -170,6 +163,36 @@ struct codec_t<std::array<T, N>>
             out[i] = nested_text::decode<T>(list[i]);
         }
         return out;
+    }
+};
+
+template <class T>
+struct codec_t<std::optional<T>>
+{
+    node_t encode(const std::optional<T>& in) const
+    {
+        if (in)
+        {
+            return map_t{ { "some", nested_text::encode(*in) } };
+        }
+        else
+        {
+            return map_t{};
+        }
+    }
+
+    std::optional<T> decode(const node_t& in) const
+    {
+        const map_t& map = in.as_map();
+        if (map.size() > 1)
+        {
+            throw std::runtime_error{ str("Expected map of size 0 or 1 for optional value, got size ", map.size()) };
+        }
+        if (map.empty())
+        {
+            return std::nullopt;
+        }
+        return nested_text::decode<T>(map.at("some"));
     }
 };
 

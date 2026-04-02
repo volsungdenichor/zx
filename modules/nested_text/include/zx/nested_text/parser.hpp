@@ -183,6 +183,10 @@ class parser_t
 
     string_t parse_keyword()
     {
+        if (m_stream.peek().value != ':')
+        {
+            throw parse_error{ "Map keys must be keywords", m_stream.location() };
+        }
         const location_t start_loc = m_stream.location();
         m_stream.get();
 
@@ -249,11 +253,6 @@ class parser_t
             {
                 m_stream.get();
                 return result;
-            }
-
-            if (m_stream.peek().value != ':')
-            {
-                throw parse_error{ "Map keys must be keywords", m_stream.location() };
             }
 
             string_t key = parse_keyword();
@@ -327,12 +326,7 @@ struct parse_fn
         {
             return values[0];
         }
-        else
-        {
-            list_t result = {};
-            result.insert(result.end(), values.begin(), values.end());
-            return result;
-        }
+        return list_t{ values.begin(), values.end() };
     }
 
     static std::vector<node_t> read_values(std::string_view text)

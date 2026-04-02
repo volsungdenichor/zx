@@ -29,6 +29,7 @@ struct ordered_map
     using key_type = K;
     using mapped_type = V;
     using value_type = std::pair<key_type, mapped_type>;
+    using size_type = std::size_t;
 
     std::vector<value_type> m_items;
 
@@ -54,7 +55,7 @@ struct ordered_map
     constexpr const_iterator cbegin() const { return begin(); }
     constexpr const_iterator cend() const { return end(); }
     constexpr bool empty() const { return m_items.empty(); }
-    constexpr std::size_t size() const { return m_items.size(); }
+    constexpr size_type size() const { return m_items.size(); }
 
     const_iterator find(const key_type& key) const
     {
@@ -99,6 +100,9 @@ struct ordered_map
         }
         return it->second;
     }
+
+    bool contains(const key_type& key) const { return find(key) != end(); }
+    size_type count(const key_type& key) const { return contains(key) ? 1 : 0; }
 
     friend constexpr bool operator==(const ordered_map& lhs, const ordered_map& rhs) { return lhs.m_items == rhs.m_items; }
     friend constexpr bool operator!=(const ordered_map& lhs, const ordered_map& rhs) { return !(lhs == rhs); }
@@ -382,7 +386,11 @@ struct print_visitor_t
 
     void operator()(const string_t& item) const
     {
-        if (item.empty() || std::any_of(item.begin(), item.end(), [](char ch) { return is_space(ch) || ch == '"'; }))
+        if (item.empty()
+            || std::any_of(
+                item.begin(),
+                item.end(),
+                [](char ch) { return is_space(ch) || std::string_view("\"[]{}").find(ch) != std::string_view::npos; }))
         {
             os << std::quoted(item);
         }
