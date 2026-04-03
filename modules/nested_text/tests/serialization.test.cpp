@@ -76,6 +76,39 @@ TEST(nested_text_serialization, optional)
         testing::Eq(std::optional{ 42 }));
 }
 
+TEST(nested_text_serialization, maybe)
+{
+    EXPECT_THAT(
+        zx::nested_text::encode(zx::maybe_t<int>{}), testing::Eq(zx::nested_text::node_t{ zx::nested_text::map_t{} }));
+    EXPECT_THAT(
+        zx::nested_text::encode(zx::maybe_t<int>{ 42 }),
+        testing::Eq(zx::nested_text::node_t{ zx::nested_text::map_t{ { "some", "42" } } }));
+    EXPECT_THAT(
+        (zx::nested_text::decode<zx::maybe_t<int>>(zx::nested_text::node_t{ zx::nested_text::map_t{} })),
+        testing::Eq(zx::maybe_t<int>{}));
+    EXPECT_THAT(
+        (zx::nested_text::decode<zx::maybe_t<int>>(zx::nested_text::node_t{ zx::nested_text::map_t{ { "some", "42" } } })),
+        testing::Eq(zx::maybe_t<int>{ 42 }));
+}
+
+TEST(nested_text_serialization, result)
+{
+    EXPECT_THAT(
+        zx::nested_text::encode(zx::result_t<int, std::string>{ 42 }),
+        testing::Eq(zx::nested_text::node_t{ zx::nested_text::map_t{ { "ok", "42" } } }));
+    EXPECT_THAT(
+        zx::nested_text::encode(zx::result_t<int, std::string>{ zx::error("error message") }),
+        testing::Eq(zx::nested_text::node_t{ zx::nested_text::map_t{ { "error", "error message" } } }));
+    EXPECT_THAT(
+        (zx::nested_text::decode<zx::result_t<int, std::string>>(
+            zx::nested_text::node_t{ zx::nested_text::map_t{ { "ok", "42" } } })),
+        testing::Eq(zx::result_t<int, std::string>{ 42 }));
+    EXPECT_THAT(
+        (zx::nested_text::decode<zx::result_t<int, std::string>>(
+            zx::nested_text::node_t{ zx::nested_text::map_t{ { "error", "error message" } } })),
+        testing::Eq(zx::result_t<int, std::string>{ zx::error("error message") }));
+}
+
 TEST(nested_text_serialization, struct)
 {
     TestStruct test_struct{ 42, "Answer", { 1, 2, 3 } };

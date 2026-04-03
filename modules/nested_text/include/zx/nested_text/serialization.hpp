@@ -6,6 +6,7 @@
 #include <optional>
 #include <vector>
 #include <zx/nested_text/node.hpp>
+#include <zx/result.hpp>
 
 namespace zx
 {
@@ -197,6 +198,70 @@ struct codec_t<std::optional<T>>
 };
 
 template <class T>
+struct codec_t<maybe_t<T>>
+{
+    node_t encode(const maybe_t<T>& in) const
+    {
+        if (in)
+        {
+            return map_t{ { "some", nested_text::encode(*in) } };
+        }
+        else
+        {
+            return map_t{};
+        }
+    }
+
+    maybe_t<T> decode(const node_t& in) const
+    {
+        const map_t& map = in.as_map();
+        if (map.size() > 1)
+        {
+            throw std::runtime_error{ str("Expected map of size 0 or 1 for optional value, got size ", map.size()) };
+        }
+        if (map.empty())
+        {
+            return none;
+        }
+        return nested_text::decode<T>(map.at("some"));
+    }
+};
+
+template <class T, class E>
+struct codec_t<result_t<T, E>>
+{
+    node_t encode(const result_t<T, E>& in) const
+    {
+        if (in)
+        {
+            return map_t{ { "ok", nested_text::encode(*in) } };
+        }
+        else
+        {
+            return map_t{ { "error", nested_text::encode(in.error()) } };
+        }
+    }
+
+    result_t<T, E> decode(const node_t& in) const
+    {
+        const map_t& map = in.as_map();
+        if (map.size() != 1)
+        {
+            throw std::runtime_error{ str("Expected map of size 1 for result value, got size ", map.size()) };
+        }
+        if (const auto ok = map.find("ok"); ok != map.end())
+        {
+            return nested_text::decode<T>(ok->second);
+        }
+        else if (const auto err = map.find("error"); err != map.end())
+        {
+            return zx::error(nested_text::decode<E>(err->second));
+        }
+        throw std::runtime_error{ "Expected key 'ok' or 'error' for result value" };
+    }
+};
+
+template <class T>
 struct struct_codec_t
 {
     struct member_t
@@ -246,7 +311,7 @@ struct struct_codec_t
 
     node_t encode(const T& in) const
     {
-        map_t out;
+        map_t out{};
         for (const member_t& member : m_members)
         {
             out.emplace(member.m_name, member.m_encode_fn(in, &member.m_member));
