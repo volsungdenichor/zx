@@ -2,6 +2,7 @@
 
 #include <bitset>
 #include <functional>
+#include <type_traits>
 #include <tuple>
 
 namespace zx
@@ -795,13 +796,19 @@ struct out_fn
 
         reductor_t<State, Reducer> m_reductor;
 
+        constexpr iterator_t() = default;
+        constexpr iterator_t(const iterator_t&) = default;
+        constexpr iterator_t(iterator_t&&) = default;
+        constexpr iterator_t& operator=(const iterator_t&) = default;
+        constexpr iterator_t& operator=(iterator_t&&) = default;
+
         constexpr iterator_t& operator*() { return *this; }
 
         constexpr iterator_t& operator++() { return *this; }
 
         constexpr iterator_t& operator++(int) { return *this; }
 
-        template <class Arg>
+        template <class Arg, std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, iterator_t>, int> = 0>
         constexpr iterator_t& operator=(Arg&& arg)
         {
             m_reductor(std::forward<Arg>(arg));
