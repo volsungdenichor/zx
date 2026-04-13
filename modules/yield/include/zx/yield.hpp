@@ -349,7 +349,7 @@ struct take_while_fn
         step_t reduce(State& state, Args&&... args) const
         {
             m_done |= !std::invoke(m_pred, std::forward<Args>(args)...);
-            return m_done ? m_next_reducer.reduce(state, std::forward<Args>(args)...) : step_t::loop_continue;
+            return !m_done ? m_next_reducer.reduce(state, std::forward<Args>(args)...) : step_t::loop_continue;
         }
     };
 
@@ -365,7 +365,7 @@ struct take_while_fn
         step_t reduce(State& state, Args&&... args) const
         {
             m_done |= !std::invoke(m_pred, m_index++, std::forward<Args>(args)...);
-            return m_done ? m_next_reducer.reduce(state, std::forward<Args>(args)...) : step_t::loop_continue;
+            return !m_done ? m_next_reducer.reduce(state, std::forward<Args>(args)...) : step_t::loop_continue;
         }
     };
 
