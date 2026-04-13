@@ -799,8 +799,27 @@ struct out_fn
         constexpr iterator_t() = default;
         constexpr iterator_t(const iterator_t&) = default;
         constexpr iterator_t(iterator_t&&) = default;
-        constexpr iterator_t& operator=(const iterator_t&) = default;
-        constexpr iterator_t& operator=(iterator_t&&) = default;
+
+        constexpr iterator_t& operator=(const iterator_t& other)
+        {
+            return assign(*this, other);
+        }
+
+        constexpr iterator_t& operator=(iterator_t&& other)
+        {
+            return assign(*this, std::move(other));
+        }
+
+        template <class It>
+        static constexpr iterator_t& assign(iterator_t& self, It&& other)
+        {
+            if (&self != &other)
+            {
+                self.~iterator_t();
+                ::new (static_cast<void*>(&self)) iterator_t(std::forward<It>(other));
+            }
+            return self;
+        }
 
         constexpr iterator_t& operator*() { return *this; }
 
