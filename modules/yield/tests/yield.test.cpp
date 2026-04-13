@@ -57,12 +57,30 @@ TEST(yield, transform)
     EXPECT_THAT(out, testing::ElementsAre(1, 4, 9, 16, 25, 36, 49, 64, 81));
 }
 
+TEST(yield, transform_indexed)
+{
+    std::vector<int> out = {};
+    zx::range(1, 10).yield_to(zx::transduce(
+        zx::transform_indexed([](std::size_t i, int x) { return x * (static_cast<int>(i) + 1); }),
+        zx::copy_to(std::back_inserter(out))));
+    EXPECT_THAT(out, testing::ElementsAre(1, 4, 9, 16, 25, 36, 49, 64, 81));
+}
+
 TEST(yield, filter)
 {
     std::vector<int> out = {};
     zx::range(1, 10).yield_to(
         zx::transduce(zx::filter([](int x) { return x % 2 == 0; }), zx::copy_to(std::back_inserter(out))));
     EXPECT_THAT(out, testing::ElementsAre(2, 4, 6, 8));
+}
+
+TEST(yield, filter_indexed)
+{
+    std::vector<int> out = {};
+    zx::range(1, 10).yield_to(zx::transduce(
+        zx::filter_indexed([](std::size_t i, int x) { return (i % 3 == 0) && x != 4; }),
+        zx::copy_to(std::back_inserter(out))));
+    EXPECT_THAT(out, testing::ElementsAre(1, 7));
 }
 
 TEST(yield, take_while)
@@ -73,12 +91,30 @@ TEST(yield, take_while)
     EXPECT_THAT(out, testing::ElementsAre(1, 2, 3, 4));
 }
 
+TEST(yield, take_while_indexed)
+{
+    std::vector<int> out = {};
+    zx::range(1, 10).yield_to(zx::transduce(
+        zx::take_while_indexed([](std::size_t i, int x) { return (i < 3) && (x < 5); }),
+        zx::copy_to(std::back_inserter(out))));
+    EXPECT_THAT(out, testing::ElementsAre(1, 2, 3));
+}
+
 TEST(yield, drop_while)
 {
     std::vector<int> out = {};
     zx::range(1, 10).yield_to(
         zx::transduce(zx::drop_while([](int x) { return x < 5; }), zx::copy_to(std::back_inserter(out))));
     EXPECT_THAT(out, testing::ElementsAre(5, 6, 7, 8, 9));
+}
+
+TEST(yield, drop_while_indexed)
+{
+    std::vector<int> out = {};
+    zx::range(1, 10).yield_to(zx::transduce(
+        zx::drop_while_indexed([](std::size_t i, int x) { return (i < 3) && (x < 5); }),
+        zx::copy_to(std::back_inserter(out))));
+    EXPECT_THAT(out, testing::ElementsAre(4, 5, 6, 7, 8, 9));
 }
 
 TEST(yield, take)
@@ -130,7 +166,15 @@ TEST(yield, partition)
     std::vector<int> evens = {};
     std::vector<int> odds = {};
     zx::range(1, 10).yield_to(zx::partition(
-        [](int x) { return x % 2 == 0; }, zx::copy_to(std::back_inserter(evens)), zx::copy_to(std::back_inserter(odds))));
-    EXPECT_THAT(evens, testing::ElementsAre(2, 4, 6, 8));
+        [](int x) { return x % 2 == 0; },
+        zx::transduce(zx::transform([](int x) { return x * 10; }), zx::copy_to(std::back_inserter(evens))),
+        zx::copy_to(std::back_inserter(odds))));
+    EXPECT_THAT(evens, testing::ElementsAre(20, 40, 60, 80));
     EXPECT_THAT(odds, testing::ElementsAre(1, 3, 5, 7, 9));
+}
+
+TEST(yield, accumulate)
+{
+    int result = zx::range(1, 10).yield_to(zx::accumulate(1, std::multiplies<>{}));
+    EXPECT_THAT(result, 362880);
 }

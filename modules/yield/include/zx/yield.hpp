@@ -210,10 +210,15 @@ namespace transducers
 
 namespace detail
 {
+
+template <bool Indexed>
 struct transform_fn
 {
+    template <bool Indexed_, class Func, class NextReducer>
+    struct reducer_t;
+
     template <class Func, class NextReducer>
-    struct reducer_t
+    struct reducer_t<false, Func, NextReducer>
     {
         Func m_func;
         NextReducer m_next_reducer;
@@ -225,6 +230,20 @@ struct transform_fn
         }
     };
 
+    template <class Func, class NextReducer>
+    struct reducer_t<true, Func, NextReducer>
+    {
+        Func m_func;
+        NextReducer m_next_reducer;
+        mutable std::size_t m_index = 0;
+
+        template <class State, class... Args>
+        step_t reduce(State& state, Args&&... args) const
+        {
+            return m_next_reducer.reduce(state, std::invoke(m_func, m_index++, std::forward<Args>(args)...));
+        }
+    };
+
     template <class Func>
     struct transducer_t
     {
@@ -233,13 +252,13 @@ struct transform_fn
         template <class Reducer>
         constexpr auto transduce(Reducer&& reducer) const&
         {
-            return reducer_t<Func, std::decay_t<Reducer>>{ m_func, std::forward<Reducer>(reducer) };
+            return reducer_t<Indexed, Func, std::decay_t<Reducer>>{ m_func, std::forward<Reducer>(reducer) };
         }
 
         template <class Reducer>
         constexpr auto transduce(Reducer&& reducer) &&
         {
-            return reducer_t<Func, std::decay_t<Reducer>>{ std::move(m_func), std::forward<Reducer>(reducer) };
+            return reducer_t<Indexed, Func, std::decay_t<Reducer>>{ std::move(m_func), std::forward<Reducer>(reducer) };
         }
     };
 
@@ -250,10 +269,14 @@ struct transform_fn
     }
 };
 
+template <bool Indexed>
 struct filter_fn
 {
+    template <bool Indexed_, class Pred, class NextReducer>
+    struct reducer_t;
+
     template <class Pred, class NextReducer>
-    struct reducer_t
+    struct reducer_t<false, Pred, NextReducer>
     {
         Pred m_pred;
         NextReducer m_next_reducer;
@@ -267,6 +290,22 @@ struct filter_fn
         }
     };
 
+    template <class Pred, class NextReducer>
+    struct reducer_t<true, Pred, NextReducer>
+    {
+        Pred m_pred;
+        NextReducer m_next_reducer;
+        mutable std::size_t m_index = 0;
+
+        template <class State, class... Args>
+        step_t reduce(State& state, Args&&... args) const
+        {
+            return std::invoke(m_pred, m_index++, std::forward<Args>(args)...)
+                       ? m_next_reducer.reduce(state, std::forward<Args>(args)...)
+                       : step_t::loop_continue;
+        }
+    };
+
     template <class Pred>
     struct transducer_t
     {
@@ -275,13 +314,14 @@ struct filter_fn
         template <class NextReducer>
         constexpr auto transduce(NextReducer&& next_reducer) const&
         {
-            return reducer_t<Pred, std::decay_t<NextReducer>>{ m_pred, std::forward<NextReducer>(next_reducer) };
+            return reducer_t<Indexed, Pred, std::decay_t<NextReducer>>{ m_pred, std::forward<NextReducer>(next_reducer) };
         }
 
         template <class NextReducer>
         constexpr auto transduce(NextReducer&& next_reducer) &&
         {
-            return reducer_t<Pred, std::decay_t<NextReducer>>{ std::move(m_pred), std::forward<NextReducer>(next_reducer) };
+            return reducer_t<Indexed, Pred, std::decay_t<NextReducer>>{ std::move(m_pred),
+                                                                        std::forward<NextReducer>(next_reducer) };
         }
     };
 
@@ -292,10 +332,14 @@ struct filter_fn
     }
 };
 
+template <bool Indexed>
 struct take_while_fn
 {
+    template <bool Indexed_, class Pred, class NextReducer>
+    struct reducer_t;
+
     template <class Pred, class NextReducer>
-    struct reducer_t
+    struct reducer_t<false, Pred, NextReducer>
     {
         Pred m_pred;
         NextReducer m_next_reducer;
@@ -305,11 +349,23 @@ struct take_while_fn
         step_t reduce(State& state, Args&&... args) const
         {
             m_done |= !std::invoke(m_pred, std::forward<Args>(args)...);
-            if (!m_done)
-            {
-                return m_next_reducer.reduce(state, std::forward<Args>(args)...);
-            }
-            return step_t::loop_break;
+            return m_done ? m_next_reducer.reduce(state, std::forward<Args>(args)...) : step_t::loop_continue;
+        }
+    };
+
+    template <class Pred, class NextReducer>
+    struct reducer_t<true, Pred, NextReducer>
+    {
+        Pred m_pred;
+        NextReducer m_next_reducer;
+        mutable bool m_done = false;
+        mutable std::size_t m_index = 0;
+
+        template <class State, class... Args>
+        step_t reduce(State& state, Args&&... args) const
+        {
+            m_done |= !std::invoke(m_pred, m_index++, std::forward<Args>(args)...);
+            return m_done ? m_next_reducer.reduce(state, std::forward<Args>(args)...) : step_t::loop_continue;
         }
     };
 
@@ -321,13 +377,14 @@ struct take_while_fn
         template <class NextReducer>
         constexpr auto transduce(NextReducer&& next_reducer) const&
         {
-            return reducer_t<Pred, std::decay_t<NextReducer>>{ m_pred, std::forward<NextReducer>(next_reducer) };
+            return reducer_t<Indexed, Pred, std::decay_t<NextReducer>>{ m_pred, std::forward<NextReducer>(next_reducer) };
         }
 
         template <class NextReducer>
         constexpr auto transduce(NextReducer&& next_reducer) &&
         {
-            return reducer_t<Pred, std::decay_t<NextReducer>>{ std::move(m_pred), std::forward<NextReducer>(next_reducer) };
+            return reducer_t<Indexed, Pred, std::decay_t<NextReducer>>{ std::move(m_pred),
+                                                                        std::forward<NextReducer>(next_reducer) };
         }
     };
 
@@ -338,10 +395,14 @@ struct take_while_fn
     }
 };
 
+template <bool Indexed>
 struct drop_while_fn
 {
+    template <bool Indexed_, class Pred, class NextReducer>
+    struct reducer_t;
+
     template <class Pred, class NextReducer>
-    struct reducer_t
+    struct reducer_t<false, Pred, NextReducer>
     {
         Pred m_pred;
         NextReducer m_next_reducer;
@@ -351,11 +412,23 @@ struct drop_while_fn
         step_t reduce(State& state, Args&&... args) const
         {
             m_done |= !std::invoke(m_pred, std::forward<Args>(args)...);
-            if (m_done)
-            {
-                return m_next_reducer.reduce(state, std::forward<Args>(args)...);
-            }
-            return step_t::loop_continue;
+            return m_done ? m_next_reducer.reduce(state, std::forward<Args>(args)...) : step_t::loop_continue;
+        }
+    };
+
+    template <class Pred, class NextReducer>
+    struct reducer_t<true, Pred, NextReducer>
+    {
+        Pred m_pred;
+        NextReducer m_next_reducer;
+        mutable bool m_done = false;
+        mutable std::size_t m_index = 0;
+
+        template <class State, class... Args>
+        step_t reduce(State& state, Args&&... args) const
+        {
+            m_done |= !std::invoke(m_pred, m_index++, std::forward<Args>(args)...);
+            return m_done ? m_next_reducer.reduce(state, std::forward<Args>(args)...) : step_t::loop_continue;
         }
     };
 
@@ -367,13 +440,14 @@ struct drop_while_fn
         template <class NextReducer>
         constexpr auto transduce(NextReducer&& next_reducer) const&
         {
-            return reducer_t<Pred, std::decay_t<NextReducer>>{ m_pred, std::forward<NextReducer>(next_reducer) };
+            return reducer_t<Indexed, Pred, std::decay_t<NextReducer>>{ m_pred, std::forward<NextReducer>(next_reducer) };
         }
 
         template <class NextReducer>
         constexpr auto transduce(NextReducer&& next_reducer) &&
         {
-            return reducer_t<Pred, std::decay_t<NextReducer>>{ std::move(m_pred), std::forward<NextReducer>(next_reducer) };
+            return reducer_t<Indexed, Pred, std::decay_t<NextReducer>>{ std::move(m_pred),
+                                                                        std::forward<NextReducer>(next_reducer) };
         }
     };
 
@@ -452,10 +526,14 @@ struct drop_fn
 
 }  // namespace detail
 
-static constexpr inline auto transform = detail::transform_fn{};
-static constexpr inline auto filter = detail::filter_fn{};
-static constexpr inline auto take_while = detail::take_while_fn{};
-static constexpr inline auto drop_while = detail::drop_while_fn{};
+static constexpr inline auto transform = detail::transform_fn<false>{};
+static constexpr inline auto transform_indexed = detail::transform_fn<true>{};
+static constexpr inline auto filter = detail::filter_fn<false>{};
+static constexpr inline auto filter_indexed = detail::filter_fn<true>{};
+static constexpr inline auto take_while = detail::take_while_fn<false>{};
+static constexpr inline auto drop_while = detail::drop_while_fn<false>{};
+static constexpr inline auto drop_while_indexed = detail::drop_while_fn<true>{};
+static constexpr inline auto take_while_indexed = detail::take_while_fn<true>{};
 static constexpr inline auto take = detail::take_fn{};
 static constexpr inline auto drop = detail::drop_fn{};
 
@@ -680,6 +758,28 @@ struct partition_fn
     }
 };
 
+struct accumulate_fn
+{
+    template <class Func>
+    struct reducer_t
+    {
+        Func m_func;
+
+        template <class State, class... Args>
+        step_t reduce(State& state, Args&&... args) const
+        {
+            state = std::invoke(m_func, std::move(state), std::forward<Args>(args)...);
+            return step_t::loop_continue;
+        }
+    };
+
+    template <class State, class Func>
+    constexpr auto operator()(State state, Func&& func) const
+    {
+        return reductor_t{ std::move(state), reducer_t<std::decay_t<Func>>{ std::forward<Func>(func) } };
+    }
+};
+
 }  // namespace detail
 
 static constexpr inline auto copy_to = detail::copy_to_fn{};
@@ -691,6 +791,7 @@ static constexpr inline auto fork = detail::fork_fn{};
 static constexpr inline auto sum = detail::sum_fn{};
 static constexpr inline auto count = detail::count_fn{};
 static constexpr inline auto partition = detail::partition_fn{};
+static constexpr inline auto accumulate = detail::accumulate_fn{};
 
 }  // namespace reductors
 
@@ -700,11 +801,16 @@ using generators::range;
 
 using transducers::drop;
 using transducers::drop_while;
+using transducers::drop_while_indexed;
 using transducers::filter;
+using transducers::filter_indexed;
 using transducers::take;
 using transducers::take_while;
+using transducers::take_while_indexed;
 using transducers::transform;
+using transducers::transform_indexed;
 
+using reductors::accumulate;
 using reductors::all_of;
 using reductors::any_of;
 using reductors::copy_to;
