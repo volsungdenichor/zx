@@ -780,6 +780,48 @@ struct accumulate_fn
     }
 };
 
+struct out_fn
+{
+    template <class State, class Reducer>
+    struct iterator_t
+    {
+        using iterator_category = std::output_iterator_tag;
+        using value_type = void;
+        using difference_type = void;
+        using pointer = void;
+        using reference = void;
+        using state_type = State;
+        using reducer_type = Reducer;
+
+        reductor_t<State, Reducer> m_reductor;
+
+        constexpr iterator_t& operator*() { return *this; }
+
+        constexpr iterator_t& operator++() { return *this; }
+
+        constexpr iterator_t& operator++(int) { return *this; }
+
+        template <class Arg>
+        constexpr iterator_t& operator=(Arg&& arg)
+        {
+            m_reductor(std::forward<Arg>(arg));
+            return *this;
+        }
+
+        constexpr const state_type& get() const& { return m_reductor.state; }
+
+        constexpr state_type& get() & { return m_reductor.state; }
+
+        constexpr state_type&& get() && { return std::move(m_reductor.state); }
+    };
+
+    template <class State, class Reducer>
+    constexpr auto operator()(reductor_t<State, Reducer> reductor) const -> iterator_t<State, Reducer>
+    {
+        return { std::move(reductor) };
+    }
+};
+
 }  // namespace detail
 
 static constexpr inline auto copy_to = detail::copy_to_fn{};
@@ -792,6 +834,7 @@ static constexpr inline auto sum = detail::sum_fn{};
 static constexpr inline auto count = detail::count_fn{};
 static constexpr inline auto partition = detail::partition_fn{};
 static constexpr inline auto accumulate = detail::accumulate_fn{};
+static constexpr inline auto out = detail::out_fn{};
 
 }  // namespace reductors
 
@@ -818,6 +861,7 @@ using reductors::count;
 using reductors::fork;
 using reductors::into;
 using reductors::none_of;
+using reductors::out;
 using reductors::partition;
 using reductors::sum;
 

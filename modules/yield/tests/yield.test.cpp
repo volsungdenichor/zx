@@ -178,3 +178,11 @@ TEST(yield, accumulate)
     int result = zx::range(1, 10).yield_to(zx::accumulate(1, std::multiplies<>{}));
     EXPECT_THAT(result, 362880);
 }
+
+TEST(yield, out)
+{
+    std::vector<int> out = {};
+    const std::vector<int> in{ 2, 3, 5, 7, 11, 13, 17, 19 };
+    std::copy(in.begin(), in.end(), zx::out(zx::transduce(zx::transform([](int x) { return x * 2; }), zx::copy_to(std::back_inserter(out)))));
+    EXPECT_THAT(out, testing::ElementsAre(4, 6, 10, 14, 22, 26, 34, 38));
+}
