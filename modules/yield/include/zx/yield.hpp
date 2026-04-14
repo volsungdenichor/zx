@@ -28,6 +28,34 @@ struct reductor_t
     {
         return reducer.reduce(state, std::forward<Args>(args)...);
     }
+
+    template <class Transducer, class = decltype(std::declval<Transducer>().transduce(std::declval<reducer_type>()))>
+    friend constexpr auto operator|=(Transducer&& transducer, const reductor_t& reductor)
+    {
+        return reductor_t<state_type, decltype(transducer.transduce(reductor.reducer))>{
+            reductor.state, transducer.transduce(reductor.reducer)
+        };
+    }
+
+    template <class Transducer, class = decltype(std::declval<Transducer>().transduce(std::declval<reducer_type>()))>
+    friend constexpr auto operator|=(Transducer&& transducer, reductor_t&& reductor)
+    {
+        return reductor_t<state_type, decltype(transducer.transduce(std::move(reductor.reducer)))>{
+            std::move(reductor.state), transducer.transduce(std::move(reductor.reducer))
+        };
+    }
+
+    template <class Generator, class = decltype(std::declval<Generator>().yield_to(std::declval<reductor_t>()))>
+    friend constexpr auto operator|=(Generator&& generator, const reductor_t& reductor) -> state_type
+    {
+        return generator.yield_to(reductor);
+    }
+
+    template <class Generator, class = decltype(std::declval<Generator>().yield_to(std::declval<reductor_t>()))>
+    friend constexpr auto operator|=(Generator&& generator, reductor_t&& reductor) -> state_type
+    {
+        return generator.yield_to(std::move(reductor));
+    }
 };
 
 template <class State, class Reducer>
@@ -116,6 +144,12 @@ struct generator_t
 
 template <class Impl>
 generator_t(Impl&&) -> generator_t<std::decay_t<Impl>>;
+
+template <class Impl>
+constexpr auto generate(Impl&& impl) -> generator_t<std::decay_t<Impl>>
+{
+    return generator_t<std::decay_t<Impl>>{ std::forward<Impl>(impl) };
+}
 
 namespace detail
 {
@@ -912,41 +946,45 @@ struct for_each_fn
     }
 };
 
-template <class T>
-T& assign(T& out, const T& in)
+struct assign_fn
 {
-    if (&out != &in)
+    template <class T>
+    T& operator()(T& out, const T& in) const
     {
-        if constexpr (std::is_trivially_copy_assignable_v<T>)
+        if (&out != &in)
         {
-            out = in;
+            if constexpr (std::is_trivially_copy_assignable_v<T>)
+            {
+                out = in;
+            }
+            else
+            {
+                out.~T();
+                ::new (static_cast<void*>(&out)) T(in);
+            }
         }
-        else
-        {
-            out.~T();
-            ::new (static_cast<void*>(&out)) T(in);
-        }
+        return out;
     }
-    return out;
-}
 
-template <class T>
-T& assign(T& out, T&& in)
-{
-    if (&out != &in)
+    template <class T>
+    T& operator()(T& out, T&& in) const
     {
-        if constexpr (std::is_trivially_copy_assignable_v<T>)
+        if (&out != &in)
         {
-            out = std::move(in);
+            if constexpr (std::is_trivially_copy_assignable_v<T>)
+            {
+                out = std::move(in);
+            }
+            else
+            {
+                out.~T();
+                ::new (static_cast<void*>(&out)) T(std::move(in));
+            }
         }
-        else
-        {
-            out.~T();
-            ::new (static_cast<void*>(&out)) T(std::move(in));
-        }
+        return out;
     }
-    return out;
-}
+};
+static constexpr inline auto assign = assign_fn{};
 
 struct out_fn
 {
@@ -1019,6 +1057,9 @@ static constexpr inline auto for_each_indexed = detail::for_each_fn<true>{};
 using generators::from;
 using generators::iota;
 using generators::range;
+
+using generators::generate;
+using generators::generator_t;
 
 using transducers::drop;
 using transducers::drop_while;
