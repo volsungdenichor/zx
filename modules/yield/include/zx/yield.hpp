@@ -984,6 +984,7 @@ struct assign_fn
         return out;
     }
 };
+
 static constexpr inline auto assign = assign_fn{};
 
 struct out_fn
