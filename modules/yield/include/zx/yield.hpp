@@ -2,8 +2,8 @@
 
 #include <bitset>
 #include <functional>
-#include <type_traits>
 #include <tuple>
+#include <type_traits>
 
 namespace zx
 {
@@ -100,6 +100,22 @@ struct transduce_fn
 
 namespace generators
 {
+
+template <class Impl>
+struct generator_t
+{
+    Impl m_impl;
+
+    template <class State, class Reducer>
+    State yield_to(reductor_t<State, Reducer> reductor) const
+    {
+        std::invoke(m_impl, reductor);
+        return reductor.state;
+    }
+};
+
+template <class Impl>
+generator_t(Impl&&) -> generator_t<std::decay_t<Impl>>;
 
 namespace detail
 {
@@ -525,6 +541,89 @@ struct drop_fn
     constexpr auto operator()(std::ptrdiff_t count) const { return transducer_t{ count }; }
 };
 
+struct join_fn
+{
+    template <class NextReducer>
+    struct reducer_t
+    {
+        NextReducer m_next_reducer;
+
+        template <class State, class Arg>
+        step_t reduce(State& state, Arg&& arg) const
+        {
+            for (auto&& item : arg)
+            {
+                if (m_next_reducer.reduce(state, std::forward<decltype(item)>(item)) == step_t::loop_break)
+                {
+                    return step_t::loop_break;
+                }
+            }
+            return step_t::loop_continue;
+        }
+    };
+
+    struct transducer_t
+    {
+        template <class NextReducer>
+        constexpr auto transduce(NextReducer&& next_reducer) const
+        {
+            return reducer_t<std::decay_t<NextReducer>>{ std::forward<NextReducer>(next_reducer) };
+        }
+    };
+
+    constexpr auto operator()() const { return transducer_t{}; }
+};
+
+struct intersperse_fn
+{
+    template <class Separator, class NextReducer>
+    struct reducer_t
+    {
+        Separator m_separator;
+        NextReducer m_next_reducer;
+        mutable bool m_first = true;
+
+        template <class State, class Arg>
+        step_t reduce(State& state, Arg&& arg) const
+        {
+            if (!m_first)
+            {
+                if (m_next_reducer.reduce(state, m_separator) == step_t::loop_break)
+                {
+                    return step_t::loop_break;
+                }
+            }
+            m_first = false;
+            return m_next_reducer.reduce(state, std::forward<Arg>(arg));
+        }
+    };
+
+    template <class Separator>
+    struct transducer_t
+    {
+        Separator m_separator;
+
+        template <class NextReducer>
+        constexpr auto transduce(NextReducer&& next_reducer) const&
+        {
+            return reducer_t<Separator, std::decay_t<NextReducer>>{ m_separator, std::forward<NextReducer>(next_reducer) };
+        }
+
+        template <class NextReducer>
+        constexpr auto transduce(NextReducer&& next_reducer) &&
+        {
+            return reducer_t<Separator, std::decay_t<NextReducer>>{ std::move(m_separator),
+                                                                    std::forward<NextReducer>(next_reducer) };
+        }
+    };
+
+    template <class Separator>
+    constexpr auto operator()(Separator&& separator) const
+    {
+        return transducer_t<std::decay_t<Separator>>{ std::forward<Separator>(separator) };
+    }
+};
+
 }  // namespace detail
 
 static constexpr inline auto transform = detail::transform_fn<false>{};
@@ -537,6 +636,9 @@ static constexpr inline auto drop_while_indexed = detail::drop_while_fn<true>{};
 static constexpr inline auto take_while_indexed = detail::take_while_fn<true>{};
 static constexpr inline auto take = detail::take_fn{};
 static constexpr inline auto drop = detail::drop_fn{};
+
+static constexpr inline auto join = detail::join_fn{}();
+static constexpr inline auto intersperse = detail::intersperse_fn{};
 
 }  // namespace transducers
 
@@ -711,8 +813,8 @@ struct count_fn
 {
     struct reducer_t
     {
-        template <class State, class... Args>
-        step_t reduce(State& state, Args&&...) const
+        template <class... Args>
+        step_t reduce(std::size_t& state, Args&&...) const
         {
             ++state;
             return step_t::loop_continue;
@@ -781,6 +883,71 @@ struct accumulate_fn
     }
 };
 
+template <bool Indexed>
+struct for_each_fn
+{
+    template <class Func>
+    struct reducer_t
+    {
+        Func m_func;
+
+        template <class... Args>
+        step_t reduce(std::size_t& state, Args&&... args) const
+        {
+            if constexpr (Indexed)
+            {
+                std::invoke(m_func, state++, std::forward<Args>(args)...);
+            }
+            else
+            {
+                std::invoke(m_func, std::forward<Args>(args)...);
+            }
+            return step_t::loop_continue;
+        }
+    };
+    template <class Func>
+    constexpr auto operator()(Func&& func) const
+    {
+        return reductor_t{ std::size_t{ 0 }, reducer_t<std::decay_t<Func>>{ std::forward<Func>(func) } };
+    }
+};
+
+template <class T>
+T& assign(T& out, const T& in)
+{
+    if (&out != &in)
+    {
+        if constexpr (std::is_trivially_copy_assignable_v<T>)
+        {
+            out = in;
+        }
+        else
+        {
+            out.~T();
+            ::new (static_cast<void*>(&out)) T(in);
+        }
+    }
+    return out;
+}
+
+template <class T>
+T& assign(T& out, T&& in)
+{
+    if (&out != &in)
+    {
+        if constexpr (std::is_trivially_copy_assignable_v<T>)
+        {
+            out = std::move(in);
+        }
+        else
+        {
+            out.~T();
+            ::new (static_cast<void*>(&out)) T(std::move(in));
+        }
+    }
+    return out;
+}
+
 struct out_fn
 {
     template <class State, class Reducer>
@@ -800,26 +967,9 @@ struct out_fn
         constexpr iterator_t(const iterator_t&) = default;
         constexpr iterator_t(iterator_t&&) = default;
 
-        constexpr iterator_t& operator=(const iterator_t& other)
-        {
-            return assign(*this, other);
-        }
+        constexpr iterator_t& operator=(const iterator_t& other) { return assign(*this, other); }
 
-        constexpr iterator_t& operator=(iterator_t&& other)
-        {
-            return assign(*this, std::move(other));
-        }
-
-        template <class It>
-        static constexpr iterator_t& assign(iterator_t& self, It&& other)
-        {
-            if (&self != &other)
-            {
-                self.~iterator_t();
-                ::new (static_cast<void*>(&self)) iterator_t(std::forward<It>(other));
-            }
-            return self;
-        }
+        constexpr iterator_t& operator=(iterator_t&& other) { return assign(*this, std::move(other)); }
 
         constexpr iterator_t& operator*() { return *this; }
 
@@ -861,6 +1011,8 @@ static constexpr inline auto count = detail::count_fn{};
 static constexpr inline auto partition = detail::partition_fn{};
 static constexpr inline auto accumulate = detail::accumulate_fn{};
 static constexpr inline auto out = detail::out_fn{};
+static constexpr inline auto for_each = detail::for_each_fn<false>{};
+static constexpr inline auto for_each_indexed = detail::for_each_fn<true>{};
 
 }  // namespace reductors
 
@@ -873,6 +1025,8 @@ using transducers::drop_while;
 using transducers::drop_while_indexed;
 using transducers::filter;
 using transducers::filter_indexed;
+using transducers::intersperse;
+using transducers::join;
 using transducers::take;
 using transducers::take_while;
 using transducers::take_while_indexed;
@@ -884,6 +1038,8 @@ using reductors::all_of;
 using reductors::any_of;
 using reductors::copy_to;
 using reductors::count;
+using reductors::for_each;
+using reductors::for_each_indexed;
 using reductors::fork;
 using reductors::into;
 using reductors::none_of;

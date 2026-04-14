@@ -1,5 +1,6 @@
 #include <gmock/gmock.h>
 
+#include <zx/format.hpp>
 #include <zx/yield.hpp>
 
 TEST(yield, from)
@@ -151,6 +152,23 @@ TEST(yield, transform_filter)
     EXPECT_THAT(out, testing::ElementsAre(4, 16, 36, 64));
 }
 
+TEST(yield, join)
+{
+    std::string out = {};
+    const std::vector<std::string> in = { "Abc", "De", "Fghi" };
+    zx::from(in).yield_to(zx::transduce(zx::join, zx::copy_to(std::back_inserter(out))));
+    EXPECT_THAT(out, testing::Eq("AbcDeFghi"));
+}
+
+TEST(yield, intersperse)
+{
+    std::string out = {};
+    const std::vector<std::string> in = { "Abc", "De", "Fghi" };
+    zx::from(in).yield_to(
+        zx::transduce(zx::intersperse(std::string_view{ ", " }), zx::join, zx::copy_to(std::back_inserter(out))));
+    EXPECT_THAT(out, testing::Eq("Abc, De, Fghi"));
+}
+
 TEST(yield, fork)
 {
     std::vector<int> out = {};
@@ -183,6 +201,55 @@ TEST(yield, out)
 {
     std::vector<int> out = {};
     const std::vector<int> in{ 2, 3, 5, 7, 11, 13, 17, 19 };
-    std::copy(in.begin(), in.end(), zx::out(zx::transduce(zx::transform([](int x) { return x * 2; }), zx::copy_to(std::back_inserter(out)))));
+    std::copy(
+        in.begin(),
+        in.end(),
+        zx::out(zx::transduce(zx::transform([](int x) { return x * 2; }), zx::copy_to(std::back_inserter(out)))));
     EXPECT_THAT(out, testing::ElementsAre(4, 6, 10, 14, 22, 26, 34, 38));
+}
+
+TEST(yield, for_each)
+{
+    std::vector<int> out = {};
+    const std::vector<int> in{ 2, 3, 5, 7, 11, 13, 17, 19 };
+    zx::from(in).yield_to(zx::for_each([&out](int x) { out.push_back(x * 2); }));
+    EXPECT_THAT(out, testing::ElementsAre(4, 6, 10, 14, 22, 26, 34, 38));
+}
+
+TEST(yield, for_each_indexed)
+{
+    std::vector<int> out = {};
+    const std::vector<int> in{ 2, 3, 5, 7, 11, 13, 17, 19 };
+    zx::from(in).yield_to(
+        zx::for_each_indexed([&out](std::size_t i, int x) { out.push_back(x * (static_cast<int>(i) + 1)); }));
+    EXPECT_THAT(out, testing::ElementsAre(2, 6, 15, 28, 55, 78, 119, 152));
+}
+
+TEST(yield, pythagorean_triples)
+{
+    const auto result = zx::generators::generator_t{ [](auto&& yield)
+                                                     {
+                                                         for (int a = 1; a <= 20; ++a)
+                                                         {
+                                                             for (int b = a; b <= 20; ++b)
+                                                             {
+                                                                 for (int c = b; c <= 20; ++c)
+                                                                 {
+                                                                     if (a * a + b * b == c * c)
+                                                                     {
+                                                                         if (yield(a, b, c) == zx::step_t::loop_break)
+                                                                         {
+                                                                             return;
+                                                                         }
+                                                                     }
+                                                                 }
+                                                             }
+                                                         }
+                                                     } }
+                            .yield_to(zx::transduce(
+                                zx::transform([](int a, int b, int c) { return zx::str("(", a, ", ", b, ", ", c, ")"); }),
+                                zx::intersperse(std::string{ ", " }),
+                                zx::join,  //
+                                zx::into(std::string{})));
+    EXPECT_THAT(result, testing::Eq("(3, 4, 5), (5, 12, 13), (6, 8, 10), (8, 15, 17), (9, 12, 15), (12, 16, 20)"));
 }
