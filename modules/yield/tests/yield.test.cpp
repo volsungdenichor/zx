@@ -11,10 +11,17 @@ TEST(yield, from)
     EXPECT_THAT(out, testing::ElementsAre(2, 3, 5, 7, 11, 13, 17, 19));
 }
 
-TEST(yield, into)
+TEST(yield, into_uninitialized_container)
 {
     const auto out = zx::range(1, 10) |= zx::transform([](int x) { return x * (x + 1); }) |= zx::into(std::vector<int>{});
     EXPECT_THAT(out, testing::ElementsAre(2, 6, 12, 20, 30, 42, 56, 72, 90));
+}
+
+TEST(yield, into_initialized_container)
+{
+    std::vector<int> temp = { 3, 3 };
+    const auto out = zx::range(1, 10) |= zx::transform([](int x) { return x * (x + 1); }) |= zx::into(std::move(temp));
+    EXPECT_THAT(out, testing::ElementsAre(3, 3, 2, 6, 12, 20, 30, 42, 56, 72, 90));
 }
 
 TEST(yield, range)
@@ -29,6 +36,13 @@ TEST(yield, iota)
     std::vector<int> out = {};
     zx::iota(1) |= zx::take(4) |= zx::copy_to(std::back_inserter(out));
     EXPECT_THAT(out, testing::ElementsAre(1, 2, 3, 4));
+}
+
+TEST(yield, chain)
+{
+    std::vector<int> out = {};
+    zx::chain(zx::range(1, 4), zx::range(6, 9)) |= zx::copy_to(std::back_inserter(out));
+    EXPECT_THAT(out, testing::ElementsAre(1, 2, 3, 6, 7, 8));
 }
 
 TEST(yield, all_of)

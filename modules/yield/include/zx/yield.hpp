@@ -4,6 +4,7 @@
 #include <functional>
 #include <tuple>
 #include <type_traits>
+#include <zx/type_traits.hpp>
 
 namespace zx
 {
@@ -13,6 +14,26 @@ enum class step_t
     loop_continue,
     loop_break,
 };
+
+namespace detail
+{
+
+template <class T, class R>
+using is_transducer_impl = decltype(std::declval<T>().transduce(std::declval<R>()));
+template <class T, class R>
+struct is_transducer : is_detected<is_transducer_impl, T, R>
+{
+};
+
+template <class T, class R>
+using is_generator_impl = decltype(std::declval<T>().yield_to(std::declval<R>()));
+
+template <class T, class R>
+struct is_generator : is_detected<is_generator_impl, T, R>
+{
+};
+
+}  // namespace detail
 
 template <class State, class Reducer>
 struct reductor_t
@@ -29,7 +50,7 @@ struct reductor_t
         return reducer.reduce(state, std::forward<Args>(args)...);
     }
 
-    template <class Transducer, class = decltype(std::declval<Transducer>().transduce(std::declval<reducer_type>()))>
+    template <class Transducer, std::enable_if_t<detail::is_transducer<Transducer, reducer_type>::value, int> = 0>
     friend constexpr auto operator|=(Transducer&& transducer, const reductor_t& reductor)
     {
         return reductor_t<state_type, decltype(transducer.transduce(reductor.reducer))>{
@@ -37,7 +58,7 @@ struct reductor_t
         };
     }
 
-    template <class Transducer, class = decltype(std::declval<Transducer>().transduce(std::declval<reducer_type>()))>
+    template <class Transducer, std::enable_if_t<detail::is_transducer<Transducer, reducer_type>::value, int> = 0>
     friend constexpr auto operator|=(Transducer&& transducer, reductor_t&& reductor)
     {
         return reductor_t<state_type, decltype(transducer.transduce(std::move(reductor.reducer)))>{
@@ -45,13 +66,13 @@ struct reductor_t
         };
     }
 
-    template <class Generator, class = decltype(std::declval<Generator>().yield_to(std::declval<reductor_t>()))>
+    template <class Generator, std::enable_if_t<detail::is_generator<Generator, reductor_t>::value, int> = 0>
     friend constexpr auto operator|=(Generator&& generator, const reductor_t& reductor) -> state_type
     {
         return generator.yield_to(reductor);
     }
 
-    template <class Generator, class = decltype(std::declval<Generator>().yield_to(std::declval<reductor_t>()))>
+    template <class Generator, std::enable_if_t<detail::is_generator<Generator, reductor_t>::value, int> = 0>
     friend constexpr auto operator|=(Generator&& generator, reductor_t&& reductor) -> state_type
     {
         return generator.yield_to(std::move(reductor));
@@ -164,28 +185,27 @@ struct range_fn
 
         constexpr generator_t(T lower, T upper) : m_lower(lower), m_upper(upper) { }
 
-        template <class State, class Reducer>
-        State yield_to(reductor_t<State, Reducer> reductor) const
+        template <class Reductor>
+        void operator()(Reductor&& reductor) const
         {
             for (T it = m_lower; it < m_upper; ++it)
             {
                 if (reductor(it) == step_t::loop_break)
                 {
-                    break;
+                    return;
                 }
             }
-            return reductor.state;
         }
     };
 
     template <class T>
     constexpr auto operator()(T lower, T upper) const
     {
-        return generator_t<T>{ lower, upper };
+        return generate(generator_t<T>{ lower, upper });
     }
 
     template <class T>
-    constexpr auto operator()(T upper) const -> generator_t<T>
+    constexpr auto operator()(T upper) const
     {
         return (*this)(T{}, upper);
     }
@@ -198,24 +218,23 @@ struct iota_fn
     {
         T m_lower;
 
-        template <class State, class Reducer>
-        State yield_to(reductor_t<State, Reducer> reductor) const
+        template <class Reductor>
+        void operator()(Reductor&& reductor) const
         {
             for (T it = m_lower;; ++it)
             {
                 if (reductor(it) == step_t::loop_break)
                 {
-                    break;
+                    return;
                 }
             }
-            return reductor.state;
         }
     };
 
     template <class T = std::ptrdiff_t>
-    constexpr auto operator()(T lower = {}) const -> generator_t<T>
+    constexpr auto operator()(T lower = {}) const
     {
-        return { lower };
+        return generate(generator_t<T>{ lower });
     }
 };
 
@@ -227,24 +246,58 @@ struct from_fn
         It m_begin;
         It m_end;
 
-        template <class State, class Reducer>
-        State yield_to(reductor_t<State, Reducer> reductor) const
+        template <class Reductor>
+        void operator()(Reductor&& reductor) const
         {
             for (It it = m_begin; it != m_end; ++it)
             {
                 if (reductor(*it) == step_t::loop_break)
                 {
-                    break;
+                    return;
                 }
             }
-            return reductor.state;
         }
     };
 
     template <class Range>
-    constexpr auto operator()(Range&& range) const -> generator_t<decltype(std::begin(range))>
+    constexpr auto operator()(Range&& range) const
     {
-        return { std::begin(range), std::end(range) };
+        return generate(generator_t<decltype(std::begin(range))>{ std::begin(range), std::end(range) });
+    }
+};
+
+struct chain_fn
+{
+    template <class... Generators>
+    struct generator_t
+    {
+        std::tuple<Generators...> m_generators;
+
+        template <std::size_t N, class Reductor>
+        void handle(Reductor&& reductor) const
+        {
+            if constexpr (N == sizeof...(Generators))
+            {
+                return;
+            }
+            else
+            {
+                std::get<N>(m_generators).yield_to(std::forward<Reductor>(reductor));
+                handle<N + 1>(std::forward<Reductor>(reductor));
+            }
+        }
+
+        template <class Reductor>
+        void operator()(Reductor&& reductor) const
+        {
+            handle<0>(std::forward<Reductor>(reductor));
+        }
+    };
+
+    template <class... Generators>
+    constexpr auto operator()(Generators&&... generators) const
+    {
+        return generate(generator_t<std::decay_t<Generators>...>{ { std::forward<Generators>(generators)... } });
     }
 };
 
@@ -253,6 +306,7 @@ struct from_fn
 static constexpr inline auto range = detail::range_fn{};
 static constexpr inline auto iota = detail::iota_fn{};
 static constexpr inline auto from = detail::from_fn{};
+static constexpr inline auto chain = detail::chain_fn{};
 
 }  // namespace generators
 
@@ -1058,6 +1112,7 @@ static constexpr inline auto for_each_indexed = detail::for_each_fn<true>{};
 using generators::from;
 using generators::iota;
 using generators::range;
+using generators::chain;
 
 using generators::generate;
 using generators::generator_t;
