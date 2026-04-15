@@ -11,6 +11,16 @@ TEST(yield, from)
     EXPECT_THAT(out, testing::ElementsAre(2, 3, 5, 7, 11, 13, 17, 19));
 }
 
+TEST(yield, from_multiple_ranges)
+{
+    const std::vector<int> in1{ 2, 3, 5, 7 };
+    const std::vector<int> in2{ 7, 11, 13 };
+    const std::vector<int> in3{ 17, 19, 23, 29, 31 };
+    const auto out = zx::from(in1, in2, in3) |= zx::transform([](int a, int b, int c) { return zx::str(a, "-", b, "-", c); })
+        |= zx::into(std::vector<std::string>{});
+    EXPECT_THAT(out, testing::ElementsAre("2-7-17", "3-11-19", "5-13-23"));
+}
+
 TEST(yield, into_uninitialized_container)
 {
     const auto out = zx::range(1, 10) |= zx::transform([](int x) { return x * (x + 1); }) |= zx::into(std::vector<int>{});
@@ -272,7 +282,8 @@ TEST(yield, project)
         |= zx::project(front, back, &std::string::size)
         |= zx::transform([](char f, char b, std::size_t s) -> std::string { return zx::str(f, "-", b, " (", s, ")"); })
         |= zx::copy_to(std::back_inserter(out));
-    EXPECT_THAT(out, testing::ElementsAre("M-y (7)", "V-s (5)", "E-h (5)", "M-s (4)", "J-r (7)", "S-n (6)", "U-s (6)", "N-e (7)"));
+    EXPECT_THAT(
+        out, testing::ElementsAre("M-y (7)", "V-s (5)", "E-h (5)", "M-s (4)", "J-r (7)", "S-n (6)", "U-s (6)", "N-e (7)"));
 }
 
 TEST(yield, pythagorean_triples)

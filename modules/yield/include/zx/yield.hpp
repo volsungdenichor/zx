@@ -267,18 +267,42 @@ struct iota_fn
 
 struct from_fn
 {
-    template <class It>
+    template <class Iter, std::size_t... I>
+    static bool eq(const Iter& lhs, const Iter& rhs, std::index_sequence<I...>)
+    {
+        return ((std::get<I>(lhs) == std::get<I>(rhs)) || ...);
+    }
+
+    template <class Iter>
+    static bool eq(const Iter& lhs, const Iter& rhs)
+    {
+        return eq(lhs, rhs, std::make_index_sequence<std::tuple_size_v<Iter>>{});
+    }
+
+    template <class Iter>
+    static void inc(Iter& it)
+    {
+        std::apply([](auto&... its) { (++its, ...); }, it);
+    }
+
+    template <class Reductor, class Iter>
+    static step_t call(Reductor&& reductor, const Iter& it)
+    {
+        return std::apply([&](auto&&... its) { return reductor(*its...); }, it);
+    }
+
+    template <class... Its>
     struct generator_t
     {
-        It m_begin;
-        It m_end;
+        std::tuple<Its...> m_begin;
+        std::tuple<Its...> m_end;
 
         template <class Reductor>
         void operator()(Reductor&& reductor) const
         {
-            for (It it = m_begin; it != m_end; ++it)
+            for (auto it = m_begin; !eq(it, m_end); inc(it))
             {
-                if (reductor(*it) == step_t::loop_break)
+                if (call(std::forward<Reductor>(reductor), it) == step_t::loop_break)
                 {
                     return;
                 }
@@ -286,10 +310,10 @@ struct from_fn
         }
     };
 
-    template <class Range>
-    constexpr auto operator()(Range&& range) const
+    template <class... Ranges>
+    constexpr auto operator()(Ranges&&... ranges) const
     {
-        return generate(generator_t<decltype(std::begin(range))>{ std::begin(range), std::end(range) });
+        return generate(generator_t<decltype(std::begin(ranges))...>{ { std::begin(ranges)... }, { std::end(ranges)... } });
     }
 };
 
