@@ -6,7 +6,7 @@ Push-based stream processing for `zx`. The module is built around three pieces:
 - transducers transform or filter values in flight
 - reductors consume values into a final state
 
-Pipelines compose with `|=` and execute immediately when a generator is connected to a reductor.
+Pipelines compose with `|` and execute immediately when a generator is connected to a reductor.
 
 ---
 
@@ -29,9 +29,9 @@ target_link_libraries(my_target PRIVATE zx::yield)
 ```cpp
 std::vector<int> values =
     zx::range(1, 10)
-    |= zx::filter([](int x) { return x % 2 == 0; })
-    |= zx::transform([](int x) { return x * x; })
-    |= zx::into(std::vector<int>{});
+    | zx::filter([](int x) { return x % 2 == 0; })
+    | zx::transform([](int x) { return x * x; })
+    | zx::into(std::vector<int>{});
 
 // values == {4, 16, 36, 64}
 ```
@@ -78,11 +78,11 @@ auto triples =
                 }
             }
         })
-    |= zx::take(3)
-    |= zx::transform([](int a, int b, int c) {
+    | zx::take(3)
+    | zx::transform([](int a, int b, int c) {
            return std::array<int, 3>{ a, b, c };
        })
-    |= zx::into(std::vector<std::array<int, 3>>{});
+    | zx::into(std::vector<std::array<int, 3>>{});
 ```
 
 ---
@@ -113,10 +113,10 @@ Indexed variants receive the zero-based position before the value.
 ```cpp
 auto out =
     zx::range(1, 5)
-    |= zx::transform_indexed([](std::size_t index, int x) {
+    | zx::transform_indexed([](std::size_t index, int x) {
            return x * static_cast<int>(index + 1);
        })
-    |= zx::into(std::vector<int>{});
+    | zx::into(std::vector<int>{});
 
 // out == {1, 4, 9, 16}
 ```
@@ -126,9 +126,9 @@ auto out =
 ```cpp
 std::string joined =
     zx::from(std::vector<std::string>{ "Abc", "De", "Fghi" })
-    |= zx::intersperse(std::string_view{ ", " })
-    |= zx::join
-    |= zx::into(std::string{});
+    | zx::intersperse(std::string_view{ ", " })
+    | zx::join
+    | zx::into(std::string{});
 
 // joined == "Abc, De, Fghi"
 ```
@@ -162,7 +162,7 @@ Use `fork` when one pass should produce several results.
 ```cpp
 auto [items, count, sum] =
     zx::range(1, 10)
-    |= zx::fork(
+    | zx::fork(
            zx::into(std::vector<int>{}),
            zx::count(),
            zx::sum(0));
@@ -177,9 +177,9 @@ auto [items, count, sum] =
 ```cpp
 auto [evens, odds] =
     zx::range(1, 10)
-    |= zx::partition(
+    | zx::partition(
            [](int x) { return x % 2 == 0; },
-           zx::transform([](int x) { return x * 10; }) |= zx::into(std::vector<int>{}),
+           zx::transform([](int x) { return x * 10; }) | zx::into(std::vector<int>{}),
            zx::into(std::vector<int>{}));
 
 // evens == {20, 40, 60, 80}
@@ -197,7 +197,7 @@ std::vector<int> in{ 2, 3, 5, 7 };
 std::copy(
     in.begin(),
     in.end(),
-    zx::out(zx::transform([](int x) { return x * 2; }) |= zx::copy_to(std::back_inserter(out))));
+    zx::out(zx::transform([](int x) { return x * 2; }) | zx::copy_to(std::back_inserter(out))));
 
 // out == {4, 6, 10, 14}
 ```
@@ -213,7 +213,7 @@ auto even_squares = zx::combine(
     zx::filter([](int x) { return x % 2 == 0; }),
     zx::transform([](int x) { return x * x; }));
 
-auto values = zx::range(1, 10) |= even_squares |= zx::into(std::vector<int>{});
+auto values = zx::range(1, 10) | even_squares | zx::into(std::vector<int>{});
 ```
 
 `zx::transduce(...)` applies transducers to a reductor first and returns a new reductor.
@@ -224,7 +224,7 @@ auto collect_even_squares = zx::transduce(
     zx::transform([](int x) { return x * x; }),
     zx::into(std::vector<int>{}));
 
-auto values = zx::range(1, 10) |= collect_even_squares;
+auto values = zx::range(1, 10) | collect_even_squares;
 ```
 
 ---

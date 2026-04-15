@@ -18,6 +18,15 @@ enum class step_t
 namespace detail
 {
 
+struct probe_reducer_t
+{
+    template <class... Args>
+    step_t reduce(int&, Args&&...) const
+    {
+        return step_t::loop_continue;
+    }
+};
+
 template <class T, class R>
 using is_transducer_impl = decltype(std::declval<T>().transduce(std::declval<R>()));
 
@@ -31,6 +40,11 @@ using is_generator_impl = decltype(std::declval<T>().yield_to(std::declval<R>())
 
 template <class T, class R>
 struct is_generator : is_detected<is_generator_impl, T, R>
+{
+};
+
+template <class T>
+struct is_any_transducer : is_transducer<T, probe_reducer_t>
 {
 };
 
@@ -49,34 +63,6 @@ struct reductor_t
     step_t operator()(Args&&... args)
     {
         return reducer.reduce(state, std::forward<Args>(args)...);
-    }
-
-    template <class Transducer, std::enable_if_t<detail::is_transducer<Transducer, reducer_type>::value, int> = 0>
-    friend constexpr auto operator|=(Transducer&& transducer, const reductor_t& reductor)
-    {
-        return reductor_t<state_type, decltype(transducer.transduce(reductor.reducer))>{
-            reductor.state, transducer.transduce(reductor.reducer)
-        };
-    }
-
-    template <class Transducer, std::enable_if_t<detail::is_transducer<Transducer, reducer_type>::value, int> = 0>
-    friend constexpr auto operator|=(Transducer&& transducer, reductor_t&& reductor)
-    {
-        return reductor_t<state_type, decltype(transducer.transduce(std::move(reductor.reducer)))>{
-            std::move(reductor.state), transducer.transduce(std::move(reductor.reducer))
-        };
-    }
-
-    template <class Generator, std::enable_if_t<detail::is_generator<Generator, reductor_t>::value, int> = 0>
-    friend constexpr auto operator|=(Generator&& generator, const reductor_t& reductor) -> state_type
-    {
-        return generator.yield_to(reductor);
-    }
-
-    template <class Generator, std::enable_if_t<detail::is_generator<Generator, reductor_t>::value, int> = 0>
-    friend constexpr auto operator|=(Generator&& generator, reductor_t&& reductor) -> state_type
-    {
-        return generator.yield_to(std::move(reductor));
     }
 };
 
@@ -107,7 +93,85 @@ struct state_type<reductor_t<State, Reducer>>
     using type = State;
 };
 
+using probe_reductor_type = reductor_t<int, probe_reducer_t>;
+
+template <class T>
+struct is_any_generator : is_generator<T, probe_reductor_type>
+{
+};
+
+template <class Generator, class Transducer>
+struct generator_pipe_t
+{
+    Generator m_generator;
+    Transducer m_transducer;
+
+    template <
+        class Reductor,
+        std::enable_if_t<
+            is_reductor<std::decay_t<Reductor>>::value
+                && is_transducer<const Transducer&, typename std::decay_t<Reductor>::reducer_type>::value,
+            int> = 0>
+    auto yield_to(Reductor&& reductor) const& -> state_type_t<std::decay_t<Reductor>>
+    {
+        auto piped_reductor = m_transducer | std::forward<Reductor>(reductor);
+        return m_generator.yield_to(std::move(piped_reductor));
+    }
+
+    template <
+        class Reductor,
+        std::enable_if_t<
+            is_reductor<std::decay_t<Reductor>>::value
+                && is_transducer<Transducer, typename std::decay_t<Reductor>::reducer_type>::value,
+            int> = 0>
+    auto yield_to(Reductor&& reductor) && -> state_type_t<std::decay_t<Reductor>>
+    {
+        auto piped_reductor = std::move(m_transducer) | std::forward<Reductor>(reductor);
+        return std::move(m_generator).yield_to(std::move(piped_reductor));
+    }
+};
+
 }  // namespace detail
+
+template <
+    class Transducer,
+    class State,
+    class Reducer,
+    std::enable_if_t<detail::is_transducer<Transducer, Reducer>::value, int> = 0>
+constexpr auto operator|(Transducer&& transducer, const reductor_t<State, Reducer>& reductor)
+{
+    return reductor_t{ reductor.state, transducer.transduce(reductor.reducer) };
+}
+
+template <
+    class Transducer,
+    class State,
+    class Reducer,
+    std::enable_if_t<detail::is_transducer<Transducer, Reducer>::value, int> = 0>
+constexpr auto operator|(Transducer&& transducer, reductor_t<State, Reducer>&& reductor)
+{
+    return reductor_t{ std::move(reductor.state), transducer.transduce(std::move(reductor.reducer)) };
+}
+
+template <
+    class Generator,
+    class State,
+    class Reducer,
+    std::enable_if_t<detail::is_generator<Generator, reductor_t<State, Reducer>>::value, int> = 0>
+constexpr auto operator|(Generator&& generator, const reductor_t<State, Reducer>& reductor) -> State
+{
+    return generator.yield_to(reductor);
+}
+
+template <
+    class Generator,
+    class State,
+    class Reducer,
+    std::enable_if_t<detail::is_generator<Generator, reductor_t<State, Reducer>>::value, int> = 0>
+constexpr auto operator|(Generator&& generator, reductor_t<State, Reducer>&& reductor) -> State
+{
+    return generator.yield_to(std::move(reductor));
+}
 
 struct combine_fn
 {
@@ -393,6 +457,20 @@ static constexpr inline auto iota = detail::iota_fn{};
 static constexpr inline auto from = detail::from_fn{};
 static constexpr inline auto chain = detail::chain_fn{};
 static constexpr inline auto repeat = detail::repeat_fn{};
+
+template <
+    class Generator,
+    class Transducer,
+    std::enable_if_t<
+        zx::detail::is_any_generator<std::decay_t<Generator>>::value
+            && zx::detail::is_any_transducer<std::decay_t<Transducer>>::value,
+        int> = 0>
+constexpr auto operator|(Generator&& generator, Transducer&& transducer)
+{
+    return zx::detail::generator_pipe_t<std::decay_t<Generator>, std::decay_t<Transducer>>{
+        std::forward<Generator>(generator), std::forward<Transducer>(transducer)
+    };
+}
 
 }  // namespace generators
 
@@ -882,6 +960,18 @@ static constexpr inline auto intersperse = detail::intersperse_fn{};
 
 static constexpr inline auto unpack = detail::unpack_fn{}();
 static constexpr inline auto project = detail::project_fn{};
+
+template <
+    class Left,
+    class Right,
+    std::enable_if_t<
+        zx::detail::is_any_transducer<std::decay_t<Left>>::value
+            && zx::detail::is_any_transducer<std::decay_t<Right>>::value,
+        int> = 0>
+constexpr auto operator|(Left&& left, Right&& right)
+{
+    return zx::combine(std::forward<Left>(left), std::forward<Right>(right));
+}
 
 }  // namespace transducers
 
