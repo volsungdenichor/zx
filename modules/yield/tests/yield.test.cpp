@@ -315,3 +315,11 @@ TEST(yield, pythagorean_triples)
                         | zx::into(std::string{});
     EXPECT_THAT(result, testing::Eq("(3, 4, 5), (5, 12, 13), (6, 8, 10), (8, 15, 17), (9, 12, 15), (12, 16, 20)"));
 }
+
+TEST(yield, transducer_chaining)
+{
+    const auto take_even_and_square = zx::filter([](int x) { return x % 2 == 0; }) | zx::transform([](int x) { return x * x; });
+    std::vector<int> out = {};
+    zx::range(1, 10) | take_even_and_square | zx::copy_to(std::back_inserter(out));
+    EXPECT_THAT(out, testing::ElementsAre(4, 16, 36, 64));
+}
