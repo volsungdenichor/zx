@@ -20,6 +20,7 @@ namespace detail
 
 template <class T, class R>
 using is_transducer_impl = decltype(std::declval<T>().transduce(std::declval<R>()));
+
 template <class T, class R>
 struct is_transducer : is_detected<is_transducer_impl, T, R>
 {
@@ -81,6 +82,32 @@ struct reductor_t
 
 template <class State, class Reducer>
 reductor_t(State&&, Reducer&&) -> reductor_t<std::decay_t<State>, std::decay_t<Reducer>>;
+
+namespace detail
+{
+template <class T>
+struct is_reductor : std::false_type
+{
+};
+
+template <class State, class Reducer>
+struct is_reductor<reductor_t<State, Reducer>> : std::true_type
+{
+};
+
+template <class T>
+struct state_type;
+
+template <class T>
+using state_type_t = typename state_type<T>::type;
+
+template <class State, class Reducer>
+struct state_type<reductor_t<State, Reducer>>
+{
+    using type = State;
+};
+
+}  // namespace detail
 
 struct combine_fn
 {
@@ -155,10 +182,10 @@ struct generator_t
 {
     Impl m_impl;
 
-    template <class State, class Reducer>
-    State yield_to(reductor_t<State, Reducer> reductor) const
+    template <class Reductor, std::enable_if_t<detail::is_reductor<std::decay_t<Reductor>>::value, int> = 0>
+    auto yield_to(Reductor&& reductor) const -> detail::state_type_t<std::decay_t<Reductor>>
     {
-        std::invoke(m_impl, reductor);
+        std::invoke(m_impl, std::forward<Reductor>(reductor));
         return reductor.state;
     }
 };
@@ -301,12 +328,47 @@ struct chain_fn
     }
 };
 
+struct repeat_fn
+{
+    template <class... Args>
+    struct generator_t
+    {
+        std::tuple<Args...> m_args;
+
+        template <class Reductor>
+        void operator()(Reductor&& reductor) const
+        {
+            bool done = false;
+            while (!done)
+            {
+                std::apply(
+                    [&](const auto&... args)
+                    {
+                        if (reductor(args...) == step_t::loop_break)
+                        {
+                            done = true;
+                            return;
+                        }
+                    },
+                    m_args);
+            }
+        }
+    };
+
+    template <class... Args>
+    constexpr auto operator()(Args&&... args) const
+    {
+        return generate(generator_t<std::decay_t<Args>...>{ { std::forward<Args>(args)... } });
+    }
+};
+
 }  // namespace detail
 
 static constexpr inline auto range = detail::range_fn{};
 static constexpr inline auto iota = detail::iota_fn{};
 static constexpr inline auto from = detail::from_fn{};
 static constexpr inline auto chain = detail::chain_fn{};
+static constexpr inline auto repeat = detail::repeat_fn{};
 
 }  // namespace generators
 
@@ -712,6 +774,72 @@ struct intersperse_fn
     }
 };
 
+struct unpack_fn
+{
+    template <class NextReducer>
+    struct reducer_t
+    {
+        NextReducer m_next_reducer;
+
+        template <class State, class Arg>
+        step_t reduce(State& state, Arg&& arg) const
+        {
+            return std::apply(
+                [&](auto&&... unpacked_args)
+                { return m_next_reducer.reduce(state, std::forward<decltype(unpacked_args)>(unpacked_args)...); },
+                std::forward<Arg>(arg));
+        }
+    };
+
+    struct transducer_t
+    {
+        template <class NextReducer>
+        constexpr auto transduce(NextReducer&& next_reducer) const
+        {
+            return reducer_t<std::decay_t<NextReducer>>{ std::forward<NextReducer>(next_reducer) };
+        }
+    };
+
+    constexpr auto operator()() const { return transducer_t{}; }
+};
+
+struct project_fn
+{
+    template <class NextReducer, class... Funcs>
+    struct reducer_t
+    {
+        NextReducer m_next_reducer;
+        std::tuple<Funcs...> m_funcs;
+
+        template <class State, class... Args>
+        step_t reduce(State& state, Args&&... args) const
+        {
+            return std::apply(
+                [&](auto&&... funcs) -> step_t
+                { return m_next_reducer.reduce(state, std::invoke(funcs, std::forward<Args>(args)...)...); },
+                m_funcs);
+        }
+    };
+
+    template <class... Funcs>
+    struct transducer_t
+    {
+        std::tuple<Funcs...> m_funcs;
+
+        template <class NextReducer>
+        constexpr auto transduce(NextReducer&& next_reducer) const
+        {
+            return reducer_t<std::decay_t<NextReducer>, Funcs...>{ std::forward<NextReducer>(next_reducer), m_funcs };
+        }
+    };
+
+    template <class... Funcs>
+    constexpr auto operator()(Funcs&&... funcs) const -> transducer_t<std::decay_t<Funcs>...>
+    {
+        return { { std::forward<Funcs>(funcs)... } };
+    }
+};
+
 }  // namespace detail
 
 static constexpr inline auto transform = detail::transform_fn<false>{};
@@ -727,6 +855,9 @@ static constexpr inline auto drop = detail::drop_fn{};
 
 static constexpr inline auto join = detail::join_fn{}();
 static constexpr inline auto intersperse = detail::intersperse_fn{};
+
+static constexpr inline auto unpack = detail::unpack_fn{}();
+static constexpr inline auto project = detail::project_fn{};
 
 }  // namespace transducers
 
@@ -1100,7 +1231,7 @@ static constexpr inline auto any_of = detail::any_of_fn{};
 static constexpr inline auto none_of = detail::none_of_fn{};
 static constexpr inline auto fork = detail::fork_fn{};
 static constexpr inline auto sum = detail::sum_fn{};
-static constexpr inline auto count = detail::count_fn{};
+static constexpr inline auto count = detail::count_fn{}();
 static constexpr inline auto partition = detail::partition_fn{};
 static constexpr inline auto accumulate = detail::accumulate_fn{};
 static constexpr inline auto out = detail::out_fn{};
@@ -1109,10 +1240,11 @@ static constexpr inline auto for_each_indexed = detail::for_each_fn<true>{};
 
 }  // namespace reductors
 
+using generators::chain;
 using generators::from;
 using generators::iota;
 using generators::range;
-using generators::chain;
+using generators::repeat;
 
 using generators::generate;
 using generators::generator_t;
@@ -1124,11 +1256,13 @@ using transducers::filter;
 using transducers::filter_indexed;
 using transducers::intersperse;
 using transducers::join;
+using transducers::project;
 using transducers::take;
 using transducers::take_while;
 using transducers::take_while_indexed;
 using transducers::transform;
 using transducers::transform_indexed;
+using transducers::unpack;
 
 using reductors::accumulate;
 using reductors::all_of;

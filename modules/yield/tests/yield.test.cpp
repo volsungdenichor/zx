@@ -41,8 +41,38 @@ TEST(yield, iota)
 TEST(yield, chain)
 {
     std::vector<int> out = {};
-    zx::chain(zx::range(1, 4), zx::range(6, 9)) |= zx::copy_to(std::back_inserter(out));
+    std::vector<int> in = { 6, 7, 8 };
+    zx::chain(zx::range(1, 4), zx::from(in)) |= zx::copy_to(std::back_inserter(out));
     EXPECT_THAT(out, testing::ElementsAre(1, 2, 3, 6, 7, 8));
+}
+
+TEST(yield, chain_with_stop)
+{
+    std::vector<int> out = {};
+    zx::chain(zx::range(1, 4), zx::range(6, 9)) |= zx::take(4) |= zx::copy_to(std::back_inserter(out));
+    EXPECT_THAT(out, testing::ElementsAre(1, 2, 3, 6));
+}
+
+TEST(yield, repeat)
+{
+    std::vector<int> out = {};
+    zx::repeat(3) |= zx::take(5) |= zx::copy_to(std::back_inserter(out));
+    EXPECT_THAT(out, testing::ElementsAre(3, 3, 3, 3, 3));
+}
+
+TEST(yield, repeat_multiple_args)
+{
+    std::vector<std::string> out = {};
+    zx::repeat(3, 'x') |= zx::take(5) |= zx::transform([](int a, char b) { return zx::str(a, "-", b); })
+        |= zx::copy_to(std::back_inserter(out));
+    EXPECT_THAT(out, testing::ElementsAre("3-x", "3-x", "3-x", "3-x", "3-x"));
+}
+
+TEST(yield, pad_input_with_repeated_values)
+{
+    std::vector<int> out = {};
+    zx::chain(zx::range(1, 4), zx::repeat(0)) |= zx::take(6) |= zx::copy_to(std::back_inserter(out));
+    EXPECT_THAT(out, testing::ElementsAre(1, 2, 3, 0, 0, 0));
 }
 
 TEST(yield, all_of)
@@ -171,7 +201,7 @@ TEST(yield, intersperse)
 
 TEST(yield, fork)
 {
-    const auto [out, count, sum] = zx::range(1, 10) |= zx::fork(zx::into(std::vector<int>{}), zx::count(), zx::sum(0));
+    const auto [out, count, sum] = zx::range(1, 10) |= zx::fork(zx::into(std::vector<int>{}), zx::count, zx::sum(0));
     EXPECT_THAT(out, testing::ElementsAre(1, 2, 3, 4, 5, 6, 7, 8, 9));
     EXPECT_THAT(sum, 45);
     EXPECT_THAT(count, 9);
@@ -218,6 +248,31 @@ TEST(yield, for_each_indexed)
     const std::vector<int> in{ 2, 3, 5, 7, 11, 13, 17, 19 };
     zx::from(in) |= zx::for_each_indexed([&out](std::size_t i, int x) { out.push_back(x * (static_cast<int>(i) + 1)); });
     EXPECT_THAT(out, testing::ElementsAre(2, 6, 15, 28, 55, 78, 119, 152));
+}
+
+TEST(yield, unpack)
+{
+    std::vector<int> out = {};
+    const std::vector<std::tuple<int, int>> in{ { 1, 2 }, { 3, 4 }, { 5, 6 } };
+    zx::from(in)                                              //
+        |= zx::unpack                                         //
+        |= zx::filter([](int a, int) { return a != 3; })      //
+        |= zx::transform([](int a, int b) { return a * b; })  //
+        |= zx::copy_to(std::back_inserter(out));
+    EXPECT_THAT(out, testing::ElementsAre(2, 30));
+}
+
+TEST(yield, project)
+{
+    std::vector<std::string> out = {};
+    const std::vector<std::string> in{ "Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune" };
+    const auto front = [](const auto& str) { return str.front(); };
+    const auto back = [](const auto& str) { return str.back(); };
+    zx::from(in)  //
+        |= zx::project(front, back, &std::string::size)
+        |= zx::transform([](char f, char b, std::size_t s) -> std::string { return zx::str(f, "-", b, " (", s, ")"); })
+        |= zx::copy_to(std::back_inserter(out));
+    EXPECT_THAT(out, testing::ElementsAre("M-y (7)", "V-s (5)", "E-h (5)", "M-s (4)", "J-r (7)", "S-n (6)", "U-s (6)", "N-e (7)"));
 }
 
 TEST(yield, pythagorean_triples)
