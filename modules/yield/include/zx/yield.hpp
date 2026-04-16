@@ -173,21 +173,27 @@ struct combine_fn
     {
         std::tuple<Transducers...> m_transducers;
 
-        template <std::size_t N, class NextReducer>
-        constexpr auto apply_adapters(NextReducer&& next_reducer) const
+        template <std::size_t N, class TransducersTuple, class NextReducer>
+        static constexpr auto apply_adapters(TransducersTuple&& transducers, NextReducer&& next_reducer)
         {
             if constexpr (N == 0)
             {
-                return std::get<N>(m_transducers).transduce(std::forward<NextReducer>(next_reducer));
+                return std::get<N>(std::forward<TransducersTuple>(transducers))
+                    .transduce(std::forward<NextReducer>(next_reducer));
             }
             else
             {
-                return apply_adapters<N - 1>(std::get<N>(m_transducers).transduce(std::forward<NextReducer>(next_reducer)));
+                return apply_adapters<N - 1>(
+                    std::forward<TransducersTuple>(transducers),
+                    std::get<N>(std::forward<TransducersTuple>(transducers))
+                        .transduce(std::forward<NextReducer>(next_reducer)));
             }
         }
 
-        template <class NextReducer>
-        constexpr auto transduce(NextReducer&& next_reducer) const
+        template <
+            class NextReducer,
+            std::enable_if_t<(std::is_copy_constructible_v<Transducers> && ...) || (sizeof(NextReducer) == 0), int> = 0>
+        constexpr auto transduce(NextReducer&& next_reducer) const&
         {
             if constexpr (sizeof...(Transducers) == 0)
             {
@@ -195,14 +201,37 @@ struct combine_fn
             }
             else
             {
-                return apply_adapters<sizeof...(Transducers) - 1>(std::forward<NextReducer>(next_reducer));
+                return apply_adapters<sizeof...(Transducers) - 1>(m_transducers, std::forward<NextReducer>(next_reducer));
             }
         }
 
-        template <class State, class Reducer>
-        constexpr auto to_reductor(reductor_t<State, Reducer> reductor) const
+        template <class NextReducer>
+        constexpr auto transduce(NextReducer&& next_reducer) &&
         {
-            return reductor_t{ std::move(reductor.state), transduce(reductor.reducer) };
+            if constexpr (sizeof...(Transducers) == 0)
+            {
+                return std::forward<NextReducer>(next_reducer);
+            }
+            else
+            {
+                return apply_adapters<sizeof...(Transducers) - 1>(
+                    std::move(m_transducers), std::forward<NextReducer>(next_reducer));
+            }
+        }
+
+        template <
+            class State,
+            class Reducer,
+            std::enable_if_t<(std::is_copy_constructible_v<Transducers> && ...) || (sizeof(Reducer) == 0), int> = 0>
+        constexpr auto to_reductor(reductor_t<State, Reducer> reductor) const&
+        {
+            return reductor_t{ std::move(reductor.state), transduce(std::move(reductor.reducer)) };
+        }
+
+        template <class State, class Reducer>
+        constexpr auto to_reductor(reductor_t<State, Reducer> reductor) &&
+        {
+            return reductor_t{ std::move(reductor.state), std::move(*this).transduce(std::move(reductor.reducer)) };
         }
     };
 
@@ -239,10 +268,11 @@ struct combine_fn
 
 struct transduce_fn
 {
-    template <std::size_t Last, class Tuple, std::size_t... I>
-    static constexpr auto impl(Tuple&& tuple, std::index_sequence<I...>)
+    template <std::size_t Last, class TransducersTuple, std::size_t... I>
+    static constexpr auto impl(TransducersTuple&& tuple, std::index_sequence<I...>)
     {
-        return combine(std::get<I>(std::forward<Tuple>(tuple))...).to_reductor(std::get<Last>(std::forward<Tuple>(tuple)));
+        return combine(std::get<I>(std::forward<TransducersTuple>(tuple))...)
+            .to_reductor(std::get<Last>(std::forward<TransducersTuple>(tuple)));
     }
 
     template <class... Args>

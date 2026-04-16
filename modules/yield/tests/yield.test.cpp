@@ -1,5 +1,6 @@
 #include <gmock/gmock.h>
 
+#include <memory>
 #include <zx/format.hpp>
 #include <zx/yield.hpp>
 
@@ -327,4 +328,15 @@ TEST(yield, transducer_chaining)
         testing::ElementsAre("4", "16", "36"));
     EXPECT_THAT(
         zx::range(10) | to_string_and_take_three | zx::to_vector<std::string>(), testing::ElementsAre("0", "1", "2"));
+}
+
+TEST(yield, combine_preserves_move_only_transducers)
+{
+    auto combined = zx::combine(
+        zx::transform([offset = std::make_unique<int>(7)](int x) { return x + *offset; }),
+        zx::filter([](int x) { return x % 2 == 0; }));
+
+    const auto out = zx::range(5) | std::move(combined) | zx::to_vector<int>();
+
+    EXPECT_THAT(out, testing::ElementsAre(8, 10));
 }
