@@ -149,7 +149,7 @@ Reductors own the final state of the pipeline and decide whether processing cont
 | `zx::fork(r0, r1, ...)` | `std::tuple<...>` of all reducer states |
 | `zx::sum(init)` | Running sum starting from `init` |
 | `zx::count()` | `std::size_t` element count |
-| `zx::partition(pred, on_true, on_false)` | `std::tuple<true_state, false_state>` |
+| `zx::partition(pred0, r0, ..., predN, rN, catch_all)` | `std::tuple<state0, ..., stateN, catch_all_state>` |
 | `zx::accumulate(init, fn)` | General fold |
 | `zx::for_each(fn)` | Executes side effects for each value |
 | `zx::for_each_indexed(fn)` | Indexed side effects |
@@ -175,15 +175,18 @@ auto [items, count, sum] =
 ### `partition`
 
 ```cpp
-auto [evens, odds] =
-    zx::range(1, 10)
+auto [evens, divisible_by_3, other] =
+    zx::range(1, 15)
     | zx::partition(
            [](int x) { return x % 2 == 0; },
            zx::transform([](int x) { return x * 10; }) | zx::into(std::vector<int>{}),
+           [](int x) { return x % 3 == 0; },
+           zx::into(std::vector<int>{}),
            zx::into(std::vector<int>{}));
 
-// evens == {20, 40, 60, 80}
-// odds == {1, 3, 5, 7, 9}
+// evens == {20, 40, 60, 80, 100, 120, 140}
+// divisible_by_3 == {3, 9}
+// other == {1, 5, 7, 11, 13}
 ```
 
 ### `out`

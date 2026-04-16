@@ -284,6 +284,22 @@ TEST(yield, partition)
         testing::FieldsAre(testing::ElementsAre(20, 40, 60, 80), testing::ElementsAre(1, 3, 5, 7, 9)));
 }
 
+TEST(yield, partition_if_else_chain)
+{
+    EXPECT_THAT(
+        zx::range(1, 15)
+            | zx::partition(
+                [](int x) { return x % 2 == 0; },
+                zx::transform([](int x) { return x * 100; }) | zx::into(std::vector<int>{}),
+                [](int x) { return x % 3 == 0; },
+                zx::transform([](int x) { return x * 10; }) | zx::into(std::vector<int>{}),
+                zx::into(std::vector<int>{})),
+        testing::FieldsAre(
+            testing::ElementsAre(200, 400, 600, 800, 1000, 1200, 1400),
+            testing::ElementsAre(30, 90),
+            testing::ElementsAre(1, 5, 7, 11, 13)));
+}
+
 TEST(yield, accumulate)
 {
     EXPECT_THAT(zx::range(1, 10) | zx::accumulate(1, std::multiplies{}), 362880);

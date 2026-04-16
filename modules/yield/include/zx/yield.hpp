@@ -1206,38 +1206,105 @@ struct count_fn
 
 struct partition_fn
 {
-    template <class Pred, class OnTrueReducer, class OnFalseReducer>
+    template <class PredicatesTuple, class ReducersTuple>
     struct reducer_t
     {
-        Pred m_pred;
-        std::tuple<OnTrueReducer, OnFalseReducer> m_reducers;
-        mutable std::bitset<2> m_done{};
+        static constexpr std::size_t num_branches = std::tuple_size_v<ReducersTuple>;
+
+        PredicatesTuple m_preds;
+        ReducersTuple m_reducers;
+        mutable std::bitset<num_branches> m_done{};
+
+        template <std::size_t N, class State, class... Args>
+        step_t call(State& state, Args&&... args) const
+        {
+            m_done[N]
+                = (std::get<N>(m_reducers).reduce(std::get<N>(state), std::forward<Args>(args)...) == step_t::loop_break);
+            return !m_done.all() ? step_t::loop_continue : step_t::loop_break;
+        }
+
+        template <std::size_t N, class State, class... Args>
+        step_t dispatch(State& state, Args&&... args) const
+        {
+            if constexpr (N + 1 == num_branches)
+            {
+                return call<N>(state, std::forward<Args>(args)...);
+            }
+            else
+            {
+                if (std::invoke(std::get<N>(m_preds), args...))
+                {
+                    return call<N>(state, std::forward<Args>(args)...);
+                }
+                return dispatch<N + 1>(state, std::forward<Args>(args)...);
+            }
+        }
 
         template <class State, class... Args>
         step_t reduce(State& state, Args&&... args) const
         {
-            if (std::invoke(m_pred, args...))
-            {
-                m_done[0]
-                    = (std::get<0>(m_reducers).reduce(std::get<0>(state), std::forward<Args>(args)...)
-                       == step_t::loop_break);
-            }
-            else
-            {
-                m_done[1]
-                    = (std::get<1>(m_reducers).reduce(std::get<1>(state), std::forward<Args>(args)...)
-                       == step_t::loop_break);
-            }
-            return !m_done.all() ? step_t::loop_continue : step_t::loop_break;
+            return dispatch<0>(state, std::forward<Args>(args)...);
         }
     };
 
-    template <class Pred, class S0, class R0, class S1, class R1>
-    constexpr auto operator()(Pred&& pred, reductor_t<S0, R0> on_true_reducer, reductor_t<S1, R1> on_false_reducer) const
-        -> reductor_t<std::tuple<S0, S1>, reducer_t<std::decay_t<Pred>, R0, R1>>
+    template <class Tuple, std::size_t... I>
+    static constexpr auto make_states(Tuple&& tuple, std::index_sequence<I...>)
     {
-        return { { std::move(on_true_reducer.state), std::move(on_false_reducer.state) },
-                 { std::forward<Pred>(pred), { std::move(on_true_reducer.reducer), std::move(on_false_reducer.reducer) } } };
+        return std::tuple{ std::move(std::get<2 * I + 1>(tuple).state)...,
+                           std::move(std::get<2 * sizeof...(I)>(tuple).state) };
+    }
+
+    template <class Tuple, std::size_t... I>
+    static constexpr auto make_reducers(Tuple&& tuple, std::index_sequence<I...>)
+    {
+        return std::tuple{ std::move(std::get<2 * I + 1>(tuple).reducer)...,
+                           std::move(std::get<2 * sizeof...(I)>(tuple).reducer) };
+    }
+
+    template <class Tuple, std::size_t... I>
+    static constexpr auto make_predicates(Tuple&& tuple, std::index_sequence<I...>)
+    {
+        return std::tuple{ std::move(std::get<2 * I>(tuple))... };
+    }
+
+    template <class ArgsTuple, std::size_t... I>
+    static constexpr bool odd_indices_are_reductors(std::index_sequence<I...>)
+    {
+        return (::zx::detail::is_reductor<std::tuple_element_t<2 * I + 1, ArgsTuple>>::value && ...);
+    }
+
+    template <class Pred, class Reductor, class... Rest>
+    constexpr auto operator()(Pred&& pred, Reductor&& reductor, Rest&&... rest) const
+    {
+        static_assert(
+            ::zx::detail::is_reductor<std::decay_t<Reductor>>::value,
+            "partition requires a reductor right after each predicate");
+        static_assert(sizeof...(Rest) % 2 == 1, "partition requires (predicate, reductor)... plus a catch-all reductor");
+
+        constexpr std::size_t num_preds = 1 + sizeof...(Rest) / 2;
+
+        auto args = std::tuple<std::decay_t<Pred>, std::decay_t<Reductor>, std::decay_t<Rest>...>{
+            std::forward<Pred>(pred),
+            std::forward<Reductor>(reductor),
+            std::forward<Rest>(rest)...,
+        };
+
+        using args_tuple_t = decltype(args);
+
+        static_assert(
+            odd_indices_are_reductors<args_tuple_t>(std::make_index_sequence<num_preds>{})
+                && ::zx::detail::is_reductor<std::tuple_element_t<2 * num_preds, args_tuple_t>>::value,
+            "partition expects reductor arguments in each pair and for the final catch-all argument");
+
+        using predicates_type = decltype(make_predicates(args, std::make_index_sequence<num_preds>{}));
+        using reducers_type = decltype(make_reducers(args, std::make_index_sequence<num_preds>{}));
+        using reducer_type = reducer_t<predicates_type, reducers_type>;
+
+        return reductor_t{ make_states(args, std::make_index_sequence<num_preds>{}),
+                           reducer_type{
+                               make_predicates(args, std::make_index_sequence<num_preds>{}),
+                               make_reducers(args, std::make_index_sequence<num_preds>{}),
+                           } };
     }
 };
 
