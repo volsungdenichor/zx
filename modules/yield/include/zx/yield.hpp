@@ -207,9 +207,33 @@ struct combine_fn
     };
 
     template <class... Transducers>
+    static constexpr auto to_tuple(const transducer_t<Transducers...>& t) -> std::tuple<Transducers...>
+    {
+        return t.m_transducers;
+    }
+
+    template <class... Transducers>
+    static constexpr auto to_tuple(transducer_t<Transducers...>&& t) -> std::tuple<Transducers...>
+    {
+        return std::move(t.m_transducers);
+    }
+
+    template <class Transducer>
+    static constexpr auto to_tuple(Transducer&& t) -> std::tuple<std::decay_t<Transducer>>
+    {
+        return std::tuple{ std::forward<Transducer>(t) };
+    }
+
+    template <class... Transducers>
+    static constexpr auto from_tuple(std::tuple<Transducers...> t) -> transducer_t<Transducers...>
+    {
+        return transducer_t<Transducers...>{ std::move(t) };
+    }
+
+    template <class... Transducers>
     constexpr auto operator()(Transducers&&... transducers) const
     {
-        return transducer_t<std::decay_t<Transducers>...>{ { std::forward<Transducers>(transducers)... } };
+        return from_tuple(std::tuple_cat(to_tuple(std::forward<Transducers>(transducers))...));
     }
 } combine = combine_fn{};
 
@@ -1384,5 +1408,11 @@ using reductors::none_of;
 using reductors::out;
 using reductors::partition;
 using reductors::sum;
+
+template <class T>
+constexpr auto to_vector()
+{
+    return into(std::vector<T>{});
+}
 
 }  // namespace zx

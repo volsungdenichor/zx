@@ -318,8 +318,13 @@ TEST(yield, pythagorean_triples)
 
 TEST(yield, transducer_chaining)
 {
-    const auto take_even_and_square = zx::filter([](int x) { return x % 2 == 0; }) | zx::transform([](int x) { return x * x; });
-    std::vector<int> out = {};
-    zx::range(1, 10) | take_even_and_square | zx::copy_to(std::back_inserter(out));
-    EXPECT_THAT(out, testing::ElementsAre(4, 16, 36, 64));
+    const auto take_even_and_square
+        = zx::filter([](int x) { return x % 2 == 0; }) | zx::transform([](int x) { return x * x; });
+    const auto to_string_and_take_three = zx::transform(zx::str) | zx::take(3);
+
+    EXPECT_THAT(
+        zx::range(1, 10) | take_even_and_square | to_string_and_take_three | zx::to_vector<std::string>(),
+        testing::ElementsAre("4", "16", "36"));
+    EXPECT_THAT(
+        zx::range(10) | to_string_and_take_three | zx::to_vector<std::string>(), testing::ElementsAre("0", "1", "2"));
 }
