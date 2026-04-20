@@ -1,0 +1,17 @@
+load("//bazel:zx_module.bzl", "zx_module", "zx_module_test")
+
+zx_module(
+    name = "functional",
+    deps = ["//modules/core:core"],
+)
+
+zx_module_test(
+    name = "functional_tests",
+    module = ":functional",
+    srcs = [
+        "tests/function_ref.test.cpp",
+        "tests/pipe.test.cpp",
+        "tests/functional.test.cpp",
+        "tests/let.test.cpp",
+    ],
+)

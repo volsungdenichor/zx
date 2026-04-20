@@ -1,0 +1,12 @@
+load("//bazel:zx_module.bzl", "zx_module", "zx_module_test")
+
+zx_module(
+    name = "yield",
+    deps = ["//modules/core:core"],
+)
+
+zx_module_test(
+    name = "yield_tests",
+    module = ":yield",
+    srcs = ["tests/yield.test.cpp"],
+)

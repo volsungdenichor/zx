@@ -1,0 +1,18 @@
+load("//bazel:zx_module.bzl", "zx_module", "zx_module_test")
+
+zx_module(
+    name = "ansi",
+    deps = [
+        "//modules/core:core",
+        "//modules/arrays:arrays",
+    ],
+)
+
+zx_module_test(
+    name = "ansi_tests",
+    module = ":ansi",
+    srcs = [
+        "tests/ansi.test.cpp",
+        "tests/surface.test.cpp",
+    ],
+)

@@ -1,0 +1,12 @@
+load("//bazel:zx_module.bzl", "zx_module", "zx_module_test")
+
+zx_module(
+    name = "iterator",
+    deps = ["//modules/core:core"],
+)
+
+zx_module_test(
+    name = "iterator_tests",
+    module = ":iterator",
+    srcs = ["tests/iterator_interface.test.cpp"],
+)

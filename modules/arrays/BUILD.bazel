@@ -1,0 +1,15 @@
+load("//bazel:zx_module.bzl", "zx_module", "zx_module_test")
+
+zx_module(
+    name = "arrays",
+    deps = [
+        "//modules/core:core",
+        "//modules/mat:mat",
+    ],
+)
+
+zx_module_test(
+    name = "arrays_tests",
+    module = ":arrays",
+    srcs = ["tests/array.test.cpp"],
+)

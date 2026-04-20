@@ -1,0 +1,15 @@
+load("//bazel:zx_module.bzl", "zx_module", "zx_module_test")
+
+zx_module(
+    name = "geometry",
+    deps = [
+        "//modules/mat:mat",
+        "//modules/sequence:sequence",
+    ],
+)
+
+zx_module_test(
+    name = "geometry_tests",
+    module = ":geometry",
+    srcs = ["tests/dcel.test.cpp"],
+)

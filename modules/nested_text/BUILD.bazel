@@ -1,0 +1,18 @@
+load("//bazel:zx_module.bzl", "zx_module", "zx_module_test")
+
+zx_module(
+    name = "nested_text",
+    deps = [
+        "//modules/core:core",
+        "//modules/iterator:iterator",
+    ],
+)
+
+zx_module_test(
+    name = "nested_text_tests",
+    module = ":nested_text",
+    srcs = [
+        "tests/nested_text.test.cpp",
+        "tests/serialization.test.cpp",
+    ],
+)

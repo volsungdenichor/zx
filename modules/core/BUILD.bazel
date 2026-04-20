@@ -1,0 +1,16 @@
+load("//bazel:zx_module.bzl", "zx_module", "zx_module_test")
+
+zx_module(name = "core")
+
+zx_module_test(
+	name = "core_tests",
+	module = ":core",
+	srcs = [
+		"tests/type_traits.test.cpp",
+		"tests/format.test.cpp",
+		"tests/iterator_range.test.cpp",
+		"tests/maybe.test.cpp",
+		"tests/result.test.cpp",
+		"tests/type_name.test.cpp",
+	],
+)

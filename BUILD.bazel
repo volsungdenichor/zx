@@ -1,0 +1,75 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+alias(
+    name = "core",
+    actual = "//modules/core:core",
+)
+
+alias(
+    name = "iterator",
+    actual = "//modules/iterator:iterator",
+)
+
+alias(
+    name = "functional",
+    actual = "//modules/functional:functional",
+)
+
+alias(
+    name = "sequence",
+    actual = "//modules/sequence:sequence",
+)
+
+alias(
+    name = "mat",
+    actual = "//modules/mat:mat",
+)
+
+alias(
+    name = "arrays",
+    actual = "//modules/arrays:arrays",
+)
+
+alias(
+    name = "ansi",
+    actual = "//modules/ansi:ansi",
+)
+
+alias(
+    name = "images",
+    actual = "//modules/images:images",
+)
+
+alias(
+    name = "geometry",
+    actual = "//modules/geometry:geometry",
+)
+
+alias(
+    name = "nested_text",
+    actual = "//modules/nested_text:nested_text",
+)
+
+alias(
+    name = "yield",
+    actual = "//modules/yield:yield",
+)
+
+cc_library(
+    name = "zx",
+    deps = [
+        "//modules/ansi:ansi",
+        "//modules/arrays:arrays",
+        "//modules/core:core",
+        "//modules/functional:functional",
+        "//modules/geometry:geometry",
+        "//modules/images:images",
+        "//modules/iterator:iterator",
+        "//modules/mat:mat",
+        "//modules/nested_text:nested_text",
+        "//modules/sequence:sequence",
+        "//modules/yield:yield",
+    ],
+)
