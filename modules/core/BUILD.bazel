@@ -12,5 +12,6 @@ zx_module_test(
 		"tests/maybe.test.cpp",
 		"tests/result.test.cpp",
 		"tests/type_name.test.cpp",
+		"tests/functions.test.cpp"
 	],
 )

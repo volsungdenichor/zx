@@ -9,6 +9,7 @@ zx_add_module(
     tests/maybe.test.cpp
     tests/result.test.cpp
     tests/type_name.test.cpp
+    tests/functions.test.cpp
 )
 
 if(WIN32)
