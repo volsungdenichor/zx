@@ -4,18 +4,20 @@
 
 TEST(functions, identity)
 {
+    using namespace std::literals;
     zx::identity_t identity;
 
     EXPECT_THAT(identity(42), 42);
-    EXPECT_THAT(identity(std::string{ "Hello" }), "Hello");
+    EXPECT_THAT(identity("Hello"s), "Hello"s);
 }
 
 TEST(functions, get_element)
 {
-    const auto tuple = std::tuple{ 42, "Hello", 3.14 };
+    using namespace std::literals;
+    const auto tuple = std::tuple{ 42, "Hello"s, 3.14 };
 
     EXPECT_THAT(zx::get_element<0>(tuple), 42);
-    EXPECT_THAT(zx::get_element<1>(tuple), "Hello");
+    EXPECT_THAT(zx::get_element<1>(tuple), "Hello"s);
     EXPECT_THAT(zx::get_element<2>(tuple), 3.14);
 }
 
