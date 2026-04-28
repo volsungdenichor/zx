@@ -27,7 +27,7 @@ struct maybe_underlying_type<maybe_t<T>>
 
 struct bad_maybe_access : std::exception
 {
-    const char* what() const noexcept override { return "zx::bad_maybe_access"; }
+    const char* what() const noexcept override { return "bad_maybe_access"; }
 };
 
 namespace detail

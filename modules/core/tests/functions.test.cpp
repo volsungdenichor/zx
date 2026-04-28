@@ -36,7 +36,9 @@ TEST(functions, dereference)
     testing::StaticAssertTypeEq<decltype(zx::dereference(optRef)), const int&>();
 
     std::optional<int> emptyOpt = {};
-    EXPECT_THROW(zx::dereference(emptyOpt), std::runtime_error);
+    EXPECT_THAT(
+        [&] { zx::dereference(emptyOpt); },
+        testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr("Attempted to dereference an empty value")));
 }
 
 TEST(functions, proj)

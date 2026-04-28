@@ -174,15 +174,15 @@ TEST(maybe_t, maybe_ref_modification)
 TEST(maybe_t, maybe_no_value_access_throws)
 {
     zx::maybe_t<int> m = zx::none;
-    EXPECT_THROW(*m, zx::bad_maybe_access);
-    EXPECT_THROW(m.value(), zx::bad_maybe_access);
+    EXPECT_THAT([&] { *m; }, testing::ThrowsMessage<zx::bad_maybe_access>(testing::HasSubstr("bad_maybe_access")));
+    EXPECT_THAT([&] { m.value(); }, testing::ThrowsMessage<zx::bad_maybe_access>(testing::HasSubstr("bad_maybe_access")));
 }
 
 TEST(maybe_t, maybe_ref_no_value_access_throws)
 {
     zx::maybe_t<int&> m = zx::none;
-    EXPECT_THROW(*m, zx::bad_maybe_access);
-    EXPECT_THROW(m.value(), zx::bad_maybe_access);
+    EXPECT_THAT([&] { *m; }, testing::ThrowsMessage<zx::bad_maybe_access>(testing::HasSubstr("bad_maybe_access")));
+    EXPECT_THAT([&] { m.value(); }, testing::ThrowsMessage<zx::bad_maybe_access>(testing::HasSubstr("bad_maybe_access")));
 }
 
 TEST(maybe_t, maybe_ref_assignment_rebinds_the_reference)
@@ -364,13 +364,15 @@ TEST(maybe_t, maybe_ref_move_value_or)
 TEST(maybe_t, maybe_move_no_value_access_throws)
 {
     zx::maybe_t<int> m = zx::none;
-    EXPECT_THROW(std::move(m).value(), zx::bad_maybe_access);
+    EXPECT_THAT(
+        [&] { std::move(m).value(); }, testing::ThrowsMessage<zx::bad_maybe_access>(testing::HasSubstr("bad_maybe_access")));
 }
 
 TEST(maybe_t, maybe_ref_move_no_value_access_throws)
 {
     zx::maybe_t<int&> m = zx::none;
-    EXPECT_THROW(std::move(m).value(), zx::bad_maybe_access);
+    EXPECT_THAT(
+        [&] { std::move(m).value(); }, testing::ThrowsMessage<zx::bad_maybe_access>(testing::HasSubstr("bad_maybe_access")));
 }
 
 TEST(maybe_t, maybe_ref_move_assignment_rebinds_the_reference)
