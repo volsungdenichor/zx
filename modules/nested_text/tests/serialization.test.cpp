@@ -30,7 +30,9 @@ TEST(nested_text_serialization, integer)
 
 TEST(nested_text_serialization, integer_rejects_trailing_garbage)
 {
-    EXPECT_THROW((void)zx::nested_text::decode<int>(zx::nested_text::node_t{ "123abc" }), std::runtime_error);
+    EXPECT_THAT(
+        [&]() { zx::nested_text::decode<int>(zx::nested_text::node_t{ "123abc" }); },
+        testing::ThrowsMessage<std::runtime_error>(testing::HasSubstr("Failed to decode int")));
 }
 
 TEST(nested_text_serialization, string)

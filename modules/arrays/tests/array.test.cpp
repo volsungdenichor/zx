@@ -81,7 +81,8 @@ TEST(array, array_1d_access)
     EXPECT_THAT(a[-1], 9);
     EXPECT_THAT(a[-2], 8);
 
-    EXPECT_THROW(a[19], std::out_of_range);
+    EXPECT_THAT(
+        [&] { a[19]; }, testing::ThrowsMessage<std::out_of_range>(testing::HasSubstr("Location 19 is out of bounds (10)")));
 }
 
 TEST(array, array_1d_slice)
