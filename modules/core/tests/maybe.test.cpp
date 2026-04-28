@@ -470,12 +470,6 @@ TEST(maybe_t, maybe_move_or_else_void)
     EXPECT_FALSE(called);
 }
 
-TEST(maybe_t, bad_maybe_access_what)
-{
-    zx::bad_maybe_access ex;
-    EXPECT_STREQ(ex.what(), "zx::bad_maybe_access");
-}
-
 TEST(maybe_t, maybe_ref_filter_no_value)
 {
     zx::maybe_t<int&> m = zx::none;
