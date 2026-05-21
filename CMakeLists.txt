@@ -25,6 +25,7 @@ set(ZX_MODULE_DEPENDENCIES "
         [geometry [mat sequence]]
         [nested_text [core iterator]]
         [yield [core]]
+        [predicates [core nested_text]]
     ]
 ")
 

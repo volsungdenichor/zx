@@ -19,6 +19,22 @@ struct codec_t
 };
 
 template <class T>
+using has_encode_impl = decltype(std::declval<const codec_t<T>&>().encode(std::declval<const T&>()));
+
+template <class T>
+using has_decode_impl = decltype(std::declval<const codec_t<T>&>().decode(std::declval<const node_t&>()));
+
+template <class T>
+struct has_encode : is_detected<has_encode_impl, T>
+{
+};
+
+template <class T>
+struct has_decode : is_detected<has_decode_impl, T>
+{
+};
+
+template <class T>
 node_t encode(const T& value)
 {
     static const codec_t<T> codec = {};
@@ -45,6 +61,18 @@ struct codec_t<std::string>
     node_t encode(const std::string& in) const { return in; }
 
     std::string decode(const node_t& in) const { return in.as_string(); }
+};
+
+template <>
+struct codec_t<const char*>
+{
+    node_t encode(const char* in) const { return string_t{ in }; }
+};
+
+template <>
+struct codec_t<std::string_view>
+{
+    node_t encode(const std::string_view& in) const { return string_t{ in }; }
 };
 
 template <>

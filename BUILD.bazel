@@ -57,6 +57,11 @@ alias(
     actual = "//modules/yield:yield",
 )
 
+alias(
+    name = "predicates",
+    actual = "//modules/predicates:predicates",
+)
+
 cc_library(
     name = "zx",
     deps = [
@@ -71,5 +76,6 @@ cc_library(
         "//modules/nested_text:nested_text",
         "//modules/sequence:sequence",
         "//modules/yield:yield",
+        "//modules/predicates:predicates",
     ],
 )

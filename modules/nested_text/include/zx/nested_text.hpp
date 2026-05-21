@@ -1,5 +1,6 @@
 #pragma once
 
+#include <zx/nested_text/compare.hpp>
 #include <zx/nested_text/node.hpp>
 #include <zx/nested_text/parser.hpp>
 #include <zx/nested_text/printer.hpp>

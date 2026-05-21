@@ -1,0 +1,17 @@
+load("//bazel:zx_module.bzl", "zx_module", "zx_module_test")
+
+zx_module(
+    name = "predicates",
+    deps = [
+        "//modules/core:core",
+        "//modules/nested_text:nested_text",
+    ],
+)
+
+zx_module_test(
+    name = "predicates_tests",
+    module = ":predicates",
+    srcs = [
+        "tests/predicates.test.cpp",
+    ],
+)

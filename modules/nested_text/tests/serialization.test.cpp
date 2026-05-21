@@ -14,7 +14,7 @@ struct TestStruct
 }  // namespace
 
 template <>
-struct zx::nested_text::codec_t<TestStruct> : public zx::nested_text::struct_codec_t<TestStruct>
+struct zx::nested_text::codec_t<TestStruct> : zx::nested_text::struct_codec_t<TestStruct>
 {
     using _ = TestStruct;
 #define MEMBER(name) member_t{ #name, &_::name }

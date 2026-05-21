@@ -354,5 +354,14 @@ struct parse_fn
 
 constexpr inline auto parse = detail::parse_fn{};
 
+namespace literals
+{
+
+inline node_t operator"" _node(const char* str, std::size_t len)
+{
+    return parse(std::string_view(str, len));
+}
+}  // namespace literals
+
 }  // namespace nested_text
 }  // namespace zx

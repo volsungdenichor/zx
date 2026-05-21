@@ -27,15 +27,15 @@ struct is_result<result_t<T, E>> : std::true_type
 };
 
 template <class E>
-struct error_wrapper
+struct error_wrapper_t
 {
     E m_error;
 };
 
 template <class E>
-constexpr auto error(E&& error) -> error_wrapper<std::decay_t<E>>
+constexpr auto error(E&& error) -> error_wrapper_t<std::decay_t<E>>
 {
-    return error_wrapper<std::decay_t<E>>{ std::forward<E>(error) };
+    return error_wrapper_t<std::decay_t<E>>{ std::forward<E>(error) };
 };
 
 template <class Result>
@@ -74,7 +74,7 @@ constexpr auto to_error(In&& in) -> Result
 }  // namespace detail
 
 using detail::error;
-using detail::error_wrapper;
+using detail::error_wrapper_t;
 
 struct bad_result_access : std::runtime_error
 {
@@ -89,18 +89,18 @@ struct result_t
     using value_type = T;
     using error_type = E;
     using value_storage = value_type;
-    using error_storage = error_wrapper<error_type>;
+    using error_storage = error_wrapper_t<error_type>;
 
     constexpr result_t(value_type value = {}) : m_storage(std::in_place_type<value_storage>, std::move(value)) { }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
-    constexpr result_t(const error_wrapper<Err>& error)
+    constexpr result_t(const error_wrapper_t<Err>& error)
         : m_storage(std::in_place_type<error_storage>, error_storage{ error.m_error })
     {
     }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
-    constexpr result_t(error_wrapper<Err>&& error)
+    constexpr result_t(error_wrapper_t<Err>&& error)
         : m_storage(std::in_place_type<error_storage>, error_storage{ std::move(error.m_error) })
     {
     }
@@ -326,18 +326,18 @@ struct result_t<T&, E>
     using value_type = T;
     using error_type = E;
     using value_storage = T*;
-    using error_storage = error_wrapper<error_type>;
+    using error_storage = error_wrapper_t<error_type>;
 
     constexpr result_t(value_type& value) : m_storage(std::in_place_type<value_storage>, &value) { }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
-    constexpr result_t(const error_wrapper<Err>& error)
+    constexpr result_t(const error_wrapper_t<Err>& error)
         : m_storage(std::in_place_type<error_storage>, error_storage{ error.m_error })
     {
     }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
-    constexpr result_t(error_wrapper<Err>&& error)
+    constexpr result_t(error_wrapper_t<Err>&& error)
         : m_storage(std::in_place_type<error_storage>, error_storage{ std::move(error.m_error) })
     {
     }
@@ -538,12 +538,12 @@ struct result_t<void, E>
     constexpr result_t() : m_storage{} { }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
-    constexpr result_t(const error_wrapper<Err>& error) : m_storage(error.m_error)
+    constexpr result_t(const error_wrapper_t<Err>& error) : m_storage(error.m_error)
     {
     }
 
     template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
-    constexpr result_t(error_wrapper<Err>&& error) : m_storage(std::move(error.m_error))
+    constexpr result_t(error_wrapper_t<Err>&& error) : m_storage(std::move(error.m_error))
     {
     }
 

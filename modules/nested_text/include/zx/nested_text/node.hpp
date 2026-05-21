@@ -360,6 +360,34 @@ struct node_t
     }
 };
 
+inline list_t& operator+=(list_t& lhs, const list_t& rhs)
+{
+    lhs.insert(lhs.end(), rhs.begin(), rhs.end());
+    return lhs;
+}
+
+inline list_t& operator+=(list_t& lhs, node_t rhs)
+{
+    lhs.push_back(std::move(rhs));
+    return lhs;
+}
+
+inline list_t operator+(list_t lhs, const list_t& rhs)
+{
+    return lhs += rhs;
+}
+
+inline list_t operator+(list_t lhs, node_t rhs)
+{
+    return lhs += std::move(rhs);
+}
+
+inline list_t operator+(node_t lhs, list_t rhs)
+{
+    rhs.insert(rhs.begin(), std::move(lhs));
+    return rhs;
+}
+
 namespace detail
 {
 
@@ -510,6 +538,5 @@ node_t text(const Args&... args)
 }
 
 }  // namespace nested_text
-
 
 }  // namespace zx
