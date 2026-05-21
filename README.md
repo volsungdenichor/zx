@@ -21,6 +21,7 @@ All modules are header-only (INTERFACE targets) and can be used individually or 
 | [images](modules/images/README.md) | BMP image read/write |
 | [geometry](modules/geometry/README.md) | DCEL mesh, Delaunay triangulation, Voronoi diagram |
 | [nested_text](modules/nested_text/README.md) | S-expression-based data format — parser, printer, serialization |
+| [predicates](modules/predicates/README.md) | Composable value and range predicates with structured validation errors |
 
 ---
 
