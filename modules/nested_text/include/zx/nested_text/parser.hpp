@@ -357,10 +357,18 @@ constexpr inline auto parse = detail::parse_fn{};
 namespace literals
 {
 
+#if defined(_MSC_VER)
+inline constexpr node_t operator"" _node(const char* str, std::size_t len)
+{
+    return parse(std::string_view(str, len));
+}
+#else
 inline node_t operator"" _node(const char* str, std::size_t len)
 {
     return parse(std::string_view(str, len));
 }
+#endif
+
 }  // namespace literals
 
 }  // namespace nested_text
