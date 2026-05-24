@@ -907,7 +907,7 @@ struct result_of_fn
     };
 
     template <class Func, class Predicate>
-    constexpr auto operator()(std::string name, Func&& func, Predicate&& predicate) const
+    auto operator()(std::string name, Func&& func, Predicate&& predicate) const
     {
         return predicate_interface_t{ impl_t{
             std::move(name), std::forward<Func>(func), to_predicate_interface(std::forward<Predicate>(predicate)) } };
