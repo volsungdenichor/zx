@@ -362,9 +362,9 @@ constexpr inline auto parse = detail::parse_fn{};
 namespace literals
 {
 
-inline node_t operator"" _node(const char* str, std::size_t len)
+inline node_t operator"" _node(const char* ptr, std::size_t len)
 {
-    return parse(std::string_view(str, len));
+    return parse(std::string_view(ptr, len));
 }
 
 }  // namespace literals
