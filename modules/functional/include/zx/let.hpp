@@ -51,8 +51,27 @@ private:
     }
 };
 
+struct arg_t
+{
+    template <class T>
+    constexpr T&& operator=(T&& value) const
+    {
+        return std::forward<T>(value);
+    }
+};
+
 }  // namespace detail
 
 static constexpr detail::let_fn let;
+
+namespace literals
+{
+
+constexpr detail::arg_t operator"" _arg(const char*, std::size_t)
+{
+    return {};
+}
+
+}  // namespace literals
 
 }  // namespace zx

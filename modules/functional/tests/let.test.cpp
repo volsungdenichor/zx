@@ -46,9 +46,8 @@ TEST(let, six_args)
 
 TEST(let, seven_args)
 {
-    auto result = zx::let(7, 7, 7, 7, 7, 7, 7, [](int a, int b, int c, int d, int e, int f, int g) {
-        return a + b + c + d + e + f + g;
-    });
+    auto result = zx::let(
+        7, 7, 7, 7, 7, 7, 7, [](int a, int b, int c, int d, int e, int f, int g) { return a + b + c + d + e + f + g; });
     EXPECT_THAT(result, 49);
 }
 
@@ -241,15 +240,16 @@ TEST(let, let_with_no_args_lambda_returning_move_only)
 
 TEST(let, heron_formula)
 {
+    using namespace zx::literals;
     EXPECT_THAT(
         zx::let(
-            3.0,
-            4.0,
-            5.0,
+            "a"_arg = 3.0,
+            "b"_arg = 4.0,
+            "c"_arg = 5.0,
             [](double a, double b, double c)
             {
                 return zx::let(  //
-                    (a + b + c) / 2.0,
+                    "s"_arg = (a + b + c) / 2.0,
                     [&](double s) { return std::sqrt(s * (s - a) * (s - b) * (s - c)); });
             }),
         6.0);
