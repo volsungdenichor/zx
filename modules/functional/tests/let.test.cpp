@@ -44,6 +44,14 @@ TEST(let, six_args)
     EXPECT_THAT(result, 42);
 }
 
+TEST(let, seven_args)
+{
+    auto result = zx::let(7, 7, 7, 7, 7, 7, 7, [](int a, int b, int c, int d, int e, int f, int g) {
+        return a + b + c + d + e + f + g;
+    });
+    EXPECT_THAT(result, 49);
+}
+
 TEST(let, forwarding)
 {
     struct move_only

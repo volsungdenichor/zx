@@ -1,6 +1,8 @@
 #pragma once
 
 #include <functional>
+#include <tuple>
+#include <utility>
 
 namespace zx
 {
@@ -8,69 +10,43 @@ namespace zx
 namespace detail
 {
 
+template <class Tuple>
+struct let_result;
+
+template <class... Args>
+struct let_result<std::tuple<Args...>>
+{
+private:
+    template <std::size_t... I>
+    static auto make_type(std::index_sequence<I...>)
+        -> std::invoke_result_t<
+            std::tuple_element_t<sizeof...(Args) - 1, std::tuple<Args...>>,
+            std::tuple_element_t<I, std::tuple<Args...>>...>;
+
+public:
+    using type = decltype(make_type(std::make_index_sequence<sizeof...(Args) - 1>{}));
+};
+
+template <class... Args>
+using let_result_t = typename let_result<std::tuple<Args...>>::type;
+
 struct let_fn
 {
-    template <class Func>
-    constexpr auto operator()(Func&& func) const -> std::invoke_result_t<Func>
+    template <class... Args>
+    constexpr auto operator()(Args&&... args) const -> let_result_t<Args&&...>
     {
-        return std::invoke(std::forward<Func>(func));
+        static_assert(sizeof...(Args) >= 1, "zx::let requires a callable");
+        return impl(std::make_index_sequence<sizeof...(Args) - 1>{}, std::forward<Args>(args)...);
     }
 
-    template <class T0, class Func>
-    constexpr auto operator()(T0&& t0, Func&& func) const -> std::invoke_result_t<Func, T0>
+private:
+    template <std::size_t... I, class... Args>
+    static constexpr decltype(auto) impl(std::index_sequence<I...>, Args&&... args)
     {
-        return std::invoke(std::forward<Func>(func), std::forward<T0>(t0));
-    }
-
-    template <class T0, class T1, class Func>
-    constexpr auto operator()(T0&& t0, T1&& t1, Func&& func) const -> std::invoke_result_t<Func, T0, T1>
-    {
-        return std::invoke(std::forward<Func>(func), std::forward<T0>(t0), std::forward<T1>(t1));
-    }
-
-    template <class T0, class T1, class T2, class Func>
-    constexpr auto operator()(T0&& t0, T1&& t1, T2&& t2, Func&& func) const -> std::invoke_result_t<Func, T0, T1, T2>
-    {
-        return std::invoke(std::forward<Func>(func), std::forward<T0>(t0), std::forward<T1>(t1), std::forward<T2>(t2));
-    }
-
-    template <class T0, class T1, class T2, class T3, class Func>
-    constexpr auto operator()(T0&& t0, T1&& t1, T2&& t2, T3&& t3, Func&& func) const
-        -> std::invoke_result_t<Func, T0, T1, T2, T3>
-    {
+        auto tuple = std::forward_as_tuple(std::forward<Args>(args)...);
         return std::invoke(
-            std::forward<Func>(func),
-            std::forward<T0>(t0),
-            std::forward<T1>(t1),
-            std::forward<T2>(t2),
-            std::forward<T3>(t3));
-    }
-
-    template <class T0, class T1, class T2, class T3, class T4, class Func>
-    constexpr auto operator()(T0&& t0, T1&& t1, T2&& t2, T3&& t3, T4&& t4, Func&& func) const
-        -> std::invoke_result_t<Func, T0, T1, T2, T3, T4>
-    {
-        return std::invoke(
-            std::forward<Func>(func),
-            std::forward<T0>(t0),
-            std::forward<T1>(t1),
-            std::forward<T2>(t2),
-            std::forward<T3>(t3),
-            std::forward<T4>(t4));
-    }
-
-    template <class T0, class T1, class T2, class T3, class T4, class T5, class Func>
-    constexpr auto operator()(T0&& t0, T1&& t1, T2&& t2, T3&& t3, T4&& t4, T5&& t5, Func&& func) const
-        -> std::invoke_result_t<Func, T0, T1, T2, T3, T4, T5>
-    {
-        return std::invoke(
-            std::forward<Func>(func),
-            std::forward<T0>(t0),
-            std::forward<T1>(t1),
-            std::forward<T2>(t2),
-            std::forward<T3>(t3),
-            std::forward<T4>(t4),
-            std::forward<T5>(t5));
+            std::get<sizeof...(Args) - 1>(std::move(tuple)),
+            std::get<I>(std::move(tuple))...);
     }
 };
 

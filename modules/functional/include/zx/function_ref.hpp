@@ -25,7 +25,8 @@ struct function_ref<Ret(Args...)>
     {
     }
 
-    constexpr auto operator()(Args... args) const -> return_type { return m_func(m_obj, std::forward<Args>(args)...); }
+    template <class... CallArgs>
+    constexpr auto operator()(CallArgs&&... args) const -> return_type { return m_func(m_obj, std::forward<CallArgs>(args)...); }
 };
 
 }  // namespace zx
