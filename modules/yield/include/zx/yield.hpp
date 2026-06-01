@@ -1014,10 +1014,10 @@ static constexpr inline auto take_while_indexed = detail::take_while_fn<true>{};
 static constexpr inline auto take = detail::take_fn{};
 static constexpr inline auto drop = detail::drop_fn{};
 
-static constexpr inline auto join = detail::join_fn{}();
+static constexpr inline auto join = detail::join_fn{};
 static constexpr inline auto intersperse = detail::intersperse_fn{};
 
-static constexpr inline auto unpack = detail::unpack_fn{}();
+static constexpr inline auto unpack = detail::unpack_fn{};
 static constexpr inline auto project = detail::project_fn{};
 
 }  // namespace transducers
@@ -1197,6 +1197,20 @@ struct count_fn
         step_t reduce(std::size_t& state, Args&&...) const
         {
             ++state;
+            return step_t::loop_continue;
+        }
+    };
+
+    constexpr auto operator()() const -> reductor_t<std::size_t, reducer_t> { return { 0, reducer_t{} }; }
+};
+
+struct dev_null_fn
+{
+    struct reducer_t
+    {
+        template <class... Args>
+        step_t reduce(std::size_t&, Args&&...) const
+        {
             return step_t::loop_continue;
         }
     };
@@ -1459,7 +1473,8 @@ static constexpr inline auto any_of = detail::any_of_fn{};
 static constexpr inline auto none_of = detail::none_of_fn{};
 static constexpr inline auto fork = detail::fork_fn{};
 static constexpr inline auto sum = detail::sum_fn{};
-static constexpr inline auto count = detail::count_fn{}();
+static constexpr inline auto count = detail::count_fn{};
+static constexpr inline auto dev_null = detail::dev_null_fn{};
 static constexpr inline auto partition = detail::partition_fn{};
 static constexpr inline auto accumulate = detail::accumulate_fn{};
 static constexpr inline auto out = detail::out_fn{};
@@ -1497,6 +1512,7 @@ using reductors::all_of;
 using reductors::any_of;
 using reductors::copy_to;
 using reductors::count;
+using reductors::dev_null;
 using reductors::for_each;
 using reductors::for_each_indexed;
 using reductors::fork;

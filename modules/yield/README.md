@@ -149,6 +149,7 @@ Reductors own the final state of the pipeline and decide whether processing cont
 | `zx::fork(r0, r1, ...)` | `std::tuple<...>` of all reducer states |
 | `zx::sum(init)` | Running sum starting from `init` |
 | `zx::count()` | `std::size_t` element count |
+| `zx::dev_null()` | Consumes values and discards them |
 | `zx::partition(pred0, r0, ..., predN, rN, catch_all)` | `std::tuple<state0, ..., stateN, catch_all_state>` |
 | `zx::accumulate(init, fn)` | General fold |
 | `zx::for_each(fn)` | Executes side effects for each value |

@@ -245,8 +245,8 @@ TEST(yield, join)
 {
     const std::vector<std::string> in = { "Abc", "De", "Fghi" };
     EXPECT_THAT(
-        zx::from(in)    //
-            | zx::join  //
+        zx::from(in)      //
+            | zx::join()  //
             | zx::into(std::string{}),
         testing::Eq("AbcDeFghi"));
 }
@@ -257,7 +257,7 @@ TEST(yield, intersperse)
     EXPECT_THAT(
         zx::from(in)                                     //
             | zx::intersperse(std::string_view{ ", " })  //
-            | zx::join                                   //
+            | zx::join()                                 //
             | zx::into(std::string{}),
         testing::Eq("Abc, De, Fghi"));
 }
@@ -268,9 +268,14 @@ TEST(yield, fork)
         zx::range(1, 10)  //
             | zx::fork(   //
                 zx::into(std::vector<int>{}),
-                zx::count,
+                zx::count(),
                 zx::sum(0)),
         testing::FieldsAre(testing::ElementsAre(1, 2, 3, 4, 5, 6, 7, 8, 9), testing::Eq(9), testing::Eq(45)));
+}
+
+TEST(yield, dev_null)
+{
+    EXPECT_THAT(zx::range(1, 10) | zx::dev_null(), testing::_);
 }
 
 TEST(yield, partition)
@@ -335,7 +340,7 @@ TEST(yield, unpack)
     const std::vector<std::tuple<int, int>> in{ { 1, 2 }, { 3, 4 }, { 5, 6 } };
     EXPECT_THAT(
         zx::from(in)                                             //
-            | zx::unpack                                         //
+            | zx::unpack()                                       //
             | zx::filter([](int a, int) { return a != 3; })      //
             | zx::transform([](int a, int b) { return a * b; })  //
             | zx::into(std::vector<int>{}),
@@ -378,11 +383,11 @@ TEST(yield, pythagorean_triples)
                                     }
                                 }
                             })
-                        | zx::transform([](int a, int b, int c) { return zx::str("(", a, ", ", b, ", ", c, ")"); })
+                        | zx::transform([](int a, int b, int c) { return zx::str("(", a, " ", b, " ", c, ")"); })
                         | zx::intersperse(std::string{ ", " })  //
-                        | zx::join                              //
+                        | zx::join()                            //
                         | zx::into(std::string{});
-    EXPECT_THAT(result, testing::Eq("(3, 4, 5), (5, 12, 13), (6, 8, 10), (8, 15, 17), (9, 12, 15), (12, 16, 20)"));
+    EXPECT_THAT(result, testing::Eq("(3 4 5), (5 12 13), (6 8 10), (8 15 17), (9 12 15), (12 16 20)"));
 }
 
 TEST(yield, transducer_chaining)
