@@ -14,14 +14,16 @@ namespace ansi
 
 struct cell_t
 {
-    glyph_t glyph = glyph_t(' ');
+    using value_type = string_t::value_type;
+
+    value_type code_point = value_type(' ');
     style_info_t style = {};
 
-    cell_t(glyph_t g = {}, style_info_t s = {}) : glyph(g), style(s) { }
+    cell_t(value_type cp = {}, style_info_t s = {}) : code_point(cp), style(s) { }
 
     friend std::ostream& operator<<(std::ostream& os, const cell_t& item)
     {
-        os << "(cell_t glyph:" << item.glyph << " style:" << item.style << ")";
+        os << "(cell_t code_point:" << item.code_point << " style:" << item.style << ")";
         return os;
     }
 };
@@ -39,7 +41,7 @@ inline std::string render_line(const arrays::array_t<cell_t, 1>::view_type& rang
             current_style = cell.style;
             reset_needed = true;
         }
-        result += str(cell.glyph);
+        result += str(cell.code_point);
     }
     if (reset_needed)
     {

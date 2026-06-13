@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <vector>
+#include <algorithm>
 #include <zx/iterator_range.hpp>
 
 namespace zx
@@ -124,15 +125,15 @@ inline std::pair<char32_t, std::string_view> utf8_to_utf32(std::string_view s)
 
 }  // namespace detail
 
-struct glyph_t
+struct code_point_t
 {
     char32_t m_data;
 
-    glyph_t() = default;
+    code_point_t() = default;
 
-    explicit glyph_t(char32_t data) : m_data(data) { }
+    explicit code_point_t(char32_t data) : m_data(data) { }
 
-    explicit glyph_t(std::string_view txt) : glyph_t()
+    explicit code_point_t(std::string_view txt) : code_point_t()
     {
         auto [value, remainder] = detail::utf8_to_utf32(txt);
         if (!remainder.empty())
@@ -142,38 +143,38 @@ struct glyph_t
         m_data = value;
     }
 
-    explicit glyph_t(const char* txt) : glyph_t(std::string_view(txt)) { }
+    explicit code_point_t(const char* txt) : code_point_t(std::string_view(txt)) { }
 
-    explicit glyph_t(char ch) : glyph_t(std::string_view(&ch, 1)) { }
+    explicit code_point_t(char ch) : code_point_t(std::string_view(&ch, 1)) { }
 
-    friend bool operator==(const glyph_t& lhs, const glyph_t& rhs) { return lhs.m_data == rhs.m_data; }
-    friend bool operator!=(const glyph_t& lhs, const glyph_t& rhs) { return !(lhs == rhs); }
-    friend bool operator<(const glyph_t& lhs, const glyph_t& rhs) { return lhs.m_data < rhs.m_data; }
-    friend bool operator>(const glyph_t& lhs, const glyph_t& rhs) { return rhs < lhs; }
-    friend bool operator<=(const glyph_t& lhs, const glyph_t& rhs) { return !(lhs > rhs); }
-    friend bool operator>=(const glyph_t& lhs, const glyph_t& rhs) { return !(lhs < rhs); }
+    friend bool operator==(const code_point_t& lhs, const code_point_t& rhs) { return lhs.m_data == rhs.m_data; }
+    friend bool operator!=(const code_point_t& lhs, const code_point_t& rhs) { return !(lhs == rhs); }
+    friend bool operator<(const code_point_t& lhs, const code_point_t& rhs) { return lhs.m_data < rhs.m_data; }
+    friend bool operator>(const code_point_t& lhs, const code_point_t& rhs) { return rhs < lhs; }
+    friend bool operator<=(const code_point_t& lhs, const code_point_t& rhs) { return !(lhs > rhs); }
+    friend bool operator>=(const code_point_t& lhs, const code_point_t& rhs) { return !(lhs < rhs); }
 
-    friend std::ostream& operator<<(std::ostream& os, const glyph_t& item)
+    friend std::ostream& operator<<(std::ostream& os, const code_point_t& item)
     {
         return os << detail::utf32_to_utf8(item.m_data);
     }
 };
 
-struct string_view_t : public iterator_range_t<const glyph_t*>
+struct string_view_t : public iterator_range_t<const code_point_t*>
 {
-    using base_t = iterator_range_t<const glyph_t*>;
+    using base_t = iterator_range_t<const code_point_t*>;
     using base_t::base_t;
 
     friend std::ostream& operator<<(std::ostream& os, const string_view_t& item)
     {
-        std::copy(item.begin(), item.end(), std::ostream_iterator<glyph_t>(os));
+        std::copy(item.begin(), item.end(), std::ostream_iterator<code_point_t>(os));
         return os;
     }
 };
 
-struct string_t : public std::vector<glyph_t>
+struct string_t : public std::vector<code_point_t>
 {
-    using base_t = std::vector<glyph_t>;
+    using base_t = std::vector<code_point_t>;
     using base_t::base_t;
 
     string_t(std::string_view txt) : base_t{}
@@ -195,7 +196,7 @@ struct string_t : public std::vector<glyph_t>
 
     friend std::ostream& operator<<(std::ostream& os, const string_t& item)
     {
-        std::copy(item.begin(), item.end(), std::ostream_iterator<glyph_t>(os));
+        std::copy(item.begin(), item.end(), std::ostream_iterator<code_point_t>(os));
         return os;
     }
 
