@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <zx/iterator_interface.hpp>
 
 namespace zx
