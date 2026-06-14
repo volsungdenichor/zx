@@ -87,6 +87,14 @@ struct box_shape_t : public std::array<interval_t<T>, D>
     {
     }
 
+    constexpr box_shape_t(const vector_t<T, D>& lower, const vector_t<T, D>& upper)
+    {
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            (*this)[d] = interval_t<T>{ lower[d], upper[d] };
+        }
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const box_shape_t& item)
     {
         os << "(";

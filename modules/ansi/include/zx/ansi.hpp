@@ -79,12 +79,13 @@ inline std::string_view make_string_view(std::string_view::iterator b, std::stri
 
 }  // namespace detail
 
-struct escape_sequence_t : public std::vector<int>
+template <char Final>
+struct escape_sequence_base_t : public std::vector<int>
 {
     using base_t = std::vector<int>;
     using base_t::base_t;
 
-    friend std::ostream& operator<<(std::ostream& os, const escape_sequence_t& item)
+    friend std::ostream& operator<<(std::ostream& os, const escape_sequence_base_t& item)
     {
         os << "\033[";
         for (size_t i = 0; i < item.size(); ++i)
@@ -95,18 +96,24 @@ struct escape_sequence_t : public std::vector<int>
             }
             os << item[i];
         }
-        os << "m";
+        os << Final;
         return os;
     }
 
-    friend escape_sequence_t& operator+=(escape_sequence_t& lhs, const escape_sequence_t& rhs)
+    friend escape_sequence_base_t& operator+=(escape_sequence_base_t& lhs, const escape_sequence_base_t& rhs)
     {
         lhs.insert(lhs.end(), rhs.begin(), rhs.end());
         return lhs;
     }
 
-    friend escape_sequence_t operator+(escape_sequence_t lhs, const escape_sequence_t& rhs) { return lhs += rhs; }
+    friend escape_sequence_base_t operator+(escape_sequence_base_t lhs, const escape_sequence_base_t& rhs)
+    {
+        return lhs += rhs;
+    }
 };
+
+using escape_sequence_t = escape_sequence_base_t<'m'>;
+using cursor_move_t = escape_sequence_base_t<'H'>;
 
 struct color_t
 {
@@ -119,7 +126,8 @@ struct color_t
 
     static constexpr color_t from_rgb(value_type r, value_type g, value_type b)
     {
-        const int v[] = { (r * 6) / 256, (g * 6) / 256, (b * 6) / 256 };
+        constexpr auto convert = [](value_type x) { return (x * 6) / 256; };
+        const int v[] = { convert(r), convert(g), convert(b) };
         return color_t{ static_cast<value_type>(16 + 36 * v[0] + 6 * v[1] + v[2]) };
     }
 
