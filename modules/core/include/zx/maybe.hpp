@@ -194,17 +194,21 @@ struct maybe_t
     {
         if constexpr (std::is_void_v<FuncResult>)
         {
-            return *this  //
-                       ? Result{ *this }
-                       : (std::invoke(std::forward<Func>(func)), Result{ *this });
+            if (!*this)
+            {
+                std::invoke(std::forward<Func>(func));
+            }
+            return Result{ *this };
         }
         else
         {
             static_assert(
                 detail::is_maybe<FuncResult>::value, "or_else: function result type needs to be of `maybe_t<T>` type");
-            return *this  //
-                       ? Result{ *this }
-                       : Result{ std::invoke(std::forward<Func>(func)) };
+            if (*this)
+            {
+                return Result{ *this };
+            }
+            return Result{ std::invoke(std::forward<Func>(func)) };
         }
     }
 
@@ -216,17 +220,21 @@ struct maybe_t
     {
         if constexpr (std::is_void_v<FuncResult>)
         {
-            return *this  //
-                       ? Result{ std::move(*this) }
-                       : (std::invoke(std::forward<Func>(func)), Result{ std::move(*this) });
+            if (!*this)
+            {
+                std::invoke(std::forward<Func>(func));
+            }
+            return Result{ std::move(*this) };
         }
         else
         {
             static_assert(
                 detail::is_maybe<FuncResult>::value, "or_else: function result type needs to be of `maybe_t<T>` type");
-            return *this  //
-                       ? Result{ std::move(*this) }
-                       : Result{ std::invoke(std::forward<Func>(func)) };
+            if (*this)
+            {
+                return Result{ std::move(*this) };
+            }
+            return Result{ std::invoke(std::forward<Func>(func)) };
         }
     }
 
@@ -328,22 +336,26 @@ struct maybe_t<T&>
     template <
         class Func,
         class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, maybe_t<T>, FuncResult>>
+        class Result = std::conditional_t<std::is_void_v<FuncResult>, maybe_t<T&>, FuncResult>>
     constexpr auto or_else(Func&& func) const -> Result
     {
         if constexpr (std::is_void_v<FuncResult>)
         {
-            return *this  //
-                       ? Result{ *this }
-                       : (std::invoke(std::forward<Func>(func)), Result{ *this });
+            if (!*this)
+            {
+                std::invoke(std::forward<Func>(func));
+            }
+            return Result{ *this };
         }
         else
         {
             static_assert(
                 detail::is_maybe<FuncResult>::value, "or_else: function result type needs to be of `maybe_t<T>` type");
-            return *this  //
-                       ? Result{ *this }
-                       : Result{ std::invoke(std::forward<Func>(func)) };
+            if (*this)
+            {
+                return Result{ *this };
+            }
+            return Result{ std::invoke(std::forward<Func>(func)) };
         }
     }
 
