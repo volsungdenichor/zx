@@ -87,12 +87,34 @@ struct box_shape_t : public std::array<interval_t<T>, D>
     {
     }
 
-    constexpr box_shape_t(const vector_t<T, D>& lower, const vector_t<T, D>& upper)
+    static constexpr box_shape_t<T, D> from_lower_upper(const vector_t<T, D>& lower, const vector_t<T, D>& upper)
     {
+        box_shape_t<T, D> result;
         for (std::size_t d = 0; d < D; ++d)
         {
-            (*this)[d] = interval_t<T>{ lower[d], upper[d] };
+            result[d] = interval_t<T>{ lower[d], upper[d] };
         }
+        return result;
+    }
+
+    static constexpr box_shape_t<T, D> from_lower_size(const vector_t<T, D>& lower, const vector_t<T, D>& size)
+    {
+        box_shape_t<T, D> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = interval_t<T>{ lower[d], lower[d] + size[d] };
+        }
+        return result;
+    }
+
+    static constexpr box_shape_t<T, D> from_center_size(const vector_t<T, D>& center, const vector_t<T, D>& size)
+    {
+        box_shape_t<T, D> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = interval_t<T>{ center[d] - size[d] / 2, center[d] + size[d] / 2 };
+        }
+        return result;
     }
 
     friend std::ostream& operator<<(std::ostream& os, const box_shape_t& item)

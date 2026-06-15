@@ -14,7 +14,7 @@ namespace ansi
 
 struct cell_t
 {
-    using value_type = string_t::value_type;
+    using value_type = code_point_t;
 
     value_type code_point = value_type(' ');
     style_info_t style = {};
@@ -29,6 +29,11 @@ struct cell_t
 };
 
 using surface_t = arrays::array_t<cell_t, 2>;
+
+inline std::string clear_screen()
+{
+    return "\033[2J\033[H";
+}
 
 inline std::string render(const surface_t::view_type& surface)
 {
@@ -113,26 +118,22 @@ inline std::string render_diff(const surface_t::view_type& prev, const surface_t
 
 struct box_style_t
 {
-    string_t::value_type horizontal = string_t::value_type('-');
-    string_t::value_type vertical = string_t::value_type('|');
-    string_t::value_type top_left = string_t::value_type('+');
-    string_t::value_type top_right = string_t::value_type('+');
-    string_t::value_type bottom_left = string_t::value_type('+');
-    string_t::value_type bottom_right = string_t::value_type('+');
+    code_point_t horizontal = code_point_t('-');
+    code_point_t vertical = code_point_t('|');
+    code_point_t top_left = code_point_t('+');
+    code_point_t top_right = code_point_t('+');
+    code_point_t bottom_left = code_point_t('+');
+    code_point_t bottom_right = code_point_t('+');
 };
 
-const inline box_style_t default_box_style
-    = { string_t::value_type{ "-" }, string_t::value_type{ "|" }, string_t::value_type{ "+" },
-        string_t::value_type{ "+" }, string_t::value_type{ "+" }, string_t::value_type{ "+" } };
-const inline box_style_t double_box_style
-    = { string_t::value_type{ "=" }, string_t::value_type{ "‖" }, string_t::value_type{ "╔" },
-        string_t::value_type{ "╗" }, string_t::value_type{ "╚" }, string_t::value_type{ "╝" } };
-const inline box_style_t rounded_box_style
-    = { string_t::value_type{ "─" }, string_t::value_type{ "│" }, string_t::value_type{ "╭" },
-        string_t::value_type{ "╮" }, string_t::value_type{ "╰" }, string_t::value_type{ "╯" } };
-const inline box_style_t heavy_box_style
-    = { string_t::value_type{ "━" }, string_t::value_type{ "┃" }, string_t::value_type{ "┏" },
-        string_t::value_type{ "┓" }, string_t::value_type{ "┗" }, string_t::value_type{ "┛" } };
+const inline box_style_t default_box_style = { code_point_t{ "-" }, code_point_t{ "|" }, code_point_t{ "+" },
+                                               code_point_t{ "+" }, code_point_t{ "+" }, code_point_t{ "+" } };
+const inline box_style_t double_box_style = { code_point_t{ "=" }, code_point_t{ "‖" }, code_point_t{ "╔" },
+                                              code_point_t{ "╗" }, code_point_t{ "╚" }, code_point_t{ "╝" } };
+const inline box_style_t rounded_box_style = { code_point_t{ "─" }, code_point_t{ "│" }, code_point_t{ "╭" },
+                                               code_point_t{ "╮" }, code_point_t{ "╰" }, code_point_t{ "╯" } };
+const inline box_style_t heavy_box_style = { code_point_t{ "━" }, code_point_t{ "┃" }, code_point_t{ "┏" },
+                                             code_point_t{ "┓" }, code_point_t{ "┗" }, code_point_t{ "┛" } };
 
 void draw_border(
     surface_t::mut_view_type surface,

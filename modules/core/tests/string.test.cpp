@@ -4,7 +4,7 @@
 
 TEST(string, conversion_from_std_string)
 {
-    using g = zx::string_t::value_type;
+    using g = zx::code_point_t;
     EXPECT_THAT(
         zx::string_t{ "❤Hello, world!🔴" },
         testing::ElementsAreArray({ g("❤"),
