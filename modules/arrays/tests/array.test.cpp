@@ -2,6 +2,12 @@
 
 #include <zx/array.hpp>
 
+template <class T>
+zx::arrays::stride_base_t stride_of(zx::arrays::location_base_t n)
+{
+    return static_cast<zx::arrays::stride_base_t>(n * static_cast<zx::arrays::stride_base_t>(sizeof(T)));
+}
+
 TEST(array, slicing)
 {
     EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ {}, {}, {} })), testing::FieldsAre(zx::arrays::dim_t{ 10, 1 }, 0));
@@ -29,7 +35,7 @@ TEST(array, empty_array_1d_slice)
     zx::arrays::array_t<int, 1> a{ 10 };
     auto view = a.view().slice({ 5, 5 }).slice({ {}, {}, -1 });
     EXPECT_THAT(view.size(), 0);
-    EXPECT_THAT(view.stride(), -1);
+    EXPECT_THAT(view.stride(), -stride_of<int>(1));
     EXPECT_THAT(view.volume(), 0);
     EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 0 }));
 }
@@ -38,9 +44,12 @@ TEST(array, array_1d)
 {
     zx::arrays::array_t<int, 1> a{ 10 };
     a[1] = 42;
-    EXPECT_THAT(a.shape(), (zx::arrays::shape_t<1>{ { zx::arrays::dim_t{ 10, 1 } } }));
+    EXPECT_THAT(
+        a.shape(),
+        (zx::arrays::shape_t<1>{ { zx::arrays::dim_t{ 10, static_cast<zx::arrays::stride_base_t>(sizeof(int)) } },
+                                 static_cast<zx::arrays::size_base_t>(sizeof(int)) }));
     EXPECT_THAT(a.size(), 10);
-    EXPECT_THAT(a.stride(), 1);
+    EXPECT_THAT(a.stride(), stride_of<int>(1));
     EXPECT_THAT(a.volume(), 10);
     EXPECT_THAT(a.bounds(), (zx::mat::interval_t<int>{ 0, 10 }));
     EXPECT_THAT(a[0], 0);
@@ -48,7 +57,7 @@ TEST(array, array_1d)
 
     auto view = a.view();
     EXPECT_THAT(view.size(), 10);
-    EXPECT_THAT(view.stride(), 1);
+    EXPECT_THAT(view.stride(), stride_of<int>(1));
     EXPECT_THAT(view.volume(), 10);
     EXPECT_THAT(a.bounds(), (zx::mat::interval_t<int>{ 0, 10 }));
     EXPECT_THAT(view[0], 0);
@@ -58,7 +67,7 @@ TEST(array, array_1d)
 
     auto mut_view = a.mut_view();
     EXPECT_THAT(mut_view.size(), 10);
-    EXPECT_THAT(mut_view.stride(), 1);
+    EXPECT_THAT(mut_view.stride(), stride_of<int>(1));
     EXPECT_THAT(a.bounds(), (zx::mat::interval_t<int>{ 0, 10 }));
     EXPECT_THAT(mut_view.volume(), 10);
     EXPECT_THAT(mut_view[0], 0);
@@ -94,7 +103,7 @@ TEST(array, array_1d_slice)
     }
     auto view = a.view().slice({ 2, 8 });
     EXPECT_THAT(view.size(), 6);
-    EXPECT_THAT(view.stride(), 1);
+    EXPECT_THAT(view.stride(), stride_of<int>(1));
     EXPECT_THAT(view.volume(), 6);
     EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 6 }));
     EXPECT_THAT(view[0], 2);
@@ -115,7 +124,7 @@ TEST(array, array_1d_slice_step)
     }
     auto view = a.view().slice({ 2, 8, 2 });
     EXPECT_THAT(view.size(), 3);
-    EXPECT_THAT(view.stride(), 2);
+    EXPECT_THAT(view.stride(), stride_of<int>(2));
     EXPECT_THAT(view.volume(), 3);
     EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 3 }));
     EXPECT_THAT(view[0], 2);
@@ -133,7 +142,7 @@ TEST(array, array_1d_slice_negative)
     }
     auto view = a.view().slice({ -8, -2 });
     EXPECT_THAT(view.size(), 6);
-    EXPECT_THAT(view.stride(), 1);
+    EXPECT_THAT(view.stride(), stride_of<int>(1));
     EXPECT_THAT(view.volume(), 6);
     EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 6 }));
     EXPECT_THAT(view[0], 2);
@@ -155,7 +164,7 @@ TEST(array, array_1d_slice_negative_step)
     }
     auto view = a.view().slice({ 8, 2, -2 });
     EXPECT_THAT(view.size(), 3);
-    EXPECT_THAT(view.stride(), -2);
+    EXPECT_THAT(view.stride(), -stride_of<int>(2));
     EXPECT_THAT(view.volume(), 3);
     EXPECT_THAT(view.bounds(), (zx::mat::interval_t<int>{ 0, 3 }));
     EXPECT_THAT(view[0], 8);
