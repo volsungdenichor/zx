@@ -29,13 +29,68 @@ struct cell_t
 };
 
 using surface_t = arrays::array_t<cell_t, 2>;
+using surface_view_t = surface_t::view_type;
+using surface_mut_view_t = surface_t::mut_view_type;
+
+using code_point_view_t = arrays::array_view_t<const code_point_t, 2>;
+using code_point_mut_view_t = arrays::array_view_t<code_point_t, 2>;
+
+using styles_view_t = arrays::array_view_t<const style_info_t, 2>;
+using styles_mut_view_t = arrays::array_view_t<style_info_t, 2>;
+
+namespace detail
+{
+
+template <typename CellType>
+struct cell_layout_validator
+{
+    static_assert(std::is_standard_layout_v<CellType>, "cell_t must be standard-layout for offsetof");
+
+    static constexpr std::ptrdiff_t code_point_offset = offsetof(CellType, code_point);
+    static constexpr std::ptrdiff_t style_offset = offsetof(CellType, style);
+
+    static_assert(
+        code_point_offset % alignof(zx::code_point_t) == 0, "code_point offset must satisfy alignment requirements");
+    static_assert(style_offset % alignof(zx::ansi::style_info_t) == 0, "style offset must satisfy alignment requirements");
+};
+
+template <class U, class T, std::size_t D>
+zx::arrays::array_view_t<U, D> shift(zx::arrays::array_view_t<T, D> view, std::ptrdiff_t member_offset)
+{
+    U* p = const_cast<U*>(reinterpret_cast<const U*>(reinterpret_cast<const std::byte*>(view.data()) + member_offset));
+    return { p, view.shape() };
+}
+
+inline constexpr auto cell_layout = cell_layout_validator<zx::ansi::cell_t>{};
+
+}  // namespace detail
+
+inline code_point_mut_view_t mut_code_points(surface_mut_view_t surface)
+{
+    return detail::shift<zx::code_point_t>(surface, detail::cell_layout.code_point_offset);
+}
+
+inline code_point_view_t code_points(surface_view_t surface)
+{
+    return detail::shift<const zx::code_point_t>(surface, detail::cell_layout.code_point_offset);
+}
+
+inline styles_mut_view_t mut_styles(surface_mut_view_t surface)
+{
+    return detail::shift<zx::ansi::style_info_t>(surface, detail::cell_layout.style_offset);
+}
+
+inline styles_view_t styles(surface_view_t surface)
+{
+    return detail::shift<const zx::ansi::style_info_t>(surface, detail::cell_layout.style_offset);
+}
 
 inline std::string clear_screen()
 {
     return "\033[2J\033[H";
 }
 
-inline std::string render(const surface_t::view_type& surface)
+inline std::string render(surface_view_t surface)
 {
     std::string out = str(cursor_move_t{});
 
@@ -65,7 +120,7 @@ inline std::string render(const surface_t::view_type& surface)
     return out;
 }
 
-inline std::string render_diff(const surface_t::view_type& prev, const surface_t::view_type& next)
+inline std::string render_diff(surface_view_t prev, surface_view_t next)
 {
     std::string out = {};
     style_info_t current_style = {};
@@ -136,7 +191,7 @@ const inline box_style_t heavy_box_style = { code_point_t{ "━" }, code_point_t
                                              code_point_t{ "┓" }, code_point_t{ "┗" }, code_point_t{ "┛" } };
 
 void draw_border(
-    surface_t::mut_view_type surface,
+    surface_mut_view_t surface,
     const surface_t::bounds_type& bounds,
     const box_style_t& box_style = {},
     const style_info_t& style = {})
