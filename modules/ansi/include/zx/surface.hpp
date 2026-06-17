@@ -12,18 +12,18 @@ namespace zx
 namespace ansi
 {
 
+using symbol_t = code_point_t;
+
 struct cell_t
 {
-    using value_type = code_point_t;
+    symbol_t symbol = symbol_t(' ');
+    style_t style = {};
 
-    value_type code_point = value_type(' ');
-    style_info_t style = {};
-
-    cell_t(value_type cp = {}, style_info_t s = {}) : code_point(cp), style(s) { }
+    cell_t(symbol_t symbol_ = symbol_t(' '), style_t style_ = {}) : symbol(symbol_), style(style_) { }
 
     friend std::ostream& operator<<(std::ostream& os, const cell_t& item)
     {
-        os << "(cell_t code_point:" << item.code_point << " style:" << item.style << ")";
+        os << "(cell_t symbol:" << item.symbol << " style:" << item.style << ")";
         return os;
     }
 };
@@ -35,8 +35,8 @@ using surface_mut_view_t = surface_t::mut_view_type;
 using code_point_view_t = arrays::array_view_t<const code_point_t, 2>;
 using code_point_mut_view_t = arrays::array_view_t<code_point_t, 2>;
 
-using styles_view_t = arrays::array_view_t<const style_info_t, 2>;
-using styles_mut_view_t = arrays::array_view_t<style_info_t, 2>;
+using styles_view_t = arrays::array_view_t<const style_t, 2>;
+using styles_mut_view_t = arrays::array_view_t<style_t, 2>;
 
 namespace detail
 {
@@ -46,12 +46,11 @@ struct cell_layout_validator
 {
     static_assert(std::is_standard_layout_v<CellType>, "cell_t must be standard-layout for offsetof");
 
-    static constexpr std::ptrdiff_t code_point_offset = offsetof(CellType, code_point);
+    static constexpr std::ptrdiff_t symbol_offset = offsetof(CellType, symbol);
     static constexpr std::ptrdiff_t style_offset = offsetof(CellType, style);
 
-    static_assert(
-        code_point_offset % alignof(zx::code_point_t) == 0, "code_point offset must satisfy alignment requirements");
-    static_assert(style_offset % alignof(zx::ansi::style_info_t) == 0, "style offset must satisfy alignment requirements");
+    static_assert(symbol_offset % alignof(zx::code_point_t) == 0, "symbol offset must satisfy alignment requirements");
+    static_assert(style_offset % alignof(zx::ansi::style_t) == 0, "style offset must satisfy alignment requirements");
 };
 
 template <class U, class T, std::size_t D>
@@ -65,24 +64,24 @@ inline constexpr auto cell_layout = cell_layout_validator<zx::ansi::cell_t>{};
 
 }  // namespace detail
 
-inline code_point_mut_view_t mut_code_points(surface_mut_view_t surface)
+inline code_point_mut_view_t mut_symbols(surface_mut_view_t surface)
 {
-    return detail::shift<zx::code_point_t>(surface, detail::cell_layout.code_point_offset);
+    return detail::shift<zx::code_point_t>(surface, detail::cell_layout.symbol_offset);
 }
 
-inline code_point_view_t code_points(surface_view_t surface)
+inline code_point_view_t symbols(surface_view_t surface)
 {
-    return detail::shift<const zx::code_point_t>(surface, detail::cell_layout.code_point_offset);
+    return detail::shift<const zx::code_point_t>(surface, detail::cell_layout.symbol_offset);
 }
 
 inline styles_mut_view_t mut_styles(surface_mut_view_t surface)
 {
-    return detail::shift<zx::ansi::style_info_t>(surface, detail::cell_layout.style_offset);
+    return detail::shift<zx::ansi::style_t>(surface, detail::cell_layout.style_offset);
 }
 
 inline styles_view_t styles(surface_view_t surface)
 {
-    return detail::shift<const zx::ansi::style_info_t>(surface, detail::cell_layout.style_offset);
+    return detail::shift<const zx::ansi::style_t>(surface, detail::cell_layout.style_offset);
 }
 
 inline std::string clear_screen()
@@ -94,12 +93,12 @@ inline std::string render(surface_view_t surface)
 {
     std::string out = str(cursor_move_t{});
 
-    style_info_t current_style = {};
+    style_t current_style = {};
     out += str(escape_sequence_t{ 0 }, make_ansi_code(current_style));
 
-    for (std::ptrdiff_t y = 0; y < surface.size()[0]; ++y)
+    for (arrays::location_base_t y = 0; y < surface.size()[0]; ++y)
     {
-        for (std::ptrdiff_t x = 0; x < surface.size()[1]; ++x)
+        for (arrays::location_base_t x = 0; x < surface.size()[1]; ++x)
         {
             const cell_t& cell = surface[{ y, x }];
             if (cell.style != current_style)
@@ -107,7 +106,7 @@ inline std::string render(surface_view_t surface)
                 out += str(escape_sequence_t{ 0 }, make_ansi_code(cell.style));
                 current_style = cell.style;
             }
-            out += str(cell.code_point);
+            out += str(cell.symbol);
         }
 
         if (y + 1 < surface.size()[0])
@@ -123,15 +122,15 @@ inline std::string render(surface_view_t surface)
 inline std::string render_diff(surface_view_t prev, surface_view_t next)
 {
     std::string out = {};
-    style_info_t current_style = {};
+    style_t current_style = {};
     bool style_emitted = false;
     surface_t::location_type last = { -1, -1 };
 
     const bool same_size = prev.size() == next.size();
 
-    for (std::ptrdiff_t y = 0; y < next.size()[0]; ++y)
+    for (arrays::location_base_t y = 0; y < next.size()[0]; ++y)
     {
-        for (std::ptrdiff_t x = 0; x < next.size()[1]; ++x)
+        for (arrays::location_base_t x = 0; x < next.size()[1]; ++x)
         {
             const auto pos = surface_t::location_type{ y, x };
             const cell_t& cell = next[pos];
@@ -139,7 +138,7 @@ inline std::string render_diff(surface_view_t prev, surface_view_t next)
             if (same_size)
             {
                 const cell_t& prev_cell = prev[pos];
-                if (prev_cell.code_point == cell.code_point && prev_cell.style == cell.style)
+                if (prev_cell.symbol == cell.symbol && prev_cell.style == cell.style)
                 {
                     continue;
                 }
@@ -158,7 +157,7 @@ inline std::string render_diff(surface_view_t prev, surface_view_t next)
                 style_emitted = true;
             }
 
-            out += str(cell.code_point);
+            out += str(cell.symbol);
             ++last[1];
         }
     }
@@ -194,10 +193,10 @@ void draw_border(
     surface_mut_view_t surface,
     const surface_t::bounds_type& bounds,
     const box_style_t& box_style = {},
-    const style_info_t& style = {})
+    const style_t& style = {})
 {
-    const auto top_left = zx::mat::lower(bounds);
-    const auto bottom_right = zx::mat::upper(bounds);
+    const auto top_left = zx::mat::min(bounds);
+    const auto bottom_right = zx::mat::max(bounds);
 
     for (std::ptrdiff_t x = top_left[1] + 1; x < bottom_right[1]; ++x)
     {

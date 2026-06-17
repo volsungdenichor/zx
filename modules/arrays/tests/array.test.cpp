@@ -46,8 +46,7 @@ TEST(array, array_1d)
     a[1] = 42;
     EXPECT_THAT(
         a.shape(),
-        (zx::arrays::shape_t<1>{ { zx::arrays::dim_t{ 10, static_cast<zx::arrays::stride_base_t>(sizeof(int)) } },
-                                 static_cast<zx::arrays::size_base_t>(sizeof(int)) }));
+        (zx::arrays::shape_t<1>{ { zx::arrays::dim_t{ 10, static_cast<zx::arrays::stride_base_t>(sizeof(int)) } } }));
     EXPECT_THAT(a.size(), 10);
     EXPECT_THAT(a.stride(), stride_of<int>(1));
     EXPECT_THAT(a.volume(), 10);

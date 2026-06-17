@@ -395,25 +395,25 @@ inline escape_sequence_t make_ansi_code(font_t font)
     return code;
 }
 
-struct style_info_t
+struct style_t
 {
     std::optional<color_t> fg_color = {};
     std::optional<color_t> bg_color = {};
     std::optional<font_t> font = {};
 
-    friend bool operator==(const style_info_t& lhs, const style_info_t& rhs)
+    friend bool operator==(const style_t& lhs, const style_t& rhs)
     {
         return std::tie(lhs.fg_color, lhs.bg_color, lhs.font) == std::tie(rhs.fg_color, rhs.bg_color, rhs.font);
     }
 
-    friend bool operator!=(const style_info_t& lhs, const style_info_t& rhs) { return !(lhs == rhs); }
+    friend bool operator!=(const style_t& lhs, const style_t& rhs) { return !(lhs == rhs); }
 
-    static std::optional<style_info_t> parse(const std::string& style_name)
+    static std::optional<style_t> parse(const std::string& style_name)
     {
         std::stringstream ss(style_name);
         std::string token;
 
-        style_info_t info = {};
+        style_t info = {};
         while (std::getline(ss, token, ' '))
         {
             if (const auto maybe_key_value = detail::read_key_value(token))
@@ -450,9 +450,9 @@ struct style_info_t
         return {};
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const style_info_t& info)
+    friend std::ostream& operator<<(std::ostream& os, const style_t& info)
     {
-        os << "(style_info_t";
+        os << "(style_t";
         if (info.fg_color)
         {
             os << " fg:" << *info.fg_color;
@@ -470,7 +470,7 @@ struct style_info_t
     }
 };
 
-inline escape_sequence_t make_ansi_code(const style_info_t& info)
+inline escape_sequence_t make_ansi_code(const style_t& info)
 {
     escape_sequence_t code = {};
     if (info.fg_color)
@@ -1009,10 +1009,10 @@ struct delimited_list_node_t : node_base_t<delimited_list_node_t>
 
 struct styled_node_impl : node_base_t<styled_node_impl>
 {
-    std::optional<style_info_t> m_style_info;
+    std::optional<style_t> m_style_info;
     std::vector<node_t> m_children;
 
-    explicit styled_node_impl(std::optional<style_info_t> style_info, std::vector<node_t> children)
+    explicit styled_node_impl(std::optional<style_t> style_info, std::vector<node_t> children)
         : m_style_info(std::move(style_info))
         , m_children(std::move(children))
     {
@@ -1111,9 +1111,9 @@ struct styled_node_builder_proxy_fn
 {
     struct node_builder_fn
     {
-        std::optional<style_info_t> m_style_info;
+        std::optional<style_t> m_style_info;
 
-        explicit node_builder_fn(std::optional<style_info_t> style_info) : m_style_info(std::move(style_info)) { }
+        explicit node_builder_fn(std::optional<style_t> style_info) : m_style_info(std::move(style_info)) { }
 
         template <class... Args>
         auto operator()(Args&&... args) const -> node_t
@@ -1122,14 +1122,14 @@ struct styled_node_builder_proxy_fn
         }
     };
 
-    auto operator()(std::optional<style_info_t> style_info) const -> node_builder_fn
+    auto operator()(std::optional<style_t> style_info) const -> node_builder_fn
     {
         return node_builder_fn{ std::move(style_info) };
     }
 
     auto operator()(const std::string& style_name) const -> node_builder_fn
     {
-        return node_builder_fn{ style_info_t::parse(style_name) };
+        return node_builder_fn{ style_t::parse(style_name) };
     }
 };
 

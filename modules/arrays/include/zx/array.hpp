@@ -145,6 +145,42 @@ using slice_t = zx::mat::vector_t<slice_base_t, D>;
 template <std::size_t D>
 using bounds_t = zx::mat::box_shape_t<size_base_t, D>;
 
+namespace detail
+{
+
+template <class T>
+struct iter_impl
+{
+    constexpr iter_impl(T* inner = {}, std::ptrdiff_t stride = {}) : m_inner{ to_byte_ptr(inner) }, m_stride{ stride } { }
+
+    constexpr T& deref() const { return *reinterpret_cast<T*>(m_inner); }
+
+    constexpr void inc() { m_inner += m_stride; }
+
+    constexpr void dec() { m_inner -= m_stride; }
+
+    constexpr void advance(std::ptrdiff_t n) { m_inner += n * m_stride; }
+
+    constexpr bool is_equal(const iter_impl& other) const { return m_inner == other.m_inner; }
+
+    constexpr bool is_less(const iter_impl& other) const
+    {
+        assert(m_stride == other.m_stride);
+        return m_stride > 0 ? m_inner < other.m_inner : m_inner > other.m_inner;
+    }
+
+    constexpr std::ptrdiff_t distance_to(const iter_impl& other) const
+    {
+        assert(m_stride == other.m_stride);
+        return (other.m_inner - m_inner) / m_stride;
+    }
+
+    byte_ptr m_inner;
+    std::ptrdiff_t m_stride;
+};
+
+}  // namespace detail
+
 template <std::size_t D>
 struct shape_t
 {
@@ -157,26 +193,20 @@ struct shape_t
     using dims_type = std::array<dim_t, D>;
 
     dims_type m_dims = {};
-    size_base_t m_element_size = 1;
 
     shape_t() = default;
 
-    shape_t(dims_type dims, size_base_t element_size = 1) : m_dims(dims), m_element_size(element_size) { }
+    shape_t(dims_type dims) : m_dims(dims) { }
 
     template <class... Tail>
     shape_t(dim_t head, Tail... tail) : m_dims{ head, static_cast<dim_t>(tail)... }
-                                      , m_element_size(1)
     {
         static_assert(sizeof...(tail) + 1 == D, "Invalid number of arguments to shape_t constructor");
     }
 
     const dim_t& dim(std::size_t d) const { return m_dims[d]; }
-    size_base_t element_size() const { return m_element_size; }
 
-    friend bool operator==(const shape_t& lhs, const shape_t& rhs)
-    {
-        return std::tie(lhs.m_dims, lhs.m_element_size) == std::tie(rhs.m_dims, rhs.m_element_size);
-    }
+    friend bool operator==(const shape_t& lhs, const shape_t& rhs) { return lhs.m_dims == rhs.m_dims; }
     friend bool operator!=(const shape_t& lhs, const shape_t& rhs) { return !(lhs == rhs); }
 
     friend std::ostream& operator<<(std::ostream& os, const shape_t& item)
@@ -247,7 +277,6 @@ struct shape_t
     static shape_t from_size(const size_type& size, size_base_t element_size)
     {
         shape_t result;
-        result.m_element_size = element_size;
         stride_base_t stride = element_size;
         for (int _d = D - 1; _d >= 0; --_d)
         {
@@ -282,7 +311,7 @@ struct shape_t
                 result[j++] = m_dims[i];
             }
         }
-        return shape_t<D - 1>{ result, m_element_size };
+        return shape_t<D - 1>{ result };
     }
 };
 
@@ -298,21 +327,16 @@ struct shape_t<1>
     using dims_type = std::array<dim_t, 1>;
 
     dims_type m_dims = {};
-    size_base_t m_element_size = 1;
 
     shape_t() = default;
 
-    shape_t(dims_type dims, size_base_t element_size = 1) : m_dims(dims), m_element_size(element_size) { }
+    shape_t(dims_type dims) : m_dims(dims) { }
 
-    shape_t(dim_t head, size_base_t element_size = 1) : m_dims{ std::move(head) }, m_element_size(element_size) { }
+    shape_t(dim_t head) : m_dims{ std::move(head) } { }
 
     const dim_t& dim(std::size_t d) const { return m_dims[d]; }
-    size_base_t element_size() const { return m_element_size; }
 
-    friend bool operator==(const shape_t& lhs, const shape_t& rhs)
-    {
-        return std::tie(lhs.m_dims, lhs.m_element_size) == std::tie(rhs.m_dims, rhs.m_element_size);
-    }
+    friend bool operator==(const shape_t& lhs, const shape_t& rhs) { return lhs.m_dims == rhs.m_dims; }
     friend bool operator!=(const shape_t& lhs, const shape_t& rhs) { return !(lhs == rhs); }
 
     friend std::ostream& operator<<(std::ostream& os, const shape_t& item)
@@ -334,13 +358,13 @@ struct shape_t<1>
 
     static shape_t from_size(const size_type& size, size_base_t element_size)
     {
-        return shape_t{ dim_t{ size, element_size }, element_size };
+        return shape_t{ dim_t{ size, element_size } };
     }
 
     std::pair<shape_t, location_type> slice(const slice_type& s) const
     {
         auto [new_dim, new_start] = m_dims[0].slice(s);
-        return { shape_t{ new_dim, m_element_size }, new_start };
+        return { shape_t{ new_dim }, new_start };
     }
 };
 
@@ -435,37 +459,6 @@ struct array_view_t
 };
 
 template <class T>
-struct iter_impl
-{
-    constexpr iter_impl(T* inner = {}, std::ptrdiff_t stride = {}) : m_inner{ to_byte_ptr(inner) }, m_stride{ stride } { }
-
-    constexpr T& deref() const { return *reinterpret_cast<T*>(m_inner); }
-
-    constexpr void inc() { m_inner += m_stride; }
-
-    constexpr void dec() { m_inner -= m_stride; }
-
-    constexpr void advance(std::ptrdiff_t n) { m_inner += n * m_stride; }
-
-    constexpr bool is_equal(const iter_impl& other) const { return m_inner == other.m_inner; }
-
-    constexpr bool is_less(const iter_impl& other) const
-    {
-        assert(m_stride == other.m_stride);
-        return m_stride > 0 ? m_inner < other.m_inner : m_inner > other.m_inner;
-    }
-
-    constexpr std::ptrdiff_t distance_to(const iter_impl& other) const
-    {
-        assert(m_stride == other.m_stride);
-        return (other.m_inner - m_inner) / m_stride;
-    }
-
-    byte_ptr m_inner;
-    std::ptrdiff_t m_stride;
-};
-
-template <class T>
 struct array_view_t<T, 1>
 {
     using value_type = std::remove_const_t<T>;
@@ -473,7 +466,7 @@ struct array_view_t<T, 1>
     using pointer = T*;
     using reference = T&;
 
-    using iterator = iterator_interface<iter_impl<T>>;
+    using iterator = iterator_interface<detail::iter_impl<T>>;
 
     using location_type = typename shape_type::location_type;
     using size_type = typename shape_type::size_type;

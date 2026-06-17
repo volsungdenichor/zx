@@ -47,9 +47,9 @@ TEST(ansi, surface_render_diff_changed_cell)
 
 TEST(ansi, surface_render_large_with_styles_and_unicode)
 {
-    const zx::ansi::style_info_t red_bold = { zx::ansi::color_t::red, {}, zx::ansi::font_t::bold };
-    const zx::ansi::style_info_t green_bg_underlined = { {}, zx::ansi::color_t::green, zx::ansi::font_t::underlined };
-    const zx::ansi::style_info_t blue_italic = { zx::ansi::color_t::blue, {}, zx::ansi::font_t::italic };
+    const zx::ansi::style_t red_bold = { zx::ansi::color_t::red, {}, zx::ansi::font_t::bold };
+    const zx::ansi::style_t green_bg_underlined = { {}, zx::ansi::color_t::green, zx::ansi::font_t::underlined };
+    const zx::ansi::style_t blue_italic = { zx::ansi::color_t::blue, {}, zx::ansi::font_t::italic };
 
     auto surface = zx::ansi::surface_t{ zx::ansi::surface_t::size_type{ 2, 5 } };
 
@@ -74,8 +74,8 @@ TEST(ansi, surface_render_large_with_styles_and_unicode)
 
 TEST(ansi, surface_render_diff_large_with_styles_and_unicode)
 {
-    const zx::ansi::style_info_t red_bold = { zx::ansi::color_t::red, {}, zx::ansi::font_t::bold };
-    const zx::ansi::style_info_t blue_italic = { zx::ansi::color_t::blue, {}, zx::ansi::font_t::italic };
+    const zx::ansi::style_t red_bold = { zx::ansi::color_t::red, {}, zx::ansi::font_t::bold };
+    const zx::ansi::style_t blue_italic = { zx::ansi::color_t::blue, {}, zx::ansi::font_t::italic };
 
     const auto prev = zx::ansi::surface_t{ zx::ansi::surface_t::size_type{ 3, 5 }, zx::code_point_t('a') };
 

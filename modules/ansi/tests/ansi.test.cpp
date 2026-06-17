@@ -91,25 +91,24 @@ TEST(ansi, parse_font)
 TEST(ansi, parse_style_info)
 {
     EXPECT_THAT(
-        zx::ansi::style_info_t::parse("green"),
-        testing::Optional(zx::ansi::style_info_t{ zx::ansi::color_t::green, std::nullopt, std::nullopt }));
+        zx::ansi::style_t::parse("green"),
+        testing::Optional(zx::ansi::style_t{ zx::ansi::color_t::green, std::nullopt, std::nullopt }));
     EXPECT_THAT(
-        zx::ansi::style_info_t::parse("green italic"),
-        testing::Optional(zx::ansi::style_info_t{ zx::ansi::color_t::green, std::nullopt, zx::ansi::font_t::italic }));
+        zx::ansi::style_t::parse("green italic"),
+        testing::Optional(zx::ansi::style_t{ zx::ansi::color_t::green, std::nullopt, zx::ansi::font_t::italic }));
     EXPECT_THAT(
-        zx::ansi::style_info_t::parse("fg:red bg:blue bold"),
-        testing::Optional(
-            zx::ansi::style_info_t{ zx::ansi::color_t::red, zx::ansi::color_t::blue, zx::ansi::font_t::bold }));
+        zx::ansi::style_t::parse("fg:red bg:blue bold"),
+        testing::Optional(zx::ansi::style_t{ zx::ansi::color_t::red, zx::ansi::color_t::blue, zx::ansi::font_t::bold }));
     EXPECT_THAT(
-        zx::ansi::style_info_t::parse("bg:yellow underlined"),
-        testing::Optional(zx::ansi::style_info_t{ std::nullopt, zx::ansi::color_t::yellow, zx::ansi::font_t::underlined }));
+        zx::ansi::style_t::parse("bg:yellow underlined"),
+        testing::Optional(zx::ansi::style_t{ std::nullopt, zx::ansi::color_t::yellow, zx::ansi::font_t::underlined }));
     EXPECT_THAT(
-        zx::ansi::style_info_t::parse("fg:0x00FF00 italic"),
-        testing::Optional(zx::ansi::style_info_t{ zx::ansi::color_t{ 46 }, std::nullopt, zx::ansi::font_t::italic }));
+        zx::ansi::style_t::parse("fg:0x00FF00 italic"),
+        testing::Optional(zx::ansi::style_t{ zx::ansi::color_t{ 46 }, std::nullopt, zx::ansi::font_t::italic }));
     EXPECT_THAT(
-        zx::ansi::style_info_t::parse("bg:gray:128 underlined"),
-        testing::Optional(zx::ansi::style_info_t{ std::nullopt, zx::ansi::color_t{ 244 }, zx::ansi::font_t::underlined }));
-    EXPECT_THAT(zx::ansi::style_info_t::parse("invalid"), testing::Eq(std::nullopt));
+        zx::ansi::style_t::parse("bg:gray:128 underlined"),
+        testing::Optional(zx::ansi::style_t{ std::nullopt, zx::ansi::color_t{ 244 }, zx::ansi::font_t::underlined }));
+    EXPECT_THAT(zx::ansi::style_t::parse("invalid"), testing::Eq(std::nullopt));
 }
 
 TEST(ansi, stream)
