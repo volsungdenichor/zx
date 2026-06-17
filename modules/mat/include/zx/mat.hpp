@@ -247,6 +247,39 @@ struct center_fn
 
 static constexpr inline auto center = center_fn{};
 
+struct extend_fn
+{
+    template <class T>
+    constexpr auto operator()(const interval_t<T>& item, T value) const -> interval_t<T>
+    {
+        return { item[0] - value, item[1] + value };
+    }
+
+    template <class T, std::size_t D>
+    constexpr auto operator()(const box_shape_t<T, D>& item, const vector_t<T, D>& value) const -> box_shape_t<T, D>
+    {
+        box_shape_t<T, D> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(item[d], value[d]);
+        }
+        return result;
+    }
+
+    template <class T, std::size_t D>
+    constexpr auto operator()(const box_shape_t<T, D>& item, T value) const -> box_shape_t<T, D>
+    {
+        box_shape_t<T, D> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(item[d], value);
+        }
+        return result;
+    }
+};
+
+static constexpr inline auto extend = extend_fn{};
+
 struct orientation_fn
 {
     template <class T, class U>
@@ -657,6 +690,7 @@ using detail::contains;
 using detail::cross;
 using detail::distance;
 using detail::dot;
+using detail::extend;
 using detail::incenter;
 using detail::incircle;
 using detail::interpolate;

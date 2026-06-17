@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <string_view>
 #include <zx/ansi.hpp>
 #include <zx/array.hpp>
@@ -214,6 +215,37 @@ void draw_border(
     surface[{ top_left[0], bottom_right[1] }] = cell_t{ box_style.top_right, style };
     surface[{ bottom_right[0], top_left[1] }] = cell_t{ box_style.bottom_left, style };
     surface[{ bottom_right[0], bottom_right[1] }] = cell_t{ box_style.bottom_right, style };
+}
+
+inline void draw_text(
+    const surface_t::bounds_type& dest,
+    zx::string_t text,
+    const std::function<void(symbol_t, const surface_t::location_type&)>& draw_cell)
+{
+    auto pos = zx::mat::lower(dest);
+    for (const auto& ch : text)
+    {
+        draw_cell(ch, pos);
+        if (++pos[1] >= zx::mat::upper(dest[1]))
+        {
+            pos[1] = zx::mat::lower(dest[1]);
+            if (++pos[0] >= zx::mat::upper(dest[0]))
+            {
+                break;
+            }
+        }
+    }
+}
+
+inline void draw_text(
+    surface_mut_view_t surface, const surface_t::bounds_type& dest, zx::string_t text, const zx::ansi::style_t& style = {})
+{
+    draw_text(
+        dest,
+        text,
+        [&](zx::ansi::symbol_t symbol, const surface_t::location_type& pos) {
+            surface[pos] = { symbol, style };
+        });
 }
 
 }  // namespace ansi
