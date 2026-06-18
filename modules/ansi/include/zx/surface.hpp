@@ -40,11 +40,11 @@ using surface_t = arrays::array_t<cell_t, 2>;
 using surface_view_t = surface_t::view_type;
 using surface_mut_view_t = surface_t::mut_view_type;
 
-using symbols_view_t = arrays::array_view_t<const symbol_t, 2>;
-using symbols_mut_view_t = arrays::array_view_t<symbol_t, 2>;
+using symbols_view_t = arrays::array_view_t<symbol_t, 2>;
+using symbols_mut_view_t = arrays::array_mut_view_t<symbol_t, 2>;
 
-using styles_view_t = arrays::array_view_t<const style_t, 2>;
-using styles_mut_view_t = arrays::array_view_t<style_t, 2>;
+using styles_view_t = arrays::array_view_t<style_t, 2>;
+using styles_mut_view_t = arrays::array_mut_view_t<style_t, 2>;
 
 namespace detail
 {
@@ -62,7 +62,7 @@ struct cell_layout_validator
 };
 
 template <class U, class T, std::size_t D>
-arrays::array_view_t<U, D> shift(arrays::array_view_t<T, D> view, std::ptrdiff_t member_offset)
+arrays::array_view_base_t<U, D> shift(arrays::array_view_base_t<T, D> view, std::ptrdiff_t member_offset)
 {
     U* p = const_cast<U*>(reinterpret_cast<const U*>(reinterpret_cast<const std::byte*>(view.data()) + member_offset));
     return { p, view.shape() };
