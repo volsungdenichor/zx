@@ -22,6 +22,13 @@ struct cell_t
 
     cell_t(symbol_t symbol_ = symbol_t(' '), style_t style_ = {}) : symbol(symbol_), style(style_) { }
 
+    friend bool operator==(const cell_t& lhs, const cell_t& rhs)
+    {
+        return std::tie(lhs.symbol, lhs.style) == std::tie(rhs.symbol, rhs.style);
+    }
+
+    friend bool operator!=(const cell_t& lhs, const cell_t& rhs) { return !(lhs == rhs); }
+
     friend std::ostream& operator<<(std::ostream& os, const cell_t& item)
     {
         os << "(cell_t symbol:" << item.symbol << " style:" << item.style << ")";
@@ -33,8 +40,8 @@ using surface_t = arrays::array_t<cell_t, 2>;
 using surface_view_t = surface_t::view_type;
 using surface_mut_view_t = surface_t::mut_view_type;
 
-using code_point_view_t = arrays::array_view_t<const code_point_t, 2>;
-using code_point_mut_view_t = arrays::array_view_t<code_point_t, 2>;
+using symbols_view_t = arrays::array_view_t<const symbol_t, 2>;
+using symbols_mut_view_t = arrays::array_view_t<symbol_t, 2>;
 
 using styles_view_t = arrays::array_view_t<const style_t, 2>;
 using styles_mut_view_t = arrays::array_view_t<style_t, 2>;
@@ -42,7 +49,7 @@ using styles_mut_view_t = arrays::array_view_t<style_t, 2>;
 namespace detail
 {
 
-template <typename CellType>
+template <class CellType>
 struct cell_layout_validator
 {
     static_assert(std::is_standard_layout_v<CellType>, "cell_t must be standard-layout for offsetof");
@@ -50,39 +57,39 @@ struct cell_layout_validator
     static constexpr std::ptrdiff_t symbol_offset = offsetof(CellType, symbol);
     static constexpr std::ptrdiff_t style_offset = offsetof(CellType, style);
 
-    static_assert(symbol_offset % alignof(zx::code_point_t) == 0, "symbol offset must satisfy alignment requirements");
-    static_assert(style_offset % alignof(zx::ansi::style_t) == 0, "style offset must satisfy alignment requirements");
+    static_assert(symbol_offset % alignof(symbol_t) == 0, "symbol offset must satisfy alignment requirements");
+    static_assert(style_offset % alignof(style_t) == 0, "style offset must satisfy alignment requirements");
 };
 
 template <class U, class T, std::size_t D>
-zx::arrays::array_view_t<U, D> shift(zx::arrays::array_view_t<T, D> view, std::ptrdiff_t member_offset)
+arrays::array_view_t<U, D> shift(arrays::array_view_t<T, D> view, std::ptrdiff_t member_offset)
 {
     U* p = const_cast<U*>(reinterpret_cast<const U*>(reinterpret_cast<const std::byte*>(view.data()) + member_offset));
     return { p, view.shape() };
 }
 
-inline constexpr auto cell_layout = cell_layout_validator<zx::ansi::cell_t>{};
+inline constexpr auto cell_layout = cell_layout_validator<cell_t>{};
 
 }  // namespace detail
 
-inline code_point_mut_view_t mut_symbols(surface_mut_view_t surface)
+inline symbols_mut_view_t mut_symbols(surface_mut_view_t surface)
 {
-    return detail::shift<zx::code_point_t>(surface, detail::cell_layout.symbol_offset);
+    return detail::shift<symbol_t>(surface, detail::cell_layout.symbol_offset);
 }
 
-inline code_point_view_t symbols(surface_view_t surface)
+inline symbols_view_t symbols(surface_view_t surface)
 {
-    return detail::shift<const zx::code_point_t>(surface, detail::cell_layout.symbol_offset);
+    return detail::shift<const symbol_t>(surface, detail::cell_layout.symbol_offset);
 }
 
 inline styles_mut_view_t mut_styles(surface_mut_view_t surface)
 {
-    return detail::shift<zx::ansi::style_t>(surface, detail::cell_layout.style_offset);
+    return detail::shift<style_t>(surface, detail::cell_layout.style_offset);
 }
 
 inline styles_view_t styles(surface_view_t surface)
 {
-    return detail::shift<const zx::ansi::style_t>(surface, detail::cell_layout.style_offset);
+    return detail::shift<const style_t>(surface, detail::cell_layout.style_offset);
 }
 
 inline std::string clear_screen()
@@ -120,14 +127,19 @@ inline std::string render(surface_view_t surface)
     return out;
 }
 
+inline cursor_move_t cursor_move(const surface_t::location_type& pos)
+{
+    return cursor_move_t{ static_cast<int>(pos[0]) + 1, static_cast<int>(pos[1]) + 1 };
+}
+
 inline std::string render_diff(surface_view_t prev, surface_view_t next)
 {
+    const bool same_size = prev.size() == next.size();
+
     std::string out = {};
     style_t current_style = {};
     bool style_emitted = false;
     surface_t::location_type last = { -1, -1 };
-
-    const bool same_size = prev.size() == next.size();
 
     for (arrays::location_base_t y = 0; y < next.size()[0]; ++y)
     {
@@ -139,16 +151,16 @@ inline std::string render_diff(surface_view_t prev, surface_view_t next)
             if (same_size)
             {
                 const cell_t& prev_cell = prev[pos];
-                if (prev_cell.symbol == cell.symbol && prev_cell.style == cell.style)
+                if (prev_cell == cell)
                 {
                     continue;
                 }
             }
 
-            if (last[0] != y || last[1] != x)
+            if (pos != last)
             {
-                out += str(cursor_move_t{ static_cast<int>(y) + 1, static_cast<int>(x) + 1 });
-                last = { y, x };
+                out += str(cursor_move(pos));
+                last = pos;
             }
 
             if (!style_emitted || cell.style != current_style)
@@ -196,8 +208,8 @@ void draw_border(
     const box_style_t& box_style = {},
     const style_t& style = {})
 {
-    const auto top_left = zx::mat::min(bounds);
-    const auto bottom_right = zx::mat::max(bounds);
+    const auto top_left = mat::min(bounds);
+    const auto bottom_right = mat::max(bounds);
 
     for (std::ptrdiff_t x = top_left[1] + 1; x < bottom_right[1]; ++x)
     {
@@ -219,17 +231,17 @@ void draw_border(
 
 inline void draw_text(
     const surface_t::bounds_type& dest,
-    zx::string_t text,
+    const string_t& text,
     const std::function<void(symbol_t, const surface_t::location_type&)>& draw_cell)
 {
-    auto pos = zx::mat::lower(dest);
+    auto pos = mat::lower(dest);
     for (const auto& ch : text)
     {
         draw_cell(ch, pos);
-        if (++pos[1] >= zx::mat::upper(dest[1]))
+        if (++pos[1] >= mat::upper(dest[1]))
         {
-            pos[1] = zx::mat::lower(dest[1]);
-            if (++pos[0] >= zx::mat::upper(dest[0]))
+            pos[1] = mat::lower(dest[1]);
+            if (++pos[0] >= mat::upper(dest[0]))
             {
                 break;
             }
@@ -238,14 +250,9 @@ inline void draw_text(
 }
 
 inline void draw_text(
-    surface_mut_view_t surface, const surface_t::bounds_type& dest, zx::string_t text, const zx::ansi::style_t& style = {})
+    surface_mut_view_t surface, const surface_t::bounds_type& dest, const string_t& text, const style_t& style = {})
 {
-    draw_text(
-        dest,
-        text,
-        [&](zx::ansi::symbol_t symbol, const surface_t::location_type& pos) {
-            surface[pos] = { symbol, style };
-        });
+    draw_text(dest, text, [&](symbol_t symbol, const surface_t::location_type& pos) { surface[pos] = { symbol, style }; });
 }
 
 }  // namespace ansi
