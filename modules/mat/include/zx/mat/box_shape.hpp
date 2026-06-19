@@ -7,6 +7,15 @@ namespace zx
 namespace mat
 {
 
+enum class side_t
+{
+    lower,
+    upper,
+    first,
+    last,
+    middle
+};
+
 template <class T>
 struct interval_t : public std::array<T, 2>
 {
@@ -16,6 +25,27 @@ struct interval_t : public std::array<T, 2>
     constexpr interval_t(T lo, T up) : base_t{ lo, up } { }
 
     constexpr interval_t() : interval_t(T{}, T{}) { }
+
+    T get(side_t s) const
+    {
+        switch (s)
+        {
+            case side_t::lower: return (*this)[0];
+            case side_t::upper: return (*this)[1];
+            case side_t::first: return (*this)[0];
+            case side_t::last:
+                if constexpr (std::is_integral_v<T>)
+                {
+                    return (*this)[1] - 1;
+                }
+                else
+                {
+                    return (*this)[1];
+                }
+            case side_t::middle: return ((*this)[0] + (*this)[1]) / 2;
+            default: return (*this)[0];
+        }
+    }
 
     friend std::ostream& operator<<(std::ostream& os, const interval_t& item)
     {
@@ -113,6 +143,26 @@ struct box_shape_t : public std::array<interval_t<T>, D>
         for (std::size_t d = 0; d < D; ++d)
         {
             result[d] = interval_t<T>{ center[d] - size[d] / 2, center[d] + size[d] / 2 };
+        }
+        return result;
+    }
+
+    vector_t<T, D> get(side_t s) const
+    {
+        vector_t<T, D> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)[d].get(s);
+        }
+        return result;
+    }
+
+    vector_t<T, D> get(const std::array<side_t, D>& s) const
+    {
+        vector_t<T, D> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)[d].get(s[d]);
         }
         return result;
     }

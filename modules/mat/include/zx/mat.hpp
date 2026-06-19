@@ -145,67 +145,27 @@ struct distance_fn
 
 static constexpr inline auto distance = distance_fn{};
 
-template <std::size_t Dim>
-struct lower_upper_fn
+template <side_t S>
+struct get_fn
 {
     template <class T>
     constexpr auto operator()(const interval_t<T>& item) const -> T
     {
-        return item[Dim];
+        return item.get(S);
     }
 
     template <class T, std::size_t D>
     constexpr auto operator()(const box_shape_t<T, D>& item) const -> vector_t<T, D>
     {
-        vector_t<T, D> result;
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = (*this)(item[d]);
-        }
-        return result;
+        return item.get(S);
     }
 };
 
-static constexpr inline auto lower = lower_upper_fn<0>{};
-static constexpr inline auto upper = lower_upper_fn<1>{};
+static constexpr inline auto lower = get_fn<side_t::lower>{};
+static constexpr inline auto upper = get_fn<side_t::upper>{};
 
-template <std::size_t Dim>
-struct min_max_fn
-{
-    template <class T>
-    constexpr auto operator()(const interval_t<T>& item) const -> T
-    {
-        if constexpr (Dim == 0)
-        {
-            return item[0];
-        }
-        else
-        {
-            if constexpr (std::is_integral_v<T>)
-            {
-                return item[1] - 1;
-            }
-            else
-            {
-                return item[1] - std::numeric_limits<T>::epsilon();
-            }
-        }
-    }
-
-    template <class T, std::size_t D>
-    constexpr auto operator()(const box_shape_t<T, D>& item) const -> vector_t<T, D>
-    {
-        vector_t<T, D> result;
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = (*this)(item[d]);
-        }
-        return result;
-    }
-};
-
-static constexpr inline auto min = min_max_fn<0>{};
-static constexpr inline auto max = min_max_fn<1>{};
+static constexpr inline auto min = get_fn<side_t::first>{};
+static constexpr inline auto max = get_fn<side_t::last>{};
 
 struct size_fn
 {
@@ -226,10 +186,16 @@ static constexpr inline auto size = size_fn{};
 
 struct center_fn
 {
+    template <class T>
+    constexpr auto operator()(const interval_t<T>& item) const -> T
+    {
+        return item.get(side_t::middle);
+    }
+
     template <class T, std::size_t D>
     constexpr auto operator()(const box_shape_t<T, D>& item) const -> vector_t<T, D>
     {
-        return (lower(item) + upper(item)) / 2;
+        return item.get(side_t::middle);
     }
 
     template <class T, std::size_t D>
