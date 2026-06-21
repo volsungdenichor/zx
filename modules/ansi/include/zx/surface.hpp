@@ -208,8 +208,8 @@ void draw_border(
     const box_style_t& box_style = {},
     const style_t& style = {})
 {
-    const auto top_left = mat::min(bounds);
-    const auto bottom_right = mat::max(bounds);
+    const auto top_left = bounds.get(mat::side_t::first);
+    const auto bottom_right = bounds.get(mat::side_t::last);
 
     for (std::ptrdiff_t x = top_left[1] + 1; x < bottom_right[1]; ++x)
     {
@@ -223,10 +223,10 @@ void draw_border(
         surface[{ y, bottom_right[1] }] = cell_t{ box_style.vertical, style };
     }
 
-    surface[{ top_left[0], top_left[1] }] = cell_t{ box_style.top_left, style };
-    surface[{ top_left[0], bottom_right[1] }] = cell_t{ box_style.top_right, style };
-    surface[{ bottom_right[0], top_left[1] }] = cell_t{ box_style.bottom_left, style };
-    surface[{ bottom_right[0], bottom_right[1] }] = cell_t{ box_style.bottom_right, style };
+    surface[bounds.get({ mat::side_t::first, mat::side_t::first })] = cell_t{ box_style.top_left, style };
+    surface[bounds.get({ mat::side_t::first, mat::side_t::last })] = cell_t{ box_style.top_right, style };
+    surface[bounds.get({ mat::side_t::last, mat::side_t::first })] = cell_t{ box_style.bottom_left, style };
+    surface[bounds.get({ mat::side_t::last, mat::side_t::last })] = cell_t{ box_style.bottom_right, style };
 }
 
 inline void draw_text(

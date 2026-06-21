@@ -127,7 +127,7 @@ inline std::pair<char32_t, std::string_view> utf8_to_utf32(std::string_view s)
 
 struct code_point_t
 {
-    char32_t m_data;
+    char32_t m_data = 0;
 
     code_point_t() = default;
 
