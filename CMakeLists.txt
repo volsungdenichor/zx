@@ -20,7 +20,7 @@ set(ZX_MODULE_DEPENDENCIES "
         [sequence [core iterator]]
         [mat [core iterator]]
         [arrays [core mat]]
-        [ansi [core arrays]]
+        [ansi [core arrays sequence]]
         [images [arrays]]
         [geometry [mat sequence]]
         [nested_text [core iterator]]
@@ -54,6 +54,19 @@ endforeach()
 
 option(ZX_BUILD_TESTS "Build zx tests" ${ZX_IS_TOPLEVEL})
 option(ZX_BUILD_BENCHMARKS "Build zx benchmarks" ${ZX_IS_TOPLEVEL})
+option(ZX_BUILD_DEVLAB "Build zx devlab application" OFF)
+
+# Keep test runs and devlab builds focused by making them mutually exclusive.
+# If both are enabled, devlab takes precedence and tests are disabled.
+if(ZX_BUILD_DEVLAB AND ZX_BUILD_TESTS)
+    message(STATUS "ZX_BUILD_DEVLAB is ON; disabling ZX_BUILD_TESTS for devlab builds")
+    set(ZX_BUILD_TESTS OFF CACHE BOOL "Build zx tests" FORCE)
+endif()
+
+# Devlab requires all modules to be available
+if(ZX_BUILD_DEVLAB)
+    set(ZX_BUILD_ALL ON CACHE BOOL "Build all zx modules" FORCE)
+endif()
 
 if(ZX_BUILD_ALL)
     foreach(MODULE ${ZX_ALL_MODULES})
@@ -71,6 +84,7 @@ endforeach()
 
 message(STATUS "  ZX_BUILD_TESTS = ${ZX_BUILD_TESTS}")
 message(STATUS "  ZX_BUILD_BENCHMARKS = ${ZX_BUILD_BENCHMARKS}")
+message(STATUS "  ZX_BUILD_DEVLAB = ${ZX_BUILD_DEVLAB}")
 
 if(ZX_BUILD_TESTS)
     # Include CTest to generate dashboard metadata (e.g. DartConfiguration.tcl).
@@ -173,3 +187,6 @@ if(ZX_ANY_MODULE_BUILT)
         endif()
     endforeach()
 endif()
+
+# Build development lab app if requested
+add_subdirectory(devlab)

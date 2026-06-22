@@ -87,6 +87,8 @@ public:
         }
 
         write_escape("\033[?1006l");
+        write_escape("\033[?1015l");
+        write_escape("\033[?1005l");
         write_escape("\033[?1002l");
         write_escape("\033[?1000l");
 
@@ -258,24 +260,24 @@ public:
         const auto* bytes = packet.data();
         total = static_cast<ssize_t>(packet.size());
 
+        const auto preserve_tail_from_next_escape = [&](ssize_t consumed)
+        {
+            if (consumed >= total)
+            {
+                return;
+            }
+
+            const auto* tail_begin = bytes + consumed;
+            const auto* tail_end = bytes + total;
+            const auto* next_escape = std::find(tail_begin, tail_end, static_cast<std::uint8_t>(0x1B));
+            if (next_escape != tail_end)
+            {
+                m_pending_escape_seq.assign(next_escape, tail_end);
+            }
+        };
+
         if (bytes[0] == 0x1B)
         {
-            const auto preserve_tail_from_next_escape = [&](ssize_t consumed)
-            {
-                if (consumed >= total)
-                {
-                    return;
-                }
-
-                const auto* tail_begin = bytes + consumed;
-                const auto* tail_end = bytes + total;
-                const auto* next_escape = std::find(tail_begin, tail_end, static_cast<std::uint8_t>(0x1B));
-                if (next_escape != tail_end)
-                {
-                    m_pending_escape_seq.assign(next_escape, tail_end);
-                }
-            };
-
             ssize_t mouse_consumed = 0;
             if (auto me = parse_sgr_mouse(bytes, total, mouse_consumed); me)
             {
@@ -287,6 +289,17 @@ public:
             {
                 preserve_tail_from_next_escape(mouse_consumed);
                 return *me;
+            }
+
+            if (total >= 3 && bytes[1] == '[' && (bytes[2] == '<' || bytes[2] == 'M'))
+            {
+                if (store_if_incomplete_escape(packet))
+                {
+                    return std::nullopt;
+                }
+
+                preserve_tail_from_next_escape(0);
+                return std::nullopt;
             }
 
             if (total == 1)
@@ -365,6 +378,9 @@ public:
                         }
                     }
                 }
+
+                preserve_tail_from_next_escape(0);
+                return std::nullopt;
             }
 
             if (total >= 3 && bytes[1] == 'O')
@@ -381,6 +397,35 @@ public:
             if (total == 2 && bytes[1] >= 0x20)
             {
                 return key_event_t{ code_point_t{ static_cast<char32_t>(bytes[1]) }, key_modifiers_t::ctrl };
+            }
+
+            return std::nullopt;
+        }
+
+        if (total >= 2 && bytes[0] == '[' && (bytes[1] == '<' || bytes[1] == 'M'))
+        {
+            std::vector<std::uint8_t> escaped_packet;
+            escaped_packet.reserve(static_cast<std::size_t>(total) + 1);
+            escaped_packet.push_back(0x1B);
+            escaped_packet.insert(escaped_packet.end(), bytes, bytes + total);
+
+            ssize_t mouse_consumed = 0;
+            if (auto me
+                = parse_sgr_mouse(escaped_packet.data(), static_cast<ssize_t>(escaped_packet.size()), mouse_consumed);
+                me)
+            {
+                const ssize_t consumed_without_escape = std::max<ssize_t>(0, mouse_consumed - 1);
+                preserve_tail_from_next_escape(consumed_without_escape);
+                return *me;
+            }
+
+            if (auto me
+                = parse_legacy_mouse(escaped_packet.data(), static_cast<ssize_t>(escaped_packet.size()), mouse_consumed);
+                me)
+            {
+                const ssize_t consumed_without_escape = std::max<ssize_t>(0, mouse_consumed - 1);
+                preserve_tail_from_next_escape(consumed_without_escape);
+                return *me;
             }
 
             return std::nullopt;
@@ -438,6 +483,8 @@ public:
 private:
     void apply_mouse_reporting(const mouse_reporting_options_t& options) const
     {
+        write_escape("\033[?1015l");
+        write_escape("\033[?1005l");
         write_escape(options.button ? "\033[?1000h" : "\033[?1000l");
         write_escape(options.drag ? "\033[?1002h" : "\033[?1002l");
         write_escape(options.motion ? "\033[?1003h" : "\033[?1003l");
