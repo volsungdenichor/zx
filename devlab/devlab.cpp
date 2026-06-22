@@ -32,7 +32,7 @@ void run(const std::vector<std::string_view>&)
 {
     std::vector<std::pair<zx::string_t, zx::ansi::style_t>> list = {};
 
-    const auto options = zx::ansi::app_options{} |= zx::with(
+    const auto options = zx::create<zx::ansi::app_options>(
         [](zx::ansi::app_options& it)
         {
             it.use_alt_screen = true;

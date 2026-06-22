@@ -81,4 +81,12 @@ static constexpr struct with_fn
     }
 } with;
 
+template <class T, class... Funcs>
+T create(Funcs&&... funcs)
+{
+    T item{};
+    std::invoke(apply(std::forward<Funcs>(funcs)...), item);
+    return item;
+}
+
 }  // namespace zx
