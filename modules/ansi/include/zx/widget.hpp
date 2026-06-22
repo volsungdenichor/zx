@@ -1,13 +1,84 @@
 #pragma once
 
+#include <cstddef>
+#include <functional>
 #include <memory>
+#include <optional>
+#include <typeindex>
 #include <zx/sequence.hpp>
 #include <zx/surface.hpp>
+#include <utility>
+#include <vector>
 
 namespace zx
 {
 namespace ansi
 {
+
+struct subscription_bus_t
+{
+    using subscription_id_type = std::size_t;
+    using subscriber_id_type = std::size_t;
+
+    struct control_t
+    {
+        virtual ~control_t() = default;
+
+        virtual void unsubscribe_self() = 0;
+        virtual void unsubscribe(subscription_id_type subscription_id) = 0;
+        virtual void unsubscribe_subscriber(subscriber_id_type subscriber_id) = 0;
+    };
+
+    virtual ~subscription_bus_t() = default;
+
+    virtual subscription_id_type subscribe_erased(
+        std::optional<subscriber_id_type> subscriber_id,
+        std::type_index type,
+        std::function<void(control_t&, const void*)> handler) = 0;
+
+    virtual void unsubscribe(subscription_id_type subscription_id) = 0;
+
+    virtual void unsubscribe_subscriber(subscriber_id_type subscriber_id) = 0;
+
+    template <class E>
+    subscription_id_type subscribe(subscriber_id_type subscriber_id, std::function<void(const E&)> handler)
+    {
+        return subscribe_erased(
+            subscriber_id,
+            typeid(E),
+            [handler = std::move(handler)](control_t&, const void* event) { handler(*static_cast<const E*>(event)); });
+    }
+
+    template <class E>
+    subscription_id_type subscribe(std::function<void(const E&)> handler)
+    {
+        return subscribe_erased(
+            {},
+            typeid(E),
+            [handler = std::move(handler)](control_t&, const void* event) { handler(*static_cast<const E*>(event)); });
+    }
+
+    template <class E>
+    subscription_id_type subscribe(
+        subscriber_id_type subscriber_id, std::function<void(control_t&, const E&)> handler)
+    {
+        return subscribe_erased(
+            subscriber_id,
+            typeid(E),
+            [handler = std::move(handler)](control_t& control, const void* event)
+            { handler(control, *static_cast<const E*>(event)); });
+    }
+
+    template <class E>
+    subscription_id_type subscribe(std::function<void(control_t&, const E&)> handler)
+    {
+        return subscribe_erased(
+            {},
+            typeid(E),
+            [handler = std::move(handler)](control_t& control, const void* event)
+            { handler(control, *static_cast<const E*>(event)); });
+    }
+};
 
 struct widget_t
 {
@@ -24,6 +95,10 @@ struct widget_t
         virtual void set_focused(bool) { }
 
         virtual void render(surface_t::mut_view_type) const { }
+
+        virtual void on_attach(subscription_bus_t&) { }
+
+        virtual void on_detach(subscription_bus_t&) { }
 
         virtual id_type id() const { return reinterpret_cast<id_type>(this); }
 
@@ -118,6 +193,10 @@ struct widget_t
     id_type id() const { return m_impl->id(); }
 
     void render(surface_t::mut_view_type view) const { m_impl->render(view); }
+
+    void on_attach(subscription_bus_t& bus) { m_impl->on_attach(bus); }
+
+    void on_detach(subscription_bus_t& bus) { m_impl->on_detach(bus); }
 
     surface_t::size_type preferred_size() const { return m_impl->preferred_size(); }
 };

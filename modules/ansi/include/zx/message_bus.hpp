@@ -20,7 +20,7 @@ enum class event_phase_t
     bubble,
 };
 
-struct message_bus_t
+struct message_bus_t : public subscription_bus_t
 {
     using widget_id_type = widget_t::id_type;
     using global_owner_id_type = std::size_t;
@@ -29,13 +29,13 @@ struct message_bus_t
     template <class E>
     struct on_builder_t;
 
-    using erased_handler_t = std::function<void(control_t&, const void*)>;
+    using erased_handler_t = std::function<void(subscription_bus_t::control_t&, const void*)>;
     using erased_global_handler_t = std::function<void(const void*)>;
 
     struct subscription_t
     {
         widget_id_type widget_id;
-        std::weak_ptr<widget_t::interface> widget;
+        std::optional<std::weak_ptr<widget_t::interface>> widget;
         std::optional<event_phase_t> phase;
         erased_handler_t handler;
     };
@@ -46,7 +46,7 @@ struct message_bus_t
         erased_global_handler_t handler;
     };
 
-    struct control_t
+    struct control_t : public subscription_bus_t::control_t
     {
         message_bus_t& self;
         widget_t widget;
@@ -54,13 +54,26 @@ struct message_bus_t
         event_phase_t phase;
         bool propagation_stopped = false;
 
+        control_t(message_bus_t& bus, widget_t current_widget, widget_t target, event_phase_t current_phase)
+            : self(bus)
+            , widget(std::move(current_widget))
+            , target_widget(std::move(target))
+            , phase(current_phase)
+        {
+        }
+
         void stop_propagation() { propagation_stopped = true; }
 
-        void unsubscribe_self() { self.unsubscribe(widget.id()); }
+        void unsubscribe_self() override { self.unsubscribe(widget.id()); }
 
         void unsubscribe(const widget_t& other_widget) { self.unsubscribe(other_widget.id()); }
 
-        void unsubscribe(widget_id_type other_widget_id) { self.unsubscribe(other_widget_id); }
+        void unsubscribe(widget_id_type other_widget_id) override { self.unsubscribe(other_widget_id); }
+
+        void unsubscribe_subscriber(subscriber_id_type other_subscriber_id) override
+        {
+            self.unsubscribe_subscriber(other_subscriber_id);
+        }
 
         template <class E>
         void publish(const widget_t& target, const E& event)
@@ -271,8 +284,8 @@ struct message_bus_t
             widget,
             typeid(E),
             std::nullopt,
-            [handler = std::move(handler)](control_t& control, const void* e)
-            { handler(control, *static_cast<const E*>(e)); });
+            [handler = std::move(handler)](subscription_bus_t::control_t& control, const void* e)
+            { handler(static_cast<control_t&>(control), *static_cast<const E*>(e)); });
     }
 
     template <class E>
@@ -282,7 +295,7 @@ struct message_bus_t
             widget,
             typeid(E),
             std::nullopt,
-            [handler = std::move(handler)](control_t& control, const void* e)
+            [handler = std::move(handler)](subscription_bus_t::control_t& control, const void* e)
             {
                 static_cast<void>(control);
                 handler(*static_cast<const E*>(e));
@@ -296,8 +309,8 @@ struct message_bus_t
             widget,
             typeid(E),
             event_phase_t::capture,
-            [handler = std::move(handler)](control_t& control, const void* e)
-            { handler(control, *static_cast<const E*>(e)); });
+            [handler = std::move(handler)](subscription_bus_t::control_t& control, const void* e)
+            { handler(static_cast<control_t&>(control), *static_cast<const E*>(e)); });
     }
 
     template <class E>
@@ -307,7 +320,7 @@ struct message_bus_t
             widget,
             typeid(E),
             event_phase_t::capture,
-            [handler = std::move(handler)](control_t& control, const void* e)
+            [handler = std::move(handler)](subscription_bus_t::control_t& control, const void* e)
             {
                 static_cast<void>(control);
                 handler(*static_cast<const E*>(e));
@@ -321,8 +334,8 @@ struct message_bus_t
             widget,
             typeid(E),
             event_phase_t::target,
-            [handler = std::move(handler)](control_t& control, const void* e)
-            { handler(control, *static_cast<const E*>(e)); });
+            [handler = std::move(handler)](subscription_bus_t::control_t& control, const void* e)
+            { handler(static_cast<control_t&>(control), *static_cast<const E*>(e)); });
     }
 
     template <class E>
@@ -332,7 +345,7 @@ struct message_bus_t
             widget,
             typeid(E),
             event_phase_t::target,
-            [handler = std::move(handler)](control_t& control, const void* e)
+            [handler = std::move(handler)](subscription_bus_t::control_t& control, const void* e)
             {
                 static_cast<void>(control);
                 handler(*static_cast<const E*>(e));
@@ -346,8 +359,8 @@ struct message_bus_t
             widget,
             typeid(E),
             event_phase_t::bubble,
-            [handler = std::move(handler)](control_t& control, const void* e)
-            { handler(control, *static_cast<const E*>(e)); });
+            [handler = std::move(handler)](subscription_bus_t::control_t& control, const void* e)
+            { handler(static_cast<control_t&>(control), *static_cast<const E*>(e)); });
     }
 
     template <class E>
@@ -357,7 +370,7 @@ struct message_bus_t
             widget,
             typeid(E),
             event_phase_t::bubble,
-            [handler = std::move(handler)](control_t& control, const void* e)
+            [handler = std::move(handler)](subscription_bus_t::control_t& control, const void* e)
             {
                 static_cast<void>(control);
                 handler(*static_cast<const E*>(e));
@@ -418,7 +431,7 @@ struct message_bus_t
 
     void unsubscribe(const widget_t& widget) { unsubscribe(widget.id()); }
 
-    void unsubscribe(widget_id_type widget_id)
+    void unsubscribe(widget_id_type widget_id) override
     {
         if (m_publish_depth > 0)
         {
@@ -430,6 +443,11 @@ struct message_bus_t
         }
 
         erase_widget_id(widget_id);
+    }
+
+    void unsubscribe_subscriber(subscriber_id_type subscriber_id) override
+    {
+        unsubscribe(subscriber_id);
     }
 
     void unsubscribe_global(global_owner_id_type owner_id)
@@ -481,7 +499,7 @@ private:
                     continue;
                 }
 
-                if (entry.widget.expired())
+                if (entry.widget && entry.widget->expired())
                 {
                     if (!is_pending_unsubscribe(entry.widget_id))
                     {
@@ -584,6 +602,25 @@ private:
         m_subscriptions[type].push_back(std::move(sub));
     }
 
+    subscription_id_type subscribe_erased(
+        std::optional<subscriber_id_type> subscriber_id,
+        std::type_index type,
+        std::function<void(subscription_bus_t::control_t&, const void*)> handler) override
+    {
+        const subscription_id_type subscription_id = ++m_last_subscription_id;
+        subscription_t sub{ subscriber_id.value_or(subscription_id), std::nullopt, std::nullopt, std::move(handler) };
+
+        if (m_publish_depth > 0)
+        {
+            m_deferred_subscriptions.push_back([this, type, sub = std::move(sub)]() mutable
+                                               { m_subscriptions[type].push_back(std::move(sub)); });
+            return subscription_id;
+        }
+
+        m_subscriptions[type].push_back(std::move(sub));
+        return subscription_id;
+    }
+
     void subscribe_global_erased(std::type_index type, erased_global_handler_t handler)
     {
         global_subscription_t sub{ std::nullopt, std::move(handler) };
@@ -633,6 +670,7 @@ private:
     }
 
 private:
+    std::size_t m_last_subscription_id = 0;
     std::size_t m_publish_depth = 0;
     std::vector<std::function<void()>> m_deferred_subscriptions;
     std::vector<widget_id_type> m_deferred_unsubscriptions;
