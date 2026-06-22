@@ -1,16 +1,17 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <numeric>
-#include <optional>
 #include <sstream>
 #include <tuple>
 #include <variant>
 #include <vector>
+#include <zx/maybe.hpp>
 
 namespace zx
 {
@@ -35,7 +36,7 @@ constexpr inline struct str_fn
 namespace detail
 {
 
-inline std::optional<std::tuple<std::string_view, std::string_view>> read_key_value(std::string_view text)
+inline maybe_t<std::tuple<std::string_view, std::string_view>> read_key_value(std::string_view text)
 {
     std::size_t colon_pos = text.find(':');
     if (colon_pos == std::string::npos)
@@ -51,7 +52,7 @@ inline std::optional<std::tuple<std::string_view, std::string_view>> read_key_va
     return std::tuple{ key, value };
 }
 
-inline std::optional<int> parse_int(std::string_view text)
+inline maybe_t<int> parse_int(std::string_view text)
 {
     if (text.empty())
     {
@@ -115,6 +116,21 @@ struct escape_sequence_base_t : public std::vector<int>
 using escape_sequence_t = escape_sequence_base_t<'m'>;
 using cursor_move_t = escape_sequence_base_t<'H'>;
 
+struct rgb_t : public std::array<std::uint8_t, 3>
+{
+    using base_t = std::array<std::uint8_t, 3>;
+
+    using base_t::base_t;
+
+    constexpr rgb_t(std::uint8_t r, std::uint8_t g, std::uint8_t b) : base_t{ { r, g, b } } { }
+
+    friend std::ostream& operator<<(std::ostream& os, const rgb_t& rgb)
+    {
+        return os << "(rgb_t " << static_cast<int>(rgb[0]) << " " << static_cast<int>(rgb[1]) << " "
+                  << static_cast<int>(rgb[2]) << ")";
+    }
+};
+
 struct color_t
 {
     using value_type = std::uint8_t;
@@ -124,16 +140,39 @@ struct color_t
 
     constexpr value_type value() const { return m_value; }
 
-    static constexpr color_t from_rgb(value_type r, value_type g, value_type b)
+    static constexpr color_t from_rgb(const rgb_t& rgb)
     {
-        constexpr auto convert = [](value_type x) { return (x * 6) / 256; };
-        const int v[] = { convert(r), convert(g), convert(b) };
-        return color_t{ static_cast<value_type>(16 + 36 * v[0] + 6 * v[1] + v[2]) };
+        constexpr auto convert = [](value_type x) { return std::min(value_type(5), static_cast<value_type>((x * 6 + 128) / 256)); };
+        return color_t{ static_cast<value_type>(16 + 36 * convert(rgb[0]) + 6 * convert(rgb[1]) + convert(rgb[2])) };
     }
+
+    static constexpr color_t from_rgb(value_type r, value_type g, value_type b) { return from_rgb(rgb_t{ r, g, b }); }
 
     static constexpr color_t from_grayscale(value_type level)
     {
         return color_t{ static_cast<value_type>(232 + (level * 24) / 256) };
+    }
+
+    maybe_t<rgb_t> to_rgb() const
+    {
+        if (m_value >= 16 && m_value <= 231)
+        {
+            constexpr auto convert = [](auto x) { return static_cast<value_type>((x * 255 + 128) / 6); };
+            const value_type idx = m_value - 16;
+            const value_type r = convert((idx / 36) % 6);
+            const value_type g = convert((idx / 6) % 6);
+            const value_type b = convert((idx / 1) % 6);
+            return rgb_t{ r, g, b };
+        }
+        else if (m_value >= 232)
+        {
+            const value_type level = static_cast<value_type>((m_value - 232) * 255 / 23);
+            return rgb_t{ level, level, level };
+        }
+        else
+        {
+            return {};
+        }
     }
 
     static const color_t black;
@@ -153,7 +192,7 @@ struct color_t
     static const color_t bright_cyan;
     static const color_t bright_white;
 
-    static std::optional<color_t> parse(const std::string& text)
+    static maybe_t<color_t> parse(const std::string& text)
     {
         static const std::vector<std::pair<std::string_view, color_t>> color_map
             = { { "black", color_t::black },
@@ -192,7 +231,7 @@ struct color_t
             }
             catch (...)
             {
-                return std::nullopt;
+                return none;
             }
         }
         if (text.find("gray:") == 0 || text.find("grey:") == 0)
@@ -208,11 +247,11 @@ struct color_t
             }
             catch (...)
             {
-                return std::nullopt;
+                return none;
             }
         }
 
-        return std::nullopt;
+        return none;
     }
 
     friend constexpr bool operator==(const color_t& lhs, const color_t& rhs) { return lhs.m_value == rhs.m_value; }
@@ -336,12 +375,12 @@ struct font_t
         return os;
     }
 
-    static std::optional<font_t> parse(const std::string& text)
+    static maybe_t<font_t> parse(const std::string& text)
     {
         std::stringstream ss(text);
         std::string token;
 
-        std::optional<font_t> result = {};
+        maybe_t<font_t> result = {};
 
         while (std::getline(ss, token, '+'))
         {
@@ -397,9 +436,9 @@ inline escape_sequence_t make_ansi_code(font_t font)
 
 struct style_t
 {
-    std::optional<color_t> fg_color = {};
-    std::optional<color_t> bg_color = {};
-    std::optional<font_t> font = {};
+    maybe_t<color_t> fg_color = {};
+    maybe_t<color_t> bg_color = {};
+    maybe_t<font_t> font = {};
 
     friend bool operator==(const style_t& lhs, const style_t& rhs)
     {
@@ -408,7 +447,7 @@ struct style_t
 
     friend bool operator!=(const style_t& lhs, const style_t& rhs) { return !(lhs == rhs); }
 
-    static std::optional<style_t> parse(const std::string& style_name)
+    static maybe_t<style_t> parse(const std::string& style_name)
     {
         std::stringstream ss(style_name);
         std::string token;
@@ -1009,10 +1048,10 @@ struct delimited_list_node_t : node_base_t<delimited_list_node_t>
 
 struct styled_node_impl : node_base_t<styled_node_impl>
 {
-    std::optional<style_t> m_style_info;
+    maybe_t<style_t> m_style_info;
     std::vector<node_t> m_children;
 
-    explicit styled_node_impl(std::optional<style_t> style_info, std::vector<node_t> children)
+    explicit styled_node_impl(maybe_t<style_t> style_info, std::vector<node_t> children)
         : m_style_info(std::move(style_info))
         , m_children(std::move(children))
     {
@@ -1111,9 +1150,9 @@ struct styled_node_builder_proxy_fn
 {
     struct node_builder_fn
     {
-        std::optional<style_t> m_style_info;
+        maybe_t<style_t> m_style_info;
 
-        explicit node_builder_fn(std::optional<style_t> style_info) : m_style_info(std::move(style_info)) { }
+        explicit node_builder_fn(maybe_t<style_t> style_info) : m_style_info(std::move(style_info)) { }
 
         template <class... Args>
         auto operator()(Args&&... args) const -> node_t
@@ -1122,7 +1161,7 @@ struct styled_node_builder_proxy_fn
         }
     };
 
-    auto operator()(std::optional<style_t> style_info) const -> node_builder_fn
+    auto operator()(maybe_t<style_t> style_info) const -> node_builder_fn
     {
         return node_builder_fn{ std::move(style_info) };
     }

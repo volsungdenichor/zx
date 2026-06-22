@@ -170,11 +170,33 @@ public:
 
             if (seq.size() >= 3 && seq[1] == '[' && seq[2] == '<')
             {
-                if (std::find(seq.begin(), seq.end(), static_cast<std::uint8_t>('M')) == seq.end()
-                    && std::find(seq.begin(), seq.end(), static_cast<std::uint8_t>('m')) == seq.end())
+                bool saw_terminator = false;
+                bool malformed = false;
+                for (std::size_t i = 3; i < seq.size(); ++i)
+                {
+                    const auto ch = seq[i];
+                    if ((ch >= '0' && ch <= '9') || ch == ';')
+                    {
+                        continue;
+                    }
+                    if (ch == 'M' || ch == 'm')
+                    {
+                        saw_terminator = true;
+                        break;
+                    }
+                    malformed = true;
+                    break;
+                }
+
+                if (!saw_terminator && !malformed)
                 {
                     m_pending_escape_seq = seq;
                     return true;
+                }
+
+                if (malformed)
+                {
+                    return false;
                 }
             }
 
@@ -426,6 +448,11 @@ public:
                 const ssize_t consumed_without_escape = std::max<ssize_t>(0, mouse_consumed - 1);
                 preserve_tail_from_next_escape(consumed_without_escape);
                 return *me;
+            }
+
+            if (store_if_incomplete_escape(escaped_packet))
+            {
+                return std::nullopt;
             }
 
             return std::nullopt;

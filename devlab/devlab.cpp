@@ -30,23 +30,6 @@ zx::ansi::widget_t dummy_widget()
 
 void run(const std::vector<std::string_view>&)
 {
-    zx::ansi::widget_t root = dummy_widget();
-    root.append_children(dummy_widget(), dummy_widget(), dummy_widget());
-    for (const auto& child : root.children())
-    {
-        std::cout << "Child preferred size: " << child.id() << std::endl;
-    }
-    std::cout << "---" << std::endl;
-
-    root.remove_child(root.child(1));
-    for (const auto& child : root.children())
-    {
-        std::cout << "Child preferred size: " << child.id() << std::endl;
-    }
-    std::cout << "---" << std::endl;
-
-    return;
-
     std::vector<std::pair<zx::string_t, zx::ansi::style_t>> list = {};
 
     const auto options = zx::ansi::app_options{} |= zx::with(
