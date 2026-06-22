@@ -26,7 +26,7 @@ struct interval_t : public std::array<T, 2>
 
     constexpr interval_t() : interval_t(T{}, T{}) { }
 
-    T get(side_t s) const
+    constexpr T get(side_t s) const
     {
         switch (s)
         {
@@ -147,7 +147,7 @@ struct box_shape_t : public std::array<interval_t<T>, D>
         return result;
     }
 
-    vector_t<T, D> get(side_t s) const
+    constexpr vector_t<T, D> get(side_t s) const
     {
         vector_t<T, D> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -157,7 +157,7 @@ struct box_shape_t : public std::array<interval_t<T>, D>
         return result;
     }
 
-    vector_t<T, D> get(const std::array<side_t, D>& s) const
+    constexpr vector_t<T, D> get(const std::array<side_t, D>& s) const
     {
         vector_t<T, D> result;
         for (std::size_t d = 0; d < D; ++d)

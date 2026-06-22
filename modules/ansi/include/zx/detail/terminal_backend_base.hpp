@@ -13,12 +13,28 @@ namespace ansi
 namespace detail
 {
 
+struct mouse_reporting_options_t
+{
+    bool button = true;
+    bool drag = true;
+    bool motion = false;
+    bool sgr = true;
+};
+
+struct terminal_setup_options_t
+{
+    bool use_alt_screen = true;
+    bool hide_cursor = false;
+    mouse_reporting_options_t mouse = {};
+};
+
 class terminal_backend_t
 {
 public:
     virtual ~terminal_backend_t() = default;
 
-    virtual void setup(bool use_alt_screen, bool hide_cursor) = 0;
+    virtual void setup(const terminal_setup_options_t& options) = 0;
+    virtual void set_mouse_reporting(const mouse_reporting_options_t& options) = 0;
     virtual void cleanup(bool hide_cursor) = 0;
     virtual int wait_for_input(int tick_ms) const = 0;
     virtual bool should_retry_wait(int wait_result) const = 0;

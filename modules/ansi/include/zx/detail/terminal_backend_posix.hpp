@@ -27,7 +27,7 @@ class posix_terminal_backend_t final : public terminal_backend_t
 public:
     posix_terminal_backend_t() = default;
 
-    void setup(bool use_alt_screen, bool hide_cursor) override
+    void setup(const terminal_setup_options_t& options) override
     {
         m_seen_resize_epoch = s_resize_epoch;
 
@@ -47,23 +47,22 @@ public:
         ::tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
         m_raw_mode = true;
 
-        if (use_alt_screen)
+        if (options.use_alt_screen)
         {
             write_escape("\033[?1049h");
             m_alt_screen = true;
         }
-        if (hide_cursor)
+        if (options.hide_cursor)
         {
             write_escape("\033[?25l");
         }
 
-        write_escape("\033[?1000h");
-        write_escape("\033[?1002h");
-        write_escape("\033[?1003h");
-        write_escape("\033[?1006h");
+        apply_mouse_reporting(options.mouse);
 
         write_escape("\033[2J");
     }
+
+    void set_mouse_reporting(const mouse_reporting_options_t& options) override { apply_mouse_reporting(options); }
 
     void cleanup(bool hide_cursor) override
     {
@@ -88,7 +87,6 @@ public:
         }
 
         write_escape("\033[?1006l");
-        write_escape("\033[?1003l");
         write_escape("\033[?1002l");
         write_escape("\033[?1000l");
 
@@ -438,6 +436,14 @@ public:
     }
 
 private:
+    void apply_mouse_reporting(const mouse_reporting_options_t& options) const
+    {
+        write_escape(options.button ? "\033[?1000h" : "\033[?1000l");
+        write_escape(options.drag ? "\033[?1002h" : "\033[?1002l");
+        write_escape(options.motion ? "\033[?1003h" : "\033[?1003l");
+        write_escape(options.sgr ? "\033[?1006h" : "\033[?1006l");
+    }
+
     static mouse_button_t decode_mouse_button(int code)
     {
         switch (code)

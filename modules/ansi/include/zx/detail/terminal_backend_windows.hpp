@@ -24,7 +24,7 @@ class windows_terminal_backend final : public terminal_backend
 public:
     windows_terminal_backend() = default;
 
-    void setup(bool use_alt_screen, bool hide_cursor) override
+    void setup(const terminal_setup_options_t& options) override
     {
         m_stdin_handle = ::GetStdHandle(STD_INPUT_HANDLE);
         m_stdout_handle = ::GetStdHandle(STD_OUTPUT_HANDLE);
@@ -46,12 +46,12 @@ public:
             m_raw_mode = true;
         }
 
-        if (use_alt_screen)
+        if (options.use_alt_screen)
         {
             write_escape("\033[?1049h");
             m_alt_screen = true;
         }
-        if (hide_cursor)
+        if (options.hide_cursor)
         {
             write_escape("\033[?25l");
         }

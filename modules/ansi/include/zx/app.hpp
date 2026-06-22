@@ -23,11 +23,14 @@ inline std::atomic<bool>& quit_flag()
 }
 }  // namespace detail
 
+using detail::mouse_reporting_options_t;
+
 struct app_options
 {
     bool use_alt_screen = true;
     bool hide_cursor = false;
     int tick_ms = 0;
+    mouse_reporting_options_t mouse = {};
 };
 
 class app_t
@@ -115,8 +118,20 @@ public:
 
     void quit() { m_running = false; }
 
+    void set_mouse_reporting(const mouse_reporting_options_t& options)
+    {
+        m_opts.mouse = options;
+        if (m_running)
+        {
+            m_terminal->set_mouse_reporting(m_opts.mouse);
+        }
+    }
+
 private:
-    void setup_terminal() { m_terminal->setup(m_opts.use_alt_screen, m_opts.hide_cursor); }
+    void setup_terminal()
+    {
+        m_terminal->setup(detail::terminal_setup_options_t{ m_opts.use_alt_screen, m_opts.hide_cursor, m_opts.mouse });
+    }
 
     void cleanup_terminal() { m_terminal->cleanup(m_opts.hide_cursor); }
 
@@ -151,7 +166,6 @@ private:
         }
 
         std::swap(m_canvas, m_prev_canvas);
-        m_canvas = surface_t{ m_prev_canvas.size() };
     }
 
 private:

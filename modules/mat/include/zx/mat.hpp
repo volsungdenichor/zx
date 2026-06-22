@@ -274,8 +274,8 @@ struct contains_fn
     template <class T>
     constexpr auto operator()(const interval_t<T>& item, const interval_t<T>& other) const -> bool
     {
-        constexpr T lo = lower(item);
-        constexpr T up = upper(item);
+        const T lo = lower(item);
+        const T up = upper(item);
         return inclusive_between(lower(other), lo, up) && inclusive_between(upper(other), lo, up);
     }
 
