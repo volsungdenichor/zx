@@ -10,19 +10,19 @@
 
 #include <cstdio>
 #include <cstring>
-#include <ferrugo/core/tui/detail/terminal_backend_base.hpp>
+#include <zx/detail/terminal_backend_base.hpp>
 
-namespace ferrugo
+namespace zx
 {
-namespace tui
+namespace ansi
 {
 namespace detail
 {
 
-class windows_terminal_backend final : public terminal_backend
+class windows_terminal_backend_t final : public terminal_backend_t
 {
 public:
-    windows_terminal_backend() = default;
+    windows_terminal_backend_t() = default;
 
     void setup(const terminal_setup_options_t& options) override
     {
@@ -56,8 +56,12 @@ public:
             write_escape("\033[?25l");
         }
 
+        set_mouse_reporting(options.mouse);
+
         write_escape("\033[2J");
     }
+
+    void set_mouse_reporting(const mouse_reporting_options_t& options) override { m_mouse_reporting = options; }
 
     void cleanup(bool hide_cursor) override
     {
@@ -133,6 +137,11 @@ public:
 
     std::optional<event_t> read_event(std::atomic<bool>& resize_pending) override
     {
+        if (m_stdin_handle == INVALID_HANDLE_VALUE)
+        {
+            return std::nullopt;
+        }
+
         while (true)
         {
             DWORD pending = 0;
@@ -156,70 +165,67 @@ public:
 
             if (rec.EventType == MOUSE_EVENT)
             {
+                if (!m_mouse_reporting.button && !m_mouse_reporting.drag && !m_mouse_reporting.motion)
+                {
+                    continue;
+                }
+
                 const MOUSE_EVENT_RECORD& mouse_rec = rec.Event.MouseEvent;
-                const DWORD mods = mouse_rec.dwControlKeyState;
-                const bool shift = (mods & SHIFT_PRESSED) != 0;
-                const bool ctrl = (mods & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) != 0;
-                const bool alt = (mods & (LEFT_ALT_PRESSED | RIGHT_ALT_PRESSED)) != 0;
+                const key_modifiers_t modifiers = make_key_modifiers(mouse_rec.dwControlKeyState);
                 const std::ptrdiff_t x = static_cast<std::ptrdiff_t>(mouse_rec.dwMousePosition.X);
                 const std::ptrdiff_t y = static_cast<std::ptrdiff_t>(mouse_rec.dwMousePosition.Y);
                 const auto loc = mat::vector_t<std::ptrdiff_t, 2>{ y, x };
 
                 if (mouse_rec.dwEventFlags == MOUSE_MOVED)
                 {
-                    return mouse_event_t{
-                        mouse_event_t::kind_t::move, mouse_event_t::button_t::none, loc, 0, shift, ctrl, alt
-                    };
+                    if (!m_mouse_reporting.motion)
+                    {
+                        continue;
+                    }
+                    return mouse_event_t{ mouse_event_kind_t::move, mouse_button_t::none, loc, 0, modifiers };
                 }
 
                 if (mouse_rec.dwEventFlags == MOUSE_WHEELED)
                 {
                     const SHORT wheel_delta = static_cast<SHORT>(HIWORD(mouse_rec.dwButtonState));
                     const int delta_y = (wheel_delta > 0) ? 1 : (wheel_delta < 0) ? -1 : 0;
-                    return mouse_event_t{
-                        mouse_event_t::kind_t::scroll, mouse_event_t::button_t::none, loc, delta_y, shift, ctrl, alt
-                    };
+                    return mouse_event_t{ mouse_event_kind_t::scroll, mouse_button_t::none, loc, delta_y, modifiers };
                 }
 
                 if (mouse_rec.dwEventFlags == 0)
                 {
-                    const auto decode_btn = [](DWORD state) -> mouse_event_t::button
-                    {
-                        if (state & FROM_LEFT_1ST_BUTTON_PRESSED)
-                        {
-                            return mouse_event_t::button::left;
-                        }
-                        if (state & FROM_LEFT_2ND_BUTTON_PRESSED)
-                        {
-                            return mouse_event_t::button::middle;
-                        }
-                        if (state & RIGHTMOST_BUTTON_PRESSED)
-                        {
-                            return mouse_event_t::button::right;
-                        }
-                        return mouse_event_t::button::none;
-                    };
-
-                    const mouse_event_t::button prev_btn = decode_btn(m_last_mouse_button_state);
-                    const mouse_event_t::button curr_btn = decode_btn(mouse_rec.dwButtonState);
+                    const mouse_button_t prev_btn = decode_mouse_button(m_last_mouse_button_state);
+                    const mouse_button_t curr_btn = decode_mouse_button(mouse_rec.dwButtonState);
 
                     if (mouse_rec.dwButtonState == 0 && m_last_mouse_button_state != 0)
                     {
                         m_last_mouse_button_state = mouse_rec.dwButtonState;
-                        return mouse_event_t{ mouse_event_t::kind_t::up, prev_btn, loc, 0, shift, ctrl, alt };
+                        if (!m_mouse_reporting.button)
+                        {
+                            continue;
+                        }
+                        return mouse_event_t{ mouse_event_kind_t::up, prev_btn, loc, 0, modifiers };
                     }
 
                     if (mouse_rec.dwButtonState != 0
                         && (m_last_mouse_button_state == 0 || m_last_mouse_button_state != mouse_rec.dwButtonState))
                     {
                         m_last_mouse_button_state = mouse_rec.dwButtonState;
-                        return mouse_event_t{ mouse_event_t::kind_t::down, curr_btn, loc, 0, shift, ctrl, alt };
+                        if (!m_mouse_reporting.button)
+                        {
+                            continue;
+                        }
+                        return mouse_event_t{ mouse_event_kind_t::down, curr_btn, loc, 0, modifiers };
                     }
 
                     if (mouse_rec.dwButtonState != 0)
                     {
                         m_last_mouse_button_state = mouse_rec.dwButtonState;
-                        return mouse_event_t{ mouse_event_t::kind_t::drag, curr_btn, loc, 0, shift, ctrl, alt };
+                        if (!m_mouse_reporting.drag)
+                        {
+                            continue;
+                        }
+                        return mouse_event_t{ mouse_event_kind_t::drag, curr_btn, loc, 0, modifiers };
                     }
                 }
 
@@ -233,40 +239,41 @@ public:
 
             const KEY_EVENT_RECORD& key_rec = rec.Event.KeyEvent;
             const WORD vk = key_rec.wVirtualKeyCode;
-            const DWORD mods = key_rec.dwControlKeyState;
-            const bool ctrl = (mods & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) != 0;
-            const bool alt = (mods & (LEFT_ALT_PRESSED | RIGHT_ALT_PRESSED)) != 0;
+            const key_modifiers_t modifiers = make_key_modifiers(key_rec.dwControlKeyState);
 
             switch (vk)
             {
-                case VK_ESCAPE: return key_event_t({}, key::escape);
-                case VK_RETURN: return key_event_t({}, key::enter);
-                case VK_TAB: return (mods & SHIFT_PRESSED) ? key_event_t({}, key::backtab) : key_event_t({}, key::tab);
-                case VK_BACK: return key_event_t({}, key_t::backspace);
-                case VK_UP: return key_event_t({}, key_t::up);
-                case VK_DOWN: return key_event_t({}, key_t::down);
-                case VK_LEFT: return key_event_t({}, key_t::left);
-                case VK_RIGHT: return key_event_t({}, key_t::right);
-                case VK_HOME: return key_event_t({}, key_t::home);
-                case VK_END: return key_event_t({}, key_t::end);
-                case VK_PRIOR: return key_event_t({}, key_t::page_up);
-                case VK_NEXT: return key_event_t({}, key_t::page_down);
-                case VK_DELETE: return key_event_t({}, key_t::del);
-                case VK_F1: return key_event_t({}, key_t::f1);
-                case VK_F2: return key_event_t({}, key_t::f2);
-                case VK_F3: return key_event_t({}, key_t::f3);
-                case VK_F4: return key_event_t({}, key_t::f4);
-                case VK_F5: return key_event_t({}, key_t::f5);
-                case VK_F6: return key_event_t({}, key_t::f6);
-                case VK_F7: return key_event_t({}, key_t::f7);
-                case VK_F8: return key_event_t({}, key_t::f8);
-                case VK_F9: return key_event_t({}, key_t::f9);
-                case VK_F10: return key_event_t({}, key_t::f10);
-                case VK_F11: return key_event_t({}, key_t::f11);
-                case VK_F12: return key_event_t({}, key_t::f12);
+                case VK_ESCAPE: return key_event_t{ key_t::escape, modifiers };
+                case VK_RETURN: return key_event_t{ key_t::enter, modifiers };
+                case VK_TAB:
+                    return (key_rec.dwControlKeyState & SHIFT_PRESSED) ? key_event_t{ key_t::backtab, modifiers }
+                                                                       : key_event_t{ key_t::tab, modifiers };
+                case VK_BACK: return key_event_t{ key_t::backspace, modifiers };
+                case VK_UP: return key_event_t{ key_t::up, modifiers };
+                case VK_DOWN: return key_event_t{ key_t::down, modifiers };
+                case VK_LEFT: return key_event_t{ key_t::left, modifiers };
+                case VK_RIGHT: return key_event_t{ key_t::right, modifiers };
+                case VK_HOME: return key_event_t{ key_t::home, modifiers };
+                case VK_END: return key_event_t{ key_t::end, modifiers };
+                case VK_PRIOR: return key_event_t{ key_t::page_up, modifiers };
+                case VK_NEXT: return key_event_t{ key_t::page_down, modifiers };
+                case VK_DELETE: return key_event_t{ key_t::del, modifiers };
+                case VK_F1: return key_event_t{ key_t::f1, modifiers };
+                case VK_F2: return key_event_t{ key_t::f2, modifiers };
+                case VK_F3: return key_event_t{ key_t::f3, modifiers };
+                case VK_F4: return key_event_t{ key_t::f4, modifiers };
+                case VK_F5: return key_event_t{ key_t::f5, modifiers };
+                case VK_F6: return key_event_t{ key_t::f6, modifiers };
+                case VK_F7: return key_event_t{ key_t::f7, modifiers };
+                case VK_F8: return key_event_t{ key_t::f8, modifiers };
+                case VK_F9: return key_event_t{ key_t::f9, modifiers };
+                case VK_F10: return key_event_t{ key_t::f10, modifiers };
+                case VK_F11: return key_event_t{ key_t::f11, modifiers };
+                case VK_F12: return key_event_t{ key_t::f12, modifiers };
             }
 
             const wchar_t wc = key_rec.uChar.UnicodeChar;
+            const bool ctrl = has(modifiers, key_modifiers_t::ctrl);
 
             if (ctrl && wc >= 0x0001 && wc <= 0x001A)
             {
@@ -274,12 +281,12 @@ public:
                 {
                     return quit_event_t{};
                 }
-                return key_event_t{ code_point_t{ static_cast<char32_t>('a' + wc - 1) }, key_t::none, true, alt };
+                return key_event_t{ code_point_t{ static_cast<char32_t>('a' + wc - 1) }, modifiers };
             }
 
             if (wc != 0)
             {
-                return key_event_t{ code_point_t{ static_cast<char32_t>(wc) }, key_t::none, ctrl, alt };
+                return key_event_t{ code_point_t{ static_cast<char32_t>(wc) }, modifiers };
             }
         }
     }
@@ -297,17 +304,53 @@ public:
     }
 
 private:
+    static key_modifiers_t make_key_modifiers(DWORD mods)
+    {
+        key_modifiers_t out = key_modifiers_t::none;
+        if ((mods & SHIFT_PRESSED) != 0)
+        {
+            out |= key_modifiers_t::shift;
+        }
+        if ((mods & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) != 0)
+        {
+            out |= key_modifiers_t::ctrl;
+        }
+        if ((mods & (LEFT_ALT_PRESSED | RIGHT_ALT_PRESSED)) != 0)
+        {
+            out |= key_modifiers_t::alt;
+        }
+        return out;
+    }
+
+    static mouse_button_t decode_mouse_button(DWORD state)
+    {
+        if (state & FROM_LEFT_1ST_BUTTON_PRESSED)
+        {
+            return mouse_button_t::left;
+        }
+        if (state & FROM_LEFT_2ND_BUTTON_PRESSED)
+        {
+            return mouse_button_t::middle;
+        }
+        if (state & RIGHTMOST_BUTTON_PRESSED)
+        {
+            return mouse_button_t::right;
+        }
+        return mouse_button_t::none;
+    }
+
     HANDLE m_stdin_handle = INVALID_HANDLE_VALUE;
     HANDLE m_stdout_handle = INVALID_HANDLE_VALUE;
     DWORD m_saved_stdin_mode = 0;
     DWORD m_saved_stdout_mode = 0;
     DWORD m_last_mouse_button_state = 0;
+    mouse_reporting_options_t m_mouse_reporting = {};
     bool m_raw_mode = false;
     bool m_alt_screen = false;
 };
 
 }  // namespace detail
-}  // namespace tui
-}  // namespace ferrugo
+}  // namespace ansi
+}  // namespace zx
 
 #endif
