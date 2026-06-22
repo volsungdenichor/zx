@@ -202,7 +202,7 @@ const inline box_style_t rounded_box_style = { code_point_t{ "─" }, code_point
 const inline box_style_t heavy_box_style = { code_point_t{ "━" }, code_point_t{ "┃" }, code_point_t{ "┏" },
                                              code_point_t{ "┓" }, code_point_t{ "┗" }, code_point_t{ "┛" } };
 
-void draw_border(
+inline void draw_border(
     surface_mut_view_t surface,
     const surface_t::bounds_type& bounds,
     const box_style_t& box_style = {},

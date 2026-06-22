@@ -98,6 +98,15 @@ struct widget_t
         return none;
     }
 
+    maybe_t<widget_t> root() const
+    {
+        if (auto p = parent())
+        {
+            return p->root();
+        }
+        return none;
+    }
+
     widget_t child(std::size_t index) const { return widget_t{ m_impl->m_children.at(index) }; }
 
     sequence_t<widget_t> children() const

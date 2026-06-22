@@ -14,5 +14,6 @@ zx_module_test(
     srcs = [
         "tests/ansi.test.cpp",
         "tests/surface.test.cpp",
+        "tests/message_bus.test.cpp",
     ],
 )
