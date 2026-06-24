@@ -273,6 +273,72 @@ TEST(message_bus_v2, publish_to_throws_on_cyclic_route_builder)
     EXPECT_THROW(bus.publish_to(1, test_event_t{}), std::runtime_error);
 }
 
+TEST(message_bus_v2, publish_to_caches_route_per_target)
+{
+    using namespace zx::ansi::v2;
+
+    int route_builder_calls = 0;
+    message_bus_t bus{ [&](message_bus_t::subscriber_id_type target) -> zx::maybe_t<message_bus_t::subscriber_id_type>
+                       {
+                           ++route_builder_calls;
+                           switch (target)
+                           {
+                               case 3: return 2;
+                               case 2: return 1;
+                               case 1: return zx::none;
+                               default: return zx::none;
+                           }
+                       } };
+
+    bus.subscribe(zx::ansi::v2::subscriber_proxy_t{ 3 }.on_target<test_event_t>([](const test_event_t&) {}));
+
+    bus.publish_to(3, test_event_t{});
+    bus.publish_to(3, test_event_t{});
+
+    EXPECT_THAT(route_builder_calls, testing::Eq(3));
+}
+
+TEST(message_bus_v2, invalidate_route_and_invalidate_all_routes_force_rebuild)
+{
+    using namespace zx::ansi::v2;
+
+    int route_builder_calls = 0;
+    message_bus_t bus{ [&](message_bus_t::subscriber_id_type target) -> zx::maybe_t<message_bus_t::subscriber_id_type>
+                       {
+                           ++route_builder_calls;
+                           switch (target)
+                           {
+                               case 3: return 2;
+                               case 2: return 1;
+                               case 1: return zx::none;
+                               case 5: return 4;
+                               case 4: return zx::none;
+                               default: return zx::none;
+                           }
+                       } };
+
+    bus.subscribe(zx::ansi::v2::subscriber_proxy_t{ 3 }.on_target<test_event_t>([](const test_event_t&) {}));
+    bus.subscribe(zx::ansi::v2::subscriber_proxy_t{ 5 }.on_target<test_event_t>([](const test_event_t&) {}));
+
+    bus.publish_to(3, test_event_t{});
+    EXPECT_THAT(route_builder_calls, testing::Eq(3));
+
+    bus.publish_to(3, test_event_t{});
+    EXPECT_THAT(route_builder_calls, testing::Eq(3));
+
+    bus.invalidate_route(3);
+    bus.publish_to(3, test_event_t{});
+    EXPECT_THAT(route_builder_calls, testing::Eq(6));
+
+    bus.publish_to(5, test_event_t{});
+    EXPECT_THAT(route_builder_calls, testing::Eq(8));
+
+    bus.invalidate_all_routes();
+    bus.publish_to(3, test_event_t{});
+    bus.publish_to(5, test_event_t{});
+    EXPECT_THAT(route_builder_calls, testing::Eq(13));
+}
+
 TEST(message_bus_v2, context_exposes_current_target_and_phase_for_routed_dispatch)
 {
     using namespace zx::ansi::v2;

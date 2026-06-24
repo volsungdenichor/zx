@@ -38,11 +38,7 @@ struct message_bus_t : public subscription_bus_t
     {
         message_bus_t& self;
 
-        explicit publish_scope_guard_t(message_bus_t& bus)
-            : self(bus)
-        {
-            ++self.m_publish_depth;
-        }
+        explicit publish_scope_guard_t(message_bus_t& bus) : self(bus) { ++self.m_publish_depth; }
 
         ~publish_scope_guard_t()
         {
@@ -699,11 +695,7 @@ struct message_bus_t
     {
         message_bus_t& self;
 
-        explicit publish_scope_guard_t(message_bus_t& bus)
-            : self(bus)
-        {
-            self.step_in();
-        }
+        explicit publish_scope_guard_t(message_bus_t& bus) : self(bus) { self.step_in(); }
 
         ~publish_scope_guard_t() { self.step_out(); }
     };
@@ -752,7 +744,15 @@ struct message_bus_t
     {
     }
 
-    void set_route_builder(route_builder_t route_builder) { m_route_builder = std::move(route_builder); }
+    void set_route_builder(route_builder_t route_builder)
+    {
+        m_route_builder = std::move(route_builder);
+        invalidate_all_routes();
+    }
+
+    void invalidate_route(subscriber_id_type subscriber_id) { m_route_cache.erase(subscriber_id); }
+
+    void invalidate_all_routes() { m_route_cache.clear(); }
 
     void step_in() { ++m_publish_depth; }
     void step_out()
@@ -994,10 +994,7 @@ struct message_bus_t
                 }
 
                 context_t context{
-                    *this,
-                    entry.subscription_id,
-                    typename context_t::subscriber_ids_t{ none, none, none },
-                    none
+                    *this, entry.subscription_id, typename context_t::subscriber_ids_t{ none, none, none }, none
                 };
                 entry.handler(context, event);
             }
@@ -1049,6 +1046,11 @@ struct message_bus_t
 
     std::vector<subscriber_id_type> route_to_root(subscriber_id_type target) const
     {
+        if (const auto it = m_route_cache.find(target); it != m_route_cache.end())
+        {
+            return it->second;
+        }
+
         std::vector<subscriber_id_type> route = { target };
         constexpr std::size_t max_route_depth = 1024;
         if (m_route_builder)
@@ -1075,6 +1077,7 @@ struct message_bus_t
             }
         }
         std::reverse(route.begin(), route.end());
+        m_route_cache[target] = route;
         return route;
     }
 
@@ -1110,6 +1113,7 @@ struct message_bus_t
     int m_publish_depth = 0;
     id_manager_t m_id_manager = {};
     route_builder_t m_route_builder;
+    mutable std::map<subscriber_id_type, std::vector<subscriber_id_type>> m_route_cache;
 };
 
 struct subscriber_proxy_t
