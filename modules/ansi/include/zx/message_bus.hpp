@@ -90,7 +90,22 @@ struct message_bus_t
         invalidate_all_routes();
     }
 
-    void invalidate_route(subscriber_id_type subscriber_id) { m_route_cache.erase(subscriber_id); }
+    void invalidate_route(subscriber_id_type subscriber_id)
+    {
+        for (auto it = m_route_cache.begin(); it != m_route_cache.end();)
+        {
+            const auto& route = it->second;
+            const bool depends_on_subscriber = std::find(route.begin(), route.end(), subscriber_id) != route.end();
+            if (depends_on_subscriber)
+            {
+                it = m_route_cache.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
 
     void invalidate_all_routes() { m_route_cache.clear(); }
 

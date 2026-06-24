@@ -331,6 +331,46 @@ TEST(message_bus, invalidate_route_and_invalidate_all_routes_force_rebuild)
     EXPECT_THAT(route_builder_calls, testing::Eq(13));
 }
 
+TEST(message_bus, invalidate_route_on_ancestor_invalidates_cached_descendant_routes)
+{
+    using namespace zx::ansi;
+
+    std::map<message_bus_t::subscriber_id_type, message_bus_t::subscriber_id_type> parents = {
+        { 3, 2 },
+        { 2, 1 },
+    };
+
+    int route_builder_calls = 0;
+    message_bus_t bus{ [&](message_bus_t::subscriber_id_type target) -> zx::maybe_t<message_bus_t::subscriber_id_type>
+                       {
+                           ++route_builder_calls;
+                           if (const auto it = parents.find(target); it != parents.end())
+                           {
+                               return it->second;
+                           }
+                           return zx::none;
+                       } };
+
+    std::vector<std::string> calls;
+    bus.subscribe(subscriber_proxy_t{ 1 }.on_capture<test_event_t>([&](const test_event_t&) { calls.push_back("capture:1"); }));
+    bus.subscribe(subscriber_proxy_t{ 9 }.on_capture<test_event_t>([&](const test_event_t&) { calls.push_back("capture:9"); }));
+    bus.subscribe(subscriber_proxy_t{ 3 }.on_target<test_event_t>([&](const test_event_t&) { calls.push_back("target:3"); }));
+
+    bus.publish_to(3, test_event_t{});
+    EXPECT_THAT(calls, testing::ElementsAre("capture:1", "target:3"));
+    EXPECT_THAT(route_builder_calls, testing::Eq(3));
+
+    calls.clear();
+    parents[2] = 9;
+
+    // Invalidate an ancestor node; descendant target=3 route must be evicted as well.
+    bus.invalidate_route(2);
+    bus.publish_to(3, test_event_t{});
+
+    EXPECT_THAT(calls, testing::ElementsAre("capture:9", "target:3"));
+    EXPECT_THAT(route_builder_calls, testing::Eq(6));
+}
+
 TEST(message_bus, context_exposes_current_target_and_phase_for_routed_dispatch)
 {
     using namespace zx::ansi;
