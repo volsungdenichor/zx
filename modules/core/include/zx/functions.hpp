@@ -43,13 +43,13 @@ struct get_element_fn
 
 struct dereference_fn
 {
-    template <class T, std::enable_if_t<!is_maybe_dereferenceable<T>::value, int> = 0>
+    template <class T, enable_if_t<!is_maybe_dereferenceable<T>::value> = 0>
     constexpr auto operator()(T& item) const -> T&
     {
         return item;
     }
 
-    template <class T, std::enable_if_t<is_maybe_dereferenceable<T>::value, int> = 0>
+    template <class T, enable_if_t<is_maybe_dereferenceable<T>::value> = 0>
     constexpr auto operator()(T&& item) const -> decltype((*this)(*std::forward<T>(item)))
     {
         if (!static_cast<bool>(item))

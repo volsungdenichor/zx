@@ -300,7 +300,7 @@ struct shape_t
         return { new_shape, new_start };
     }
 
-    template <std::size_t D_ = D, std::enable_if_t<(D_ > 1), int> = 0>
+    template <std::size_t D_ = D, enable_if_t<(D_ > 1)> = 0>
     shape_t<D - 1> erase(std::size_t index) const
     {
         typename shape_t<D - 1>::dims_type result = {};
@@ -441,7 +441,7 @@ struct array_view_base_t
 
     array_view_base_t<T, D - 1> operator[](location_base_t n) const { return sub(0, n); }
 
-    template <class T_ = T, std::enable_if_t<!std::is_const_v<T_>, int> = 0>
+    template <class T_ = T, enable_if_t<!std::is_const_v<T_>> = 0>
     void fill(const value_type& value)
     {
         for (size_base_t i = 0; i < m_shape.dim(0).size; ++i)
@@ -518,7 +518,7 @@ struct array_view_base_t<T, 1>
     iterator begin() const { return iterator{ from_offset(0), m_shape.dim(0).stride }; }
     iterator end() const { return begin() + volume(); }
 
-    template <class T_ = T, std::enable_if_t<!std::is_const_v<T_>, int> = 0>
+    template <class T_ = T, enable_if_t<!std::is_const_v<T_>> = 0>
     void fill(const value_type& value)
     {
         std::fill(begin(), end(), value);
@@ -572,7 +572,7 @@ struct array_t
     {
     }
 
-    template <std::size_t D_ = D, std::enable_if_t<(D_ == 1), int> = 0>
+    template <std::size_t D_ = D, enable_if_t<(D_ == 1)> = 0>
     explicit array_t(std::vector<T> init)
         : m_shape{ shape_type::from_size(size_type{ static_cast<size_base_t>(init.size()) }, sizeof(T)) }
         , m_data(std::move(init))
@@ -600,13 +600,13 @@ struct array_t
     const_reference operator[](const location_type& loc) const { return view()[loc]; }
     reference operator[](const location_type& loc) { return mut_view()[loc]; }
 
-    template <std::size_t D_ = D, std::enable_if_t<(D_ > 1), int> = 0>
+    template <std::size_t D_ = D, enable_if_t<(D_ > 1)> = 0>
     sub_view_type<D_ - 1> operator[](location_base_t n) const
     {
         return view()[n];
     }
 
-    template <std::size_t D_ = D, std::enable_if_t<(D_ > 1), int> = 0>
+    template <std::size_t D_ = D, enable_if_t<(D_ > 1)> = 0>
     mut_sub_view_type<D_ - 1> operator[](location_base_t n)
     {
         return mut_view()[n];

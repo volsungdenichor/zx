@@ -42,17 +42,6 @@ struct has_formatter<
 {
 };
 
-template <class T, class = void>
-struct has_ostream_operator : std::false_type
-{
-};
-
-template <class T>
-struct has_ostream_operator<T, std::void_t<decltype(std::declval<std::ostream&>() << std::declval<const T&>())>>
-    : std::true_type
-{
-};
-
 static constexpr inline struct format_to_fn
 {
     template <class T>

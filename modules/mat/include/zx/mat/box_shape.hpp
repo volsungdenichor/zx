@@ -111,7 +111,7 @@ struct box_shape_t : public std::array<interval_t<T>, D>
 
     constexpr box_shape_t() : base_t{} { }
 
-    template <class... Tail, class = std::enable_if_t<sizeof...(Tail) == D - 1>>
+    template <class... Tail, enable_if_t<sizeof...(Tail) == D - 1> = 0>
     constexpr box_shape_t(interval_t<T> head, Tail&&... tail)
         : base_t{ head, static_cast<interval_t<T>>(std::forward<Tail>(tail))... }
     {

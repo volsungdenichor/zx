@@ -4,6 +4,7 @@
 #include <array>
 #include <functional>
 #include <iostream>
+#include <zx/type_traits.hpp>
 
 namespace zx
 {

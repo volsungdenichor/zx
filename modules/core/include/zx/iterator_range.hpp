@@ -58,7 +58,7 @@ struct iterator_range_base_t
 
     constexpr iterator_range_base_t(iterator b, difference_type n) : iterator_range_base_t(b, std::next(b, n)) { }
 
-    template <class Range, class It = iterator_t<Range>, std::enable_if_t<std::is_constructible_v<iterator, It>, int> = 0>
+    template <class Range, class It = iterator_t<Range>, enable_if_t<std::is_constructible_v<iterator, It>> = 0>
     constexpr iterator_range_base_t(Range&& range) : iterator_range_base_t(std::begin(range), std::end(range))
     {
     }
@@ -87,13 +87,13 @@ struct iterator_range_base_t<T*>
 
     constexpr iterator_range_base_t(const std::pair<iterator, iterator>& pair) : m_iterators(pair) { }
 
-    template <class D = difference_type, std::enable_if_t<std::is_integral_v<D>, int> = 0>
+    template <class D = difference_type, enable_if_t<std::is_integral_v<D>> = 0>
     constexpr iterator_range_base_t(iterator b, D n)
         : iterator_range_base_t(b, std::next(b, static_cast<difference_type>(n)))
     {
     }
 
-    template <class Range, class It = iterator_t<Range>, std::enable_if_t<std::is_constructible_v<iterator, It>, int> = 0>
+    template <class Range, class It = iterator_t<Range>, enable_if_t<std::is_constructible_v<iterator, It>> = 0>
     constexpr iterator_range_base_t(Range&& range) : iterator_range_base_t(std::begin(range), std::end(range))
     {
     }
@@ -102,7 +102,7 @@ struct iterator_range_base_t<T*>
         class Range,
         class It = iterator_t<Range>,
         class Ptr = decltype(std::declval<Range>().data()),
-        std::enable_if_t<std::is_constructible_v<iterator, Ptr> && !std::is_constructible_v<iterator, It>, int> = 0>
+        enable_if_t<std::is_constructible_v<iterator, Ptr>, !std::is_constructible_v<iterator, It>> = 0>
     constexpr iterator_range_base_t(Range&& range)
         : iterator_range_base_t(range.data(), static_cast<difference_type>(range.size()))
     {
@@ -158,19 +158,19 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
     using base_t::begin;
     using base_t::end;
 
-    template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
+    template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
     auto rbegin() const -> reverse_iterator
     {
         return reverse_iterator{ end() };
     }
 
-    template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
+    template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
     auto rend() const -> reverse_iterator
     {
         return reverse_iterator{ begin() };
     }
 
-    template <class Container, std::enable_if_t<std::is_constructible_v<Container, iterator, iterator>, int> = 0>
+    template <class Container, enable_if_t<std::is_constructible_v<Container, iterator, iterator>> = 0>
     operator Container() const
     {
         return Container{ begin(), end() };
@@ -178,13 +178,13 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
 
     auto empty() const -> bool { return begin() == end(); }
 
-    template <class It = iterator, std::enable_if_t<is_random_access_iterator<It>::value, int> = 0>
+    template <class It = iterator, enable_if_t<is_random_access_iterator<It>::value> = 0>
     auto ssize() const -> difference_type
     {
         return std::distance(begin(), end());
     }
 
-    template <class It = iterator, std::enable_if_t<is_random_access_iterator<It>::value, int> = 0>
+    template <class It = iterator, enable_if_t<is_random_access_iterator<It>::value> = 0>
     auto size() const -> difference_type
     {
         return std::distance(begin(), end());
@@ -201,13 +201,13 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
         throw std::out_of_range("iterator_range_t::front - empty range");
     }
 
-    template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
+    template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
     auto maybe_back() const -> maybe_reference
     {
         return !empty() ? maybe_reference{ *std::prev(end()) } : maybe_reference{};
     }
 
-    template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
+    template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
     auto back() const -> reference
     {
         if (auto maybe = maybe_back())
@@ -217,13 +217,13 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
         throw std::out_of_range("iterator_range_t::back - empty range");
     }
 
-    template <class It = iterator, std::enable_if_t<is_random_access_iterator<It>::value, int> = 0>
+    template <class It = iterator, enable_if_t<is_random_access_iterator<It>::value> = 0>
     auto maybe_at(difference_type n) const -> maybe_reference
     {
         return (0 <= n && n < size()) ? maybe_reference{ *std::next(begin(), n) } : maybe_reference{};
     }
 
-    template <class It = iterator, std::enable_if_t<is_random_access_iterator<It>::value, int> = 0>
+    template <class It = iterator, enable_if_t<is_random_access_iterator<It>::value> = 0>
     auto at(difference_type n) const -> reference
     {
         if (auto maybe = maybe_at(n))
@@ -233,13 +233,13 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
         throw std::out_of_range("iterator_range_t::at - index out of range");
     }
 
-    template <class It = iterator, std::enable_if_t<is_random_access_iterator<It>::value, int> = 0>
+    template <class It = iterator, enable_if_t<is_random_access_iterator<It>::value> = 0>
     auto operator[](difference_type n) const -> reference
     {
         return at(n);
     }
 
-    template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
+    template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
     auto reverse() const -> reverse_type
     {
         return detail::make_reverse(begin(), end());
@@ -249,13 +249,13 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
 
     auto drop(difference_type n) const -> iterator_range_t { return iterator_range_t(advance(n), end()); }
 
-    template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
+    template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
     auto take_back(difference_type n) const -> iterator_range_t
     {
         return reverse().take(n).reverse();
     }
 
-    template <class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
+    template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
     auto drop_back(difference_type n) const -> iterator_range_t
     {
         return reverse().drop(n).reverse();
@@ -275,19 +275,19 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
         return iterator_range_t(found, end());
     }
 
-    template <class Pred, class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value, int> = 0>
+    template <class Pred, class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
     auto take_back_while(Pred&& pred) const -> iterator_range_t
     {
         return reverse().take_while(std::forward<Pred>(pred)).reverse();
     }
 
-    template <class Pred, class It = iterator, std::enable_if_t<is_bidirectional_iterator<It>::value> = 0>
+    template <class Pred, class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
     auto drop_back_while(Pred&& pred) const -> iterator_range_t
     {
         return reverse().drop_while(std::forward<Pred>(pred)).reverse();
     }
 
-    template <class It = iterator, std::enable_if_t<is_random_access_iterator<It>::value, int> = 0>
+    template <class It = iterator, enable_if_t<is_random_access_iterator<It>::value> = 0>
     auto slice(const iterator_range_slice_t& info) const -> iterator_range_t
     {
         static const auto adjust = [](difference_type index,

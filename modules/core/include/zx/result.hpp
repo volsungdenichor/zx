@@ -93,13 +93,13 @@ struct result_t
 
     constexpr result_t(value_type value = {}) : m_storage(std::in_place_type<value_storage>, std::move(value)) { }
 
-    template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
+    template <class Err, enable_if_t<std::is_constructible_v<error_type, Err>> = 0>
     constexpr result_t(const error_wrapper_t<Err>& error)
         : m_storage(std::in_place_type<error_storage>, error_storage{ error.m_error })
     {
     }
 
-    template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
+    template <class Err, enable_if_t<std::is_constructible_v<error_type, Err>> = 0>
     constexpr result_t(error_wrapper_t<Err>&& error)
         : m_storage(std::in_place_type<error_storage>, error_storage{ std::move(error.m_error) })
     {
@@ -330,13 +330,13 @@ struct result_t<T&, E>
 
     constexpr result_t(value_type& value) : m_storage(std::in_place_type<value_storage>, &value) { }
 
-    template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
+    template <class Err, enable_if_t<std::is_constructible_v<error_type, Err>> = 0>
     constexpr result_t(const error_wrapper_t<Err>& error)
         : m_storage(std::in_place_type<error_storage>, error_storage{ error.m_error })
     {
     }
 
-    template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
+    template <class Err, enable_if_t<std::is_constructible_v<error_type, Err>> = 0>
     constexpr result_t(error_wrapper_t<Err>&& error)
         : m_storage(std::in_place_type<error_storage>, error_storage{ std::move(error.m_error) })
     {
@@ -537,12 +537,12 @@ struct result_t<void, E>
 
     constexpr result_t() : m_storage{} { }
 
-    template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
+    template <class Err, enable_if_t<std::is_constructible_v<error_type, Err>> = 0>
     constexpr result_t(const error_wrapper_t<Err>& error) : m_storage(error.m_error)
     {
     }
 
-    template <class Err, class = std::enable_if_t<std::is_constructible_v<error_type>>>
+    template <class Err, enable_if_t<std::is_constructible_v<error_type, Err>> = 0>
     constexpr result_t(error_wrapper_t<Err>&& error) : m_storage(std::move(error.m_error))
     {
     }
@@ -783,6 +783,34 @@ template <class L, class R, class RE, class = std::invoke_result_t<std::equal_to
 constexpr bool operator!=(const L& lhs, const result_t<R, RE>& rhs)
 {
     return !(lhs == rhs);
+}
+
+template <class T, class E, enable_if_t<has_ostream_operator<T>::value, has_ostream_operator<E>::value> = 0>
+std::ostream& operator<<(std::ostream& os, const result_t<T, E>& result)
+{
+    if (result.has_value())
+    {
+        os << "result_t{ :value " << *result << " }";
+    }
+    else
+    {
+        os << "result_t{ :error " << result.error() << " }";
+    }
+    return os;
+}
+
+template <class E, enable_if_t<has_ostream_operator<E>::value> = 0>
+std::ostream& operator<<(std::ostream& os, const result_t<void, E>& result)
+{
+    if (result.has_value())
+    {
+        os << "result_t{ :value void }";
+    }
+    else
+    {
+        os << "result_t{ :error " << result.error() << " }";
+    }
+    return os;
 }
 
 template <class Func, class... Args>

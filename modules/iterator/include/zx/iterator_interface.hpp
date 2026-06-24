@@ -119,7 +119,7 @@ struct iterator_interface
 {
     Impl m_impl;
 
-    template <class... Args, std::enable_if_t<std::is_constructible<Impl, Args...>::value, int> = 0>
+    template <class... Args, enable_if_t<std::is_constructible<Impl, Args...>::value> = 0>
     constexpr iterator_interface(Args&&... args) : m_impl{ std::forward<Args>(args)... }
     {
     }
@@ -142,19 +142,19 @@ struct iterator_interface
     using reference = decltype(m_impl.deref());
 
 private:
-    template <class R = reference, std::enable_if_t<std::is_reference<R>::value, int> = 0>
+    template <class R = reference, enable_if_t<std::is_reference<R>::value> = 0>
     constexpr auto get_pointer() const -> std::add_pointer_t<reference>
     {
         return std::addressof(**this);
     }
 
-    template <class R = reference, std::enable_if_t<!std::is_reference<R>::value, int> = 0>
+    template <class R = reference, enable_if_t<!std::is_reference<R>::value> = 0>
     constexpr auto get_pointer() const -> pointer_proxy<reference>
     {
         return { **this };
     }
 
-    template <class Impl_ = Impl, std::enable_if_t<iter_is_incrementable<Impl_>::value, int> = 0>
+    template <class Impl_ = Impl, enable_if_t<iter_is_incrementable<Impl_>::value> = 0>
     constexpr void inc()
     {
         if constexpr (iter_has_inc<Impl_>::value)
@@ -167,7 +167,7 @@ private:
         }
     }
 
-    template <class Impl_ = Impl, std::enable_if_t<iter_is_decrementable<Impl_>::value, int> = 0>
+    template <class Impl_ = Impl, enable_if_t<iter_is_decrementable<Impl_>::value> = 0>
     constexpr void dec()
     {
         if constexpr (iter_has_dec<Impl_>::value)
@@ -180,7 +180,7 @@ private:
         }
     }
 
-    template <class Impl_ = Impl, std::enable_if_t<iter_is_equality_comparable<Impl_>::value, int> = 0>
+    template <class Impl_ = Impl, enable_if_t<iter_is_equality_comparable<Impl_>::value> = 0>
     constexpr bool is_equal(const Impl& other) const
     {
         if constexpr (iter_has_is_equal<Impl_>::value)
@@ -193,7 +193,7 @@ private:
         }
     }
 
-    template <class Impl_ = Impl, std::enable_if_t<iter_is_less_than_comparable<Impl_>::value, int> = 0>
+    template <class Impl_ = Impl, enable_if_t<iter_is_less_than_comparable<Impl_>::value> = 0>
     constexpr bool is_less(const Impl& other) const
     {
         if constexpr (iter_has_is_less<Impl_>::value)
@@ -211,14 +211,14 @@ public:
 
     constexpr auto operator->() const -> decltype(get_pointer()) { return get_pointer(); }
 
-    template <class Impl_ = Impl, std::enable_if_t<iter_is_incrementable<Impl_>::value, int> = 0>
+    template <class Impl_ = Impl, enable_if_t<iter_is_incrementable<Impl_>::value> = 0>
     iterator_interface& operator++()
     {
         inc();
         return *this;
     }
 
-    template <class Impl_ = Impl, std::enable_if_t<iter_is_incrementable<Impl_>::value, int> = 0>
+    template <class Impl_ = Impl, enable_if_t<iter_is_incrementable<Impl_>::value> = 0>
     iterator_interface operator++(int)
     {
         iterator_interface tmp{ *this };
@@ -226,14 +226,14 @@ public:
         return tmp;
     }
 
-    template <class Impl_ = Impl, std::enable_if_t<iter_is_decrementable<Impl_>::value, int> = 0>
+    template <class Impl_ = Impl, enable_if_t<iter_is_decrementable<Impl_>::value> = 0>
     iterator_interface& operator--()
     {
         dec();
         return *this;
     }
 
-    template <class Impl_ = Impl, std::enable_if_t<iter_is_decrementable<Impl_>::value, int> = 0>
+    template <class Impl_ = Impl, enable_if_t<iter_is_decrementable<Impl_>::value> = 0>
     iterator_interface operator--(int)
     {
         iterator_interface tmp{ *this };
@@ -241,56 +241,38 @@ public:
         return tmp;
     }
 
-    template <
-        class D,
-        class Impl_ = Impl,
-        std::enable_if_t<iter_has_advance<Impl_>::value && std::is_integral_v<D>, int> = 0>
+    template <class D, class Impl_ = Impl, enable_if_t<iter_has_advance<Impl_>::value, std::is_integral_v<D>> = 0>
     friend iterator_interface& operator+=(iterator_interface& it, D offset)
     {
         it.m_impl.advance(offset);
         return it;
     }
 
-    template <
-        class D,
-        class Impl_ = Impl,
-        std::enable_if_t<iter_has_advance<Impl_>::value && std::is_integral_v<D>, int> = 0>
+    template <class D, class Impl_ = Impl, enable_if_t<iter_has_advance<Impl_>::value, std::is_integral_v<D>> = 0>
     friend iterator_interface operator+(iterator_interface it, D offset)
     {
         return it += offset;
     }
 
-    template <
-        class D,
-        class Impl_ = Impl,
-        std::enable_if_t<iter_has_advance<Impl_>::value && std::is_integral_v<D>, int> = 0>
+    template <class D, class Impl_ = Impl, enable_if_t<iter_has_advance<Impl_>::value, std::is_integral_v<D>> = 0>
     friend iterator_interface operator+(D offset, iterator_interface it)
     {
         return it + offset;
     }
 
-    template <
-        class D,
-        class Impl_ = Impl,
-        std::enable_if_t<iter_has_advance<Impl_>::value && std::is_integral_v<D>, int> = 0>
+    template <class D, class Impl_ = Impl, enable_if_t<iter_has_advance<Impl_>::value, std::is_integral_v<D>> = 0>
     friend iterator_interface& operator-=(iterator_interface& it, D offset)
     {
         return it += -offset;
     }
 
-    template <
-        class D,
-        class Impl_ = Impl,
-        std::enable_if_t<iter_has_advance<Impl_>::value && std::is_integral_v<D>, int> = 0>
+    template <class D, class Impl_ = Impl, enable_if_t<iter_has_advance<Impl_>::value, std::is_integral_v<D>> = 0>
     friend iterator_interface operator-(iterator_interface it, D offset)
     {
         return it -= offset;
     }
 
-    template <
-        class D,
-        class Impl_ = Impl,
-        std::enable_if_t<iter_has_advance<Impl_>::value && std::is_integral_v<D>, int> = 0>
+    template <class D, class Impl_ = Impl, enable_if_t<iter_has_advance<Impl_>::value, std::is_integral_v<D>> = 0>
     reference operator[](D offset) const
     {
         return *(*this + offset);
@@ -300,31 +282,31 @@ public:
 
     friend bool operator!=(const iterator_interface& lhs, const iterator_interface& rhs) { return !(lhs == rhs); }
 
-    template <class Impl_ = Impl, std::enable_if_t<iter_is_less_than_comparable<Impl_>::value, int> = 0>
+    template <class Impl_ = Impl, enable_if_t<iter_is_less_than_comparable<Impl_>::value> = 0>
     friend bool operator<(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return lhs.is_less(rhs.m_impl);
     }
 
-    template <class Impl_ = Impl, std::enable_if_t<iter_is_less_than_comparable<Impl_>::value, int> = 0>
+    template <class Impl_ = Impl, enable_if_t<iter_is_less_than_comparable<Impl_>::value> = 0>
     friend bool operator>(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return rhs < lhs;
     }
 
-    template <class Impl_ = Impl, std::enable_if_t<iter_is_less_than_comparable<Impl_>::value, int> = 0>
+    template <class Impl_ = Impl, enable_if_t<iter_is_less_than_comparable<Impl_>::value> = 0>
     friend bool operator<=(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return !(lhs > rhs);
     }
 
-    template <class Impl_ = Impl, std::enable_if_t<iter_is_less_than_comparable<Impl_>::value, int> = 0>
+    template <class Impl_ = Impl, enable_if_t<iter_is_less_than_comparable<Impl_>::value> = 0>
     friend bool operator>=(const iterator_interface& lhs, const iterator_interface& rhs)
     {
         return !(lhs < rhs);
     }
 
-    template <class Impl_ = Impl, std::enable_if_t<iter_has_distance_to<Impl_>::value, int> = 0>
+    template <class Impl_ = Impl, enable_if_t<iter_has_distance_to<Impl_>::value> = 0>
     friend auto operator-(const iterator_interface& lhs, const iterator_interface& rhs) -> difference_type<Impl_>
     {
         return rhs.m_impl.distance_to(lhs.m_impl);

@@ -735,6 +735,10 @@ struct message_bus_t
     void step_in() { ++m_publish_depth; }
     void step_out()
     {
+        if (m_publish_depth == 0)
+        {
+            throw std::runtime_error("message_bus_t: step_out() called without matching step_in()");
+        }
         --m_publish_depth;
         if (m_publish_depth == 0)
         {
@@ -809,7 +813,7 @@ struct message_bus_t
         {
             if (!is_pending_unsubscription(id))
             {
-                m_deferred_unsubscriptions.push_back(id);
+                m_deferred_unsubscriptions.insert(id);
             }
             return;
         }
@@ -829,7 +833,7 @@ struct message_bus_t
                     if (entry.subscriber_id && *entry.subscriber_id == subscriber_id
                         && !is_pending_unsubscription(entry.subscription_id))
                     {
-                        m_deferred_unsubscriptions.push_back(entry.subscription_id);
+                        m_deferred_unsubscriptions.insert(entry.subscription_id);
                     }
                 }
             }
@@ -840,7 +844,7 @@ struct message_bus_t
                 if (entry.subscriber_id && *entry.subscriber_id == subscriber_id
                     && !is_pending_unsubscription(entry.subscription_id))
                 {
-                    m_deferred_unsubscriptions.push_back(entry.subscription_id);
+                    m_deferred_unsubscriptions.insert(entry.subscription_id);
                 }
             }
             return;
@@ -876,9 +880,17 @@ struct message_bus_t
 
     struct context_t
     {
+        struct subscriber_ids_t
+        {
+            maybe_t<subscriber_id_type> handler_id;
+            maybe_t<subscriber_id_type> current_id;
+            maybe_t<subscriber_id_type> target_id;
+        };
+
         message_bus_t& m_self;
         subscription_id_type id;
-        maybe_t<subscriber_id_type> subscriber_id;
+        subscriber_ids_t subscriber_ids;
+        maybe_t<event_phase_t> phase;
         bool m_propagation_stopped = false;
 
         void stop_propagation() { m_propagation_stopped = true; }
@@ -890,17 +902,17 @@ struct message_bus_t
         }
 
         template <class E>
-        void publish_to(subscriber_id_type target_subscriber_id, const E& event)
+        void publish_to(subscriber_id_type target_id, const E& event)
         {
-            m_self.publish_to(target_subscriber_id, event);
+            m_self.publish_to(target_id, event);
         }
 
         template <class E>
         void publish_to_self(const E& event)
         {
-            if (subscriber_id)
+            if (subscriber_ids.handler_id)
             {
-                m_self.publish_to(*subscriber_id, event);
+                m_self.publish_to(*subscriber_ids.handler_id, event);
             }
         }
 
@@ -916,11 +928,7 @@ struct message_bus_t
         subscription_id_type subscribe(subscription_info_t info) { return m_self.subscribe(std::move(info)); }
     };
 
-    bool is_pending_unsubscription(subscription_id_type id)
-    {
-        return std::find(m_deferred_unsubscriptions.begin(), m_deferred_unsubscriptions.end(), id)
-               != m_deferred_unsubscriptions.end();
-    }
+    bool is_pending_unsubscription(subscription_id_type id) { return m_deferred_unsubscriptions.count(id) > 0; }
 
     void flush_deferred_unsubscriptions()
     {
@@ -966,7 +974,7 @@ struct message_bus_t
                     continue;
                 }
 
-                context_t context{ *this, entry.subscription_id, entry.subscriber_id };
+                context_t context{ *this, entry.subscription_id, typename context_t::subscriber_ids_t{ none, none, none }, none };
                 entry.handler(context, event);
             }
         }
@@ -999,7 +1007,12 @@ struct message_bus_t
                     continue;
                 }
 
-                context_t context{ *this, entry.subscription_id, entry.subscriber_id };
+                context_t context{
+                    *this,
+                    entry.subscription_id,
+                    typename context_t::subscriber_ids_t{ entry.subscriber_id, current, target },
+                    phase
+                };
                 entry.handler(context, event);
                 if (context.m_propagation_stopped)
                 {
@@ -1065,7 +1078,7 @@ struct message_bus_t
 
     std::map<std::type_index, std::vector<subscription_t>> m_subscriptions = {};
     std::vector<std::pair<std::type_index, subscription_t>> m_deferred_subscriptions = {};
-    std::vector<subscription_id_type> m_deferred_unsubscriptions;
+    std::set<subscription_id_type> m_deferred_unsubscriptions;
     int m_publish_depth = 0;
     id_manager_t m_id_manager = {};
     route_builder_t m_route_builder;

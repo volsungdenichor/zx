@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <tuple>
+#include <zx/type_traits.hpp>
 
 namespace zx
 {
@@ -9,13 +10,13 @@ namespace zx
 namespace detail
 {
 
-template <std::size_t I, std::size_t S, class Funcs, class... Args, std::enable_if_t<(I == S - 1), int> = 0>
+template <std::size_t I, std::size_t S, class Funcs, class... Args, enable_if_t<(I == S - 1)> = 0>
 constexpr auto pipeline_impl(const Funcs& funcs, Args&&... args) -> decltype(auto)
 {
     return std::invoke(std::get<I>(funcs), std::forward<Args>(args)...);
 }
 
-template <std::size_t I, std::size_t S, class Funcs, class... Args, std::enable_if_t<(I < S - 1), int> = 0>
+template <std::size_t I, std::size_t S, class Funcs, class... Args, enable_if_t<(I < S - 1)> = 0>
 constexpr auto pipeline_impl(const Funcs& funcs, Args&&... args) -> decltype(auto)
 {
     return pipeline_impl<I + 1, S>(funcs, std::invoke(std::get<I>(funcs), std::forward<Args>(args)...));

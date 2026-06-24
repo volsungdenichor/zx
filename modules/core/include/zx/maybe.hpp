@@ -469,7 +469,7 @@ constexpr bool operator!=(std::nullopt_t, const maybe_t<T>& m)
     return m.has_value();
 }
 
-template <class T>
+template <class T, enable_if_t<has_ostream_operator<T>::value> = 0>
 std::ostream& operator<<(std::ostream& os, const maybe_t<T>& item)
 {
     if (item)

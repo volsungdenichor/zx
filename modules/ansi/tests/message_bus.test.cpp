@@ -222,6 +222,91 @@ TEST(message_bus_v2, publish_to_dispatches_capture_target_and_bubble_in_route_or
     EXPECT_THAT(calls, testing::ElementsAre("capture:1", "capture:2", "target:3", "bubble:2", "bubble:1"));
 }
 
+TEST(message_bus_v2, context_exposes_current_target_and_phase_for_routed_dispatch)
+{
+    using namespace zx::ansi::v2;
+    message_bus_t bus{ [](message_bus_t::subscriber_id_type target) -> zx::maybe_t<message_bus_t::subscriber_id_type>
+                       {
+                           switch (target)
+                           {
+                               case 3: return 2;
+                               case 2: return 1;
+                               case 1: return zx::none;
+                               default: return zx::none;
+                           }
+                       } };
+
+    std::vector<std::string> calls;
+
+    bus.subscribe(subscriber_proxy_t{ 1 }.on_capture<test_event_t>(
+        [&](message_bus_t::context_t& context, const test_event_t&)
+        {
+            calls.push_back(
+                zx::format(*context.subscriber_ids.current_id, ":", *context.subscriber_ids.target_id, ":capture"));
+            EXPECT_THAT(
+                context,
+                testing::AllOf(
+                    testing::Field(
+                        &message_bus_t::context_t::subscriber_ids,
+                        testing::AllOf(
+                            testing::Field(
+                                &message_bus_t::context_t::subscriber_ids_t::handler_id,
+                                testing::Optional(message_bus_t::subscriber_id_type{ 1 })),
+                            testing::Field(
+                                &message_bus_t::context_t::subscriber_ids_t::current_id,
+                                testing::Optional(message_bus_t::subscriber_id_type{ 1 })),
+                            testing::Field(
+                                &message_bus_t::context_t::subscriber_ids_t::target_id,
+                                testing::Optional(message_bus_t::subscriber_id_type{ 3 })))),
+                    testing::Field(&message_bus_t::context_t::phase, testing::Optional(event_phase_t::capture))));
+        }));
+
+    bus.subscribe(subscriber_proxy_t{ 3 }.on_target<test_event_t>(
+        [&](message_bus_t::context_t& context, const test_event_t&)
+        {
+            calls.push_back(
+                zx::format(*context.subscriber_ids.current_id, ":", *context.subscriber_ids.target_id, ":target"));
+
+            EXPECT_THAT(
+                context,
+                testing::AllOf(
+                    testing::Field(
+                        &message_bus_t::context_t::subscriber_ids,
+                        testing::AllOf(
+                            testing::Field(
+                                &message_bus_t::context_t::subscriber_ids_t::handler_id,
+                                testing::Optional(message_bus_t::subscriber_id_type{ 3 })),
+                            testing::Field(
+                                &message_bus_t::context_t::subscriber_ids_t::current_id,
+                                testing::Optional(message_bus_t::subscriber_id_type{ 3 })),
+                            testing::Field(
+                                &message_bus_t::context_t::subscriber_ids_t::target_id,
+                                testing::Optional(message_bus_t::subscriber_id_type{ 3 })))),
+                    testing::Field(&message_bus_t::context_t::phase, testing::Optional(event_phase_t::target))));
+        }));
+
+    bus.publish_to(3, test_event_t{});
+
+    EXPECT_THAT(calls, testing::ElementsAre("1:3:capture", "3:3:target"));
+}
+
+TEST(message_bus_v2, context_leaves_route_metadata_empty_for_plain_publish)
+{
+    using namespace zx::ansi::v2;
+    message_bus_t bus;
+
+    bus.subscribe(on<test_event_t>(
+        [&](message_bus_t::context_t& context, const test_event_t&)
+        {
+            EXPECT_FALSE(context.subscriber_ids.handler_id);
+            EXPECT_FALSE(context.subscriber_ids.current_id);
+            EXPECT_FALSE(context.subscriber_ids.target_id);
+            EXPECT_FALSE(context.phase);
+        }));
+
+    bus.publish(test_event_t{});
+}
+
 TEST(message_bus_v2, subscribe_and_unsubscribe_are_immediate_outside_publish)
 {
     zx::ansi::v2::message_bus_t bus;

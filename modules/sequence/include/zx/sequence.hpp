@@ -1035,29 +1035,29 @@ struct sequence_t : detail::inspect_mixin<T, NextFn>,
 
     explicit sequence_t(next_function_type next_fn) : m_next_fn(std::move(next_fn)) { }
 
-    template <class N, std::enable_if_t<std::is_constructible_v<next_function_type, N>, int> = 0>
+    template <class N, enable_if_t<std::is_constructible_v<next_function_type, N>> = 0>
     sequence_t(const sequence_t<reference, N>& other) : sequence_t{ other.get_next_function() }
     {
     }
 
-    template <class N, std::enable_if_t<std::is_constructible_v<next_function_type, N>, int> = 0>
+    template <class N, enable_if_t<std::is_constructible_v<next_function_type, N>> = 0>
     sequence_t(sequence_t<reference, N>&& other) : sequence_t{ std::move(other).get_next_function() }
     {
     }
 
-    template <class U, class N, std::enable_if_t<std::is_constructible_v<reference, U>, int> = 0>
+    template <class U, class N, enable_if_t<std::is_constructible_v<reference, U>> = 0>
     sequence_t(const sequence_t<U, N>& other)
         : sequence_t{ detail::cast_sequence<reference, U, N>{ other.get_next_function() } }
     {
     }
 
-    template <class U, class N, std::enable_if_t<std::is_constructible_v<reference, U>, int> = 0>
+    template <class U, class N, enable_if_t<std::is_constructible_v<reference, U>> = 0>
     sequence_t(sequence_t<U, N>&& other)
         : sequence_t{ detail::cast_sequence<reference, U, N>{ std::move(other).get_next_function() } }
     {
     }
 
-    template <class Iter, std::enable_if_t<std::is_constructible_v<reference, iter_reference_t<Iter>>, int> = 0>
+    template <class Iter, enable_if_t<std::is_constructible_v<reference, iter_reference_t<Iter>>> = 0>
     explicit sequence_t(Iter b, Iter e) : sequence_t{ detail::view_sequence<Iter, reference>{ b, e } }
     {
     }
@@ -1065,7 +1065,7 @@ struct sequence_t : detail::inspect_mixin<T, NextFn>,
     template <
         class Range,
         class Iter = iterator_t<Range>,
-        std::enable_if_t<std::is_constructible_v<reference, iter_reference_t<Iter>>, int> = 0>
+        enable_if_t<std::is_constructible_v<reference, iter_reference_t<Iter>>> = 0>
     sequence_t(Range&& range) : sequence_t{ std::begin(range), std::end(range) }
     {
     }
@@ -1073,7 +1073,7 @@ struct sequence_t : detail::inspect_mixin<T, NextFn>,
     template <
         class Range,
         class Iter = iterator_t<Range>,
-        std::enable_if_t<std::is_constructible_v<reference, iter_reference_t<Iter>>, int> = 0>
+        enable_if_t<std::is_constructible_v<reference, iter_reference_t<Iter>>> = 0>
     sequence_t(Range range, int)
         : sequence_t{ detail::owning_sequence<Range, Iter, reference>{ std::make_shared<Range>(std::move(range)) } }
     {
@@ -1088,9 +1088,7 @@ struct sequence_t : detail::inspect_mixin<T, NextFn>,
 
     template <
         class Container,
-        std::enable_if_t<
-            std::is_constructible_v<Container, iterator, iterator> && !detail::is_sequence<Container>::value,
-            int> = 0>
+        enable_if_t<std::is_constructible_v<Container, iterator, iterator>, !detail::is_sequence<Container>::value> = 0>
     operator Container() const
     {
         return Container{ begin(), end() };

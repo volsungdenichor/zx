@@ -44,6 +44,17 @@ struct always_false : std::false_type
 };
 
 template <class T>
+using has_ostream_operator_impl = decltype(std::declval<std::ostream&>() << std::declval<const T&>());
+
+template <class T>
+struct has_ostream_operator : is_detected<has_ostream_operator_impl, T>
+{
+};
+
+template <bool... Conds>
+using enable_if_t = std::enable_if_t<(Conds && ...), int>;
+
+template <class T>
 using iterator_t = decltype(std::begin(std::declval<T>()));
 
 template <class T>

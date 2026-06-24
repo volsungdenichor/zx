@@ -122,9 +122,7 @@ struct generator_pipe_t
         class Reductor,
         class Reducer = reducer_type_t<std::decay_t<Reductor>>,
         class State = state_type_t<std::decay_t<Reductor>>,
-        std::enable_if_t<
-            is_reductor<std::decay_t<Reductor>>::value && is_transducer<const Transducer&, Reducer>::value,
-            int> = 0>
+        enable_if_t<is_reductor<std::decay_t<Reductor>>::value, is_transducer<const Transducer&, Reducer>::value> = 0>
     auto yield_to(Reductor&& reductor) const& -> State
     {
         auto piped_reductor = m_transducer | std::forward<Reductor>(reductor);
@@ -135,7 +133,7 @@ struct generator_pipe_t
         class Reductor,
         class Reducer = reducer_type_t<std::decay_t<Reductor>>,
         class State = state_type_t<std::decay_t<Reductor>>,
-        std::enable_if_t<is_reductor<std::decay_t<Reductor>>::value && is_transducer<Transducer, Reducer>::value, int> = 0>
+        enable_if_t<is_reductor<std::decay_t<Reductor>>::value, is_transducer<Transducer, Reducer>::value> = 0>
     auto yield_to(Reductor&& reductor) && -> State
     {
         auto piped_reductor = std::move(m_transducer) | std::forward<Reductor>(reductor);
@@ -149,7 +147,7 @@ template <
     class Transducer,
     class Reductor,
     class Reducer = detail::reducer_type_t<std::decay_t<Reductor>>,
-    std::enable_if_t<detail::is_transducer<Transducer, Reducer>::value, int> = 0>
+    enable_if_t<detail::is_transducer<Transducer, Reducer>::value> = 0>
 constexpr auto operator|(Transducer&& transducer, Reductor&& reductor)
 {
     return reductor_t{ std::forward<Reductor>(reductor).state,
@@ -160,7 +158,7 @@ template <
     class Generator,
     class Reductor,
     class State = detail::state_type_t<std::decay_t<Reductor>>,
-    std::enable_if_t<detail::is_generator<Generator, Reductor>::value, int> = 0>
+    enable_if_t<detail::is_generator<Generator, Reductor>::value> = 0>
 constexpr auto operator|(Generator&& generator, Reductor&& reductor) -> State
 {
     return std::forward<Generator>(generator).yield_to(std::forward<Reductor>(reductor));
@@ -192,7 +190,7 @@ struct combine_fn
 
         template <
             class NextReducer,
-            std::enable_if_t<(std::is_copy_constructible_v<Transducers> && ...) || (sizeof(NextReducer) == 0), int> = 0>
+            enable_if_t<(std::is_copy_constructible_v<Transducers> && ...) || (sizeof(NextReducer) == 0)> = 0>
         constexpr auto transduce(NextReducer&& next_reducer) const&
         {
             if constexpr (sizeof...(Transducers) == 0)
@@ -222,7 +220,7 @@ struct combine_fn
         template <
             class State,
             class Reducer,
-            std::enable_if_t<(std::is_copy_constructible_v<Transducers> && ...) || (sizeof(Reducer) == 0), int> = 0>
+            enable_if_t<(std::is_copy_constructible_v<Transducers> && ...) || (sizeof(Reducer) == 0)> = 0>
         constexpr auto to_reductor(reductor_t<State, Reducer> reductor) const&
         {
             return reductor_t{ std::move(reductor.state), transduce(std::move(reductor.reducer)) };
@@ -293,7 +291,7 @@ struct generator_t
 {
     Impl m_impl;
 
-    template <class Reductor, std::enable_if_t<detail::is_reductor<std::decay_t<Reductor>>::value, int> = 0>
+    template <class Reductor, enable_if_t<detail::is_reductor<std::decay_t<Reductor>>::value> = 0>
     auto yield_to(Reductor&& reductor) const -> detail::state_type_t<std::decay_t<Reductor>>
     {
         std::invoke(m_impl, std::forward<Reductor>(reductor));
@@ -508,10 +506,9 @@ static constexpr inline auto repeat = detail::repeat_fn{};
 template <
     class Generator,
     class Transducer,
-    std::enable_if_t<
-        zx::detail::is_any_generator<std::decay_t<Generator>>::value
-            && zx::detail::is_any_transducer<std::decay_t<Transducer>>::value,
-        int> = 0>
+    enable_if_t<
+        zx::detail::is_any_generator<std::decay_t<Generator>>::value,
+        zx::detail::is_any_transducer<std::decay_t<Transducer>>::value> = 0>
 constexpr auto operator|(Generator&& generator, Transducer&& transducer)
 {
     return zx::detail::generator_pipe_t<std::decay_t<Generator>, std::decay_t<Transducer>>{
@@ -992,10 +989,9 @@ struct project_fn
 template <
     class Left,
     class Right,
-    std::enable_if_t<
-        zx::detail::is_any_transducer<std::decay_t<Left>>::value
-            && zx::detail::is_any_transducer<std::decay_t<Right>>::value,
-        int> = 0>
+    enable_if_t<
+        zx::detail::is_any_transducer<std::decay_t<Left>>::value,
+        zx::detail::is_any_transducer<std::decay_t<Right>>::value> = 0>
 constexpr auto operator|(Left&& left, Right&& right)
 {
     return zx::combine(std::forward<Left>(left), std::forward<Right>(right));
@@ -1443,7 +1439,7 @@ struct out_fn
 
         constexpr iterator_t& operator++(int) { return *this; }
 
-        template <class Arg, std::enable_if_t<!std::is_same_v<std::decay_t<Arg>, iterator_t>, int> = 0>
+        template <class Arg, enable_if_t<!std::is_same_v<std::decay_t<Arg>, iterator_t>> = 0>
         constexpr iterator_t& operator=(Arg&& arg)
         {
             m_reductor(std::forward<Arg>(arg));

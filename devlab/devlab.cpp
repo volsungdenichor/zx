@@ -4,29 +4,13 @@
 #include <string_view>
 #include <vector>
 
+#include "zx/ansi/widgets/label.hpp"
 #include "zx/app.hpp"
 #include "zx/format.hpp"
 #include "zx/functional.hpp"
 #include "zx/maybe.hpp"
 #include "zx/string.hpp"
 #include "zx/widget.hpp"
-
-struct dummy_widget_t : public zx::ansi::widget_t::interface
-{
-    void render(zx::ansi::surface_t::mut_view_type dest) const override
-    {
-        for (auto& child : children())
-        {
-            child.render(dest);
-        }
-    }
-    zx::ansi::surface_t::size_type preferred_size() const override { return { 1, 1 }; }
-};
-
-zx::ansi::widget_t dummy_widget()
-{
-    return zx::ansi::widget_t::make<dummy_widget_t>();
-}
 
 void run(const std::vector<std::string_view>&)
 {
@@ -43,6 +27,9 @@ void run(const std::vector<std::string_view>&)
             it.mouse.motion = true;
             it.mouse.sgr = true;
         });
+
+    auto label = zx::ansi::widgets::label(
+        zx::string_t{ "Press keys, resize the terminal, or click the mouse. Press 'q' to quit." });
 
     zx::ansi::app_t app{
         [&](const zx::ansi::event_t& event)
@@ -82,6 +69,7 @@ void run(const std::vector<std::string_view>&)
                 zx::ansi::draw_text(view, bounds, text, style);
                 bounds += zx::ansi::surface_t::location_type{ 1, 0 };
             }
+            label.render(view);
         },
         options
     };
