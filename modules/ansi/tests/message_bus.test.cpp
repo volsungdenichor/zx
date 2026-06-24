@@ -242,23 +242,23 @@ TEST(message_bus_v2, context_exposes_current_target_and_phase_for_routed_dispatc
         [&](message_bus_t::context_t& context, const test_event_t&)
         {
             calls.push_back(
-                zx::format(context.subscriber_ids->current_id, ":", context.subscriber_ids->target_id, ":capture"));
+                zx::format(*context.subscriber_ids.current_id, ":", *context.subscriber_ids.target_id, ":capture"));
 
             EXPECT_THAT(
                 context,
                 testing::AllOf(
                     testing::Field(
                         &message_bus_t::context_t::subscriber_ids,
-                        testing::Optional(testing::AllOf(
+                        testing::AllOf(
                             testing::Field(
                                 &message_bus_t::context_t::subscriber_ids_t::handler_id,
                                 testing::Optional(message_bus_t::subscriber_id_type{ 1 })),
                             testing::Field(
                                 &message_bus_t::context_t::subscriber_ids_t::current_id,
-                                message_bus_t::subscriber_id_type{ 1 }),
+                                testing::Optional(message_bus_t::subscriber_id_type{ 1 })),
                             testing::Field(
                                 &message_bus_t::context_t::subscriber_ids_t::target_id,
-                                message_bus_t::subscriber_id_type{ 3 })))),
+                                testing::Optional(message_bus_t::subscriber_id_type{ 3 })))),
                     testing::Field(&message_bus_t::context_t::phase, testing::Optional(event_phase_t::capture))));
         }));
 
@@ -266,23 +266,23 @@ TEST(message_bus_v2, context_exposes_current_target_and_phase_for_routed_dispatc
         [&](message_bus_t::context_t& context, const test_event_t&)
         {
             calls.push_back(
-                zx::format(context.subscriber_ids->current_id, ":", context.subscriber_ids->target_id, ":target"));
+                zx::format(*context.subscriber_ids.current_id, ":", *context.subscriber_ids.target_id, ":target"));
 
             EXPECT_THAT(
                 context,
                 testing::AllOf(
                     testing::Field(
                         &message_bus_t::context_t::subscriber_ids,
-                        testing::Optional(testing::AllOf(
+                        testing::AllOf(
                             testing::Field(
                                 &message_bus_t::context_t::subscriber_ids_t::handler_id,
                                 testing::Optional(message_bus_t::subscriber_id_type{ 3 })),
                             testing::Field(
                                 &message_bus_t::context_t::subscriber_ids_t::current_id,
-                                message_bus_t::subscriber_id_type{ 3 }),
+                                testing::Optional(message_bus_t::subscriber_id_type{ 3 })),
                             testing::Field(
                                 &message_bus_t::context_t::subscriber_ids_t::target_id,
-                                message_bus_t::subscriber_id_type{ 3 })))),
+                                testing::Optional(message_bus_t::subscriber_id_type{ 3 })))),
                     testing::Field(&message_bus_t::context_t::phase, testing::Optional(event_phase_t::target))));
         }));
 
@@ -299,8 +299,16 @@ TEST(message_bus_v2, context_leaves_route_metadata_empty_for_plain_publish)
     bus.subscribe(on<test_event_t>(
         [&](message_bus_t::context_t& context, const test_event_t&)
         {
-            EXPECT_THAT(context.subscriber_ids, testing::Eq(zx::none));
-            EXPECT_THAT(context.phase, testing::Eq(zx::none));
+            EXPECT_THAT(
+                context,
+                testing::AllOf(
+                    testing::Field(
+                        &message_bus_t::context_t::subscriber_ids,
+                        testing::AllOf(
+                            testing::Field(&message_bus_t::context_t::subscriber_ids_t::handler_id, testing::Eq(zx::none)),
+                            testing::Field(&message_bus_t::context_t::subscriber_ids_t::current_id, testing::Eq(zx::none)),
+                            testing::Field(&message_bus_t::context_t::subscriber_ids_t::target_id, testing::Eq(zx::none)))),
+                    testing::Field(&message_bus_t::context_t::phase, testing::Eq(zx::none))));
         }));
 
     bus.publish(test_event_t{});

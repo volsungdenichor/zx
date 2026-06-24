@@ -3,7 +3,8 @@
 #include <algorithm>
 #include <functional>
 #include <map>
-#include <optional>
+#include <set>
+#include <stdexcept>
 #include <typeindex>
 #include <vector>
 #include <zx/maybe.hpp>
@@ -883,13 +884,13 @@ struct message_bus_t
         struct subscriber_ids_t
         {
             maybe_t<subscriber_id_type> handler_id;
-            subscriber_id_type current_id;
-            subscriber_id_type target_id;
+            maybe_t<subscriber_id_type> current_id;
+            maybe_t<subscriber_id_type> target_id;
         };
 
         message_bus_t& m_self;
         subscription_id_type id;
-        maybe_t<subscriber_ids_t> subscriber_ids;
+        subscriber_ids_t subscriber_ids;
         maybe_t<event_phase_t> phase;
         bool m_propagation_stopped = false;
 
@@ -910,9 +911,9 @@ struct message_bus_t
         template <class E>
         void publish_to_self(const E& event)
         {
-            if (subscriber_ids && subscriber_ids->handler_id)
+            if (subscriber_ids.handler_id)
             {
-                m_self.publish_to(*subscriber_ids->handler_id, event);
+                m_self.publish_to(*subscriber_ids.handler_id, event);
             }
         }
 
@@ -974,7 +975,12 @@ struct message_bus_t
                     continue;
                 }
 
-                context_t context{ *this, entry.subscription_id, none, none };
+                context_t context{
+                    *this,
+                    entry.subscription_id,
+                    typename context_t::subscriber_ids_t{ none, none, none },
+                    none
+                };
                 entry.handler(context, event);
             }
         }
