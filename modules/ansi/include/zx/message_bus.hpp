@@ -883,13 +883,13 @@ struct message_bus_t
         struct subscriber_ids_t
         {
             maybe_t<subscriber_id_type> handler_id;
-            maybe_t<subscriber_id_type> current_id;
-            maybe_t<subscriber_id_type> target_id;
+            subscriber_id_type current_id;
+            subscriber_id_type target_id;
         };
 
         message_bus_t& m_self;
         subscription_id_type id;
-        subscriber_ids_t subscriber_ids;
+        maybe_t<subscriber_ids_t> subscriber_ids;
         maybe_t<event_phase_t> phase;
         bool m_propagation_stopped = false;
 
@@ -910,9 +910,9 @@ struct message_bus_t
         template <class E>
         void publish_to_self(const E& event)
         {
-            if (subscriber_ids.handler_id)
+            if (subscriber_ids && subscriber_ids->handler_id)
             {
-                m_self.publish_to(*subscriber_ids.handler_id, event);
+                m_self.publish_to(*subscriber_ids->handler_id, event);
             }
         }
 
@@ -974,18 +974,14 @@ struct message_bus_t
                     continue;
                 }
 
-                context_t context{ *this, entry.subscription_id, typename context_t::subscriber_ids_t{ none, none, none }, none };
+                context_t context{ *this, entry.subscription_id, none, none };
                 entry.handler(context, event);
             }
         }
     }
 
     bool dispatch(
-        std::type_index type,
-        subscriber_id_type current,
-        [[maybe_unused]] subscriber_id_type target,
-        event_phase_t phase,
-        const void* event)
+        std::type_index type, subscriber_id_type current, subscriber_id_type target, event_phase_t phase, const void* event)
     {
         const auto [b, e] = m_subscriptions.equal_range(type);
         for (auto it = b; it != e; ++it)
@@ -1007,12 +1003,10 @@ struct message_bus_t
                     continue;
                 }
 
-                context_t context{
-                    *this,
-                    entry.subscription_id,
-                    typename context_t::subscriber_ids_t{ entry.subscriber_id, current, target },
-                    phase
-                };
+                context_t context{ *this,
+                                   entry.subscription_id,
+                                   typename context_t::subscriber_ids_t{ entry.subscriber_id, current, target },
+                                   phase };
                 entry.handler(context, event);
                 if (context.m_propagation_stopped)
                 {
