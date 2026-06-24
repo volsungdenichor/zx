@@ -189,3 +189,67 @@ TEST(message_bus, fluent_builder_supports_owner_scoped_global_unsubscribe)
 
     EXPECT_THAT(sum, testing::Eq(5));
 }
+
+TEST(message_bus_v2, publish_to_dispatches_capture_target_and_bubble_in_route_order)
+{
+    using namespace zx::ansi::v2;
+    message_bus_t bus{ [](message_bus_t::subscriber_id_type target) -> zx::maybe_t<message_bus_t::subscriber_id_type>
+                       {
+                           switch (target)
+                           {
+                               case 3: return 2;
+                               case 2: return 1;
+                               case 1: return zx::none;
+                               default: return zx::none;
+                           }
+                       } };
+
+    std::vector<std::string> calls;
+
+    bus.subscribe(subscriber_proxy_t{ 1 }.on_capture<test_event_t>([&](message_bus_t::context_t&, const test_event_t&)
+                                                                   { calls.push_back("capture:1"); }));
+    bus.subscribe(subscriber_proxy_t{ 2 }.on_capture<test_event_t>([&](message_bus_t::context_t&, const test_event_t&)
+                                                                   { calls.push_back("capture:2"); }));
+    bus.subscribe(subscriber_proxy_t{ 3 }.on_target<test_event_t>([&](message_bus_t::context_t&, const test_event_t&)
+                                                                  { calls.push_back("target:3"); }));
+    bus.subscribe(subscriber_proxy_t{ 2 }.on_bubble<test_event_t>([&](message_bus_t::context_t&, const test_event_t&)
+                                                                  { calls.push_back("bubble:2"); }));
+    bus.subscribe(subscriber_proxy_t{ 1 }.on_bubble<test_event_t>([&](message_bus_t::context_t&, const test_event_t&)
+                                                                  { calls.push_back("bubble:1"); }));
+
+    bus.publish_to(3, test_event_t{});
+
+    EXPECT_THAT(calls, testing::ElementsAre("capture:1", "capture:2", "target:3", "bubble:2", "bubble:1"));
+}
+
+TEST(message_bus_v2, subscribe_and_unsubscribe_are_immediate_outside_publish)
+{
+    zx::ansi::v2::message_bus_t bus;
+
+    int calls = 0;
+    const auto id = bus.subscribe(zx::ansi::v2::on<test_event_t>([&](const test_event_t&) { ++calls; }));
+
+    bus.publish(test_event_t{});
+    bus.unsubscribe(id);
+    bus.publish(test_event_t{});
+
+    EXPECT_THAT(calls, testing::Eq(1));
+}
+
+TEST(message_bus_v2, unsubscribe_subscriber_removes_only_matching_subscriber)
+{
+    zx::ansi::v2::message_bus_t bus;
+
+    int calls_a = 0;
+    int calls_b = 0;
+
+    bus.subscribe(zx::ansi::v2::subscriber_proxy_t{ 10 }.on<test_event_t>([&](const test_event_t&) { ++calls_a; }));
+    bus.subscribe(zx::ansi::v2::subscriber_proxy_t{ 20 }.on<test_event_t>([&](const test_event_t&) { ++calls_b; }));
+
+    bus.publish(test_event_t{});
+    bus.unsubscribe_subscriber(10);
+    bus.publish(test_event_t{});
+
+    EXPECT_THAT(calls_a, testing::Eq(1));
+    EXPECT_THAT(calls_b, testing::Eq(2));
+}
