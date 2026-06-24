@@ -190,6 +190,41 @@ TEST(message_bus, fluent_builder_supports_owner_scoped_global_unsubscribe)
     EXPECT_THAT(sum, testing::Eq(5));
 }
 
+TEST(message_bus, publish_recovers_after_handler_throws)
+{
+    zx::ansi::message_bus_t bus;
+
+    auto target = zx::ansi::widget_t::make<test_widget_t>();
+
+    bool should_throw = true;
+    int calls = 0;
+
+    bus.on_target<test_event_t>(
+        target,
+        [&](zx::ansi::message_bus_t::control_t&, const test_event_t&)
+        {
+            if (should_throw)
+            {
+                should_throw = false;
+                throw std::runtime_error("boom");
+            }
+            ++calls;
+        });
+
+    try
+    {
+        bus.publish(target, test_event_t{});
+    }
+    catch (const std::runtime_error&)
+    {
+    }
+
+    bus.on_target<test_event_t>(target, [&](const test_event_t&) { calls += 10; });
+    bus.publish(target, test_event_t{});
+
+    EXPECT_THAT(calls, testing::Eq(11));
+}
+
 TEST(message_bus_v2, publish_to_dispatches_capture_target_and_bubble_in_route_order)
 {
     using namespace zx::ansi::v2;
@@ -220,6 +255,22 @@ TEST(message_bus_v2, publish_to_dispatches_capture_target_and_bubble_in_route_or
     bus.publish_to(3, test_event_t{});
 
     EXPECT_THAT(calls, testing::ElementsAre("capture:1", "capture:2", "target:3", "bubble:2", "bubble:1"));
+}
+
+TEST(message_bus_v2, publish_to_throws_on_cyclic_route_builder)
+{
+    using namespace zx::ansi::v2;
+    message_bus_t bus{ [](message_bus_t::subscriber_id_type target) -> zx::maybe_t<message_bus_t::subscriber_id_type>
+                       {
+                           switch (target)
+                           {
+                               case 1: return 2;
+                               case 2: return 1;
+                               default: return zx::none;
+                           }
+                       } };
+
+    EXPECT_THROW(bus.publish_to(1, test_event_t{}), std::runtime_error);
 }
 
 TEST(message_bus_v2, context_exposes_current_target_and_phase_for_routed_dispatch)
@@ -326,6 +377,39 @@ TEST(message_bus_v2, subscribe_and_unsubscribe_are_immediate_outside_publish)
     bus.publish(test_event_t{});
 
     EXPECT_THAT(calls, testing::Eq(1));
+}
+
+TEST(message_bus_v2, publish_recovers_after_handler_throws)
+{
+    using namespace zx::ansi::v2;
+    message_bus_t bus;
+
+    bool should_throw = true;
+    int calls = 0;
+
+    bus.subscribe(on<test_event_t>(
+        [&](message_bus_t::context_t&, const test_event_t&)
+        {
+            if (should_throw)
+            {
+                should_throw = false;
+                throw std::runtime_error("boom");
+            }
+            ++calls;
+        }));
+
+    try
+    {
+        bus.publish(test_event_t{});
+    }
+    catch (const std::runtime_error&)
+    {
+    }
+
+    bus.subscribe(on<test_event_t>([&](const test_event_t&) { calls += 10; }));
+    bus.publish(test_event_t{});
+
+    EXPECT_THAT(calls, testing::Eq(11));
 }
 
 TEST(message_bus_v2, unsubscribe_subscriber_removes_only_matching_subscriber)

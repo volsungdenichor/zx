@@ -34,6 +34,27 @@ struct message_bus_t : public subscription_bus_t
     using erased_handler_t = std::function<void(subscription_bus_t::control_t&, const void*)>;
     using erased_global_handler_t = std::function<void(const void*)>;
 
+    struct publish_scope_guard_t
+    {
+        message_bus_t& self;
+
+        explicit publish_scope_guard_t(message_bus_t& bus)
+            : self(bus)
+        {
+            ++self.m_publish_depth;
+        }
+
+        ~publish_scope_guard_t()
+        {
+            --self.m_publish_depth;
+            if (self.m_publish_depth == 0)
+            {
+                self.flush_deferred_subscriptions();
+                self.flush_deferred_unsubscriptions();
+            }
+        }
+    };
+
     struct subscription_t
     {
         widget_id_type widget_id;
@@ -259,14 +280,8 @@ struct message_bus_t : public subscription_bus_t
     template <class E>
     void broadcast(const E& event)
     {
-        ++m_publish_depth;
+        publish_scope_guard_t publish_scope{ *this };
         dispatch_global(event);
-        --m_publish_depth;
-        if (m_publish_depth == 0)
-        {
-            flush_deferred_subscriptions();
-            flush_deferred_unsubscriptions();
-        }
     }
 
     template <class E>
@@ -384,7 +399,7 @@ struct message_bus_t : public subscription_bus_t
             return;
         }
 
-        ++m_publish_depth;
+        publish_scope_guard_t publish_scope{ *this };
 
         bool propagation_stopped = false;
 
@@ -417,13 +432,6 @@ struct message_bus_t : public subscription_bus_t
                     break;
                 }
             }
-        }
-
-        --m_publish_depth;
-        if (m_publish_depth == 0)
-        {
-            flush_deferred_subscriptions();
-            flush_deferred_unsubscriptions();
         }
     }
 
@@ -687,6 +695,19 @@ struct message_bus_t
 
     using erased_handler_t = std::function<void(context_t&, const void*)>;
 
+    struct publish_scope_guard_t
+    {
+        message_bus_t& self;
+
+        explicit publish_scope_guard_t(message_bus_t& bus)
+            : self(bus)
+        {
+            self.step_in();
+        }
+
+        ~publish_scope_guard_t() { self.step_out(); }
+    };
+
     using route_builder_t = std::function<maybe_t<subscriber_id_type>(subscriber_id_type)>;
 
     struct default_route_builder_t
@@ -751,9 +772,8 @@ struct message_bus_t
     template <class E>
     void publish(const E& event)
     {
-        step_in();
+        publish_scope_guard_t publish_scope{ *this };
         dispatch(std::type_index(typeid(E)), &event);
-        step_out();
     }
 
     template <class E>
@@ -767,7 +787,7 @@ struct message_bus_t
             return;
         }
 
-        step_in();
+        publish_scope_guard_t publish_scope{ *this };
 
         bool propagation_stopped = false;
 
@@ -799,8 +819,6 @@ struct message_bus_t
                 }
             }
         }
-
-        step_out();
     }
 
     subscription_id_type subscribe(subscription_info_t info)
@@ -1032,18 +1050,28 @@ struct message_bus_t
     std::vector<subscriber_id_type> route_to_root(subscriber_id_type target) const
     {
         std::vector<subscriber_id_type> route = { target };
+        constexpr std::size_t max_route_depth = 1024;
         if (m_route_builder)
         {
-            while (true)
+            while (route.size() < max_route_depth)
             {
                 if (auto maybe_parent = m_route_builder(route.back()); maybe_parent)
                 {
+                    if (std::find(route.begin(), route.end(), *maybe_parent) != route.end())
+                    {
+                        throw std::runtime_error("message_bus_t: cycle detected while building subscriber route");
+                    }
                     route.push_back(*maybe_parent);
                 }
                 else
                 {
                     break;
                 }
+            }
+
+            if (route.size() == max_route_depth)
+            {
+                throw std::runtime_error("message_bus_t: subscriber route exceeded maximum depth");
             }
         }
         std::reverse(route.begin(), route.end());
