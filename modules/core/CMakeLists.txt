@@ -3,6 +3,7 @@ zx_add_module(
     INTERFACE
 
     TEST_SOURCES
+    tests/algorithm.test.cpp
     tests/type_traits.test.cpp
     tests/format.test.cpp
     tests/iterator_range.test.cpp
