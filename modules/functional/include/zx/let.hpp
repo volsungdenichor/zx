@@ -67,7 +67,7 @@ static constexpr detail::let_fn let;
 namespace literals
 {
 
-constexpr detail::arg_t operator"" _arg(const char*, std::size_t)
+constexpr detail::arg_t operator""_arg(const char*, std::size_t)
 {
     return {};
 }
