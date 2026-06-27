@@ -20,6 +20,7 @@ using byte_ptr = std::uint8_t*;
 using location_base_t = std::ptrdiff_t;
 using extent_base_t = location_base_t;
 using stride_base_t = location_base_t;
+using interval_type = mat::interval_t<extent_base_t>;
 
 using flat_offset_t = std::ptrdiff_t;
 using volume_t = std::ptrdiff_t;
@@ -212,23 +213,11 @@ struct shape_t : mat::md_base_t<D, dim_t, shape_t>
         return result;
     }
 
-    extent_type extent() const
-    {
-        return transform_into(
-            extent_type{}, [](const dim_t& dim) -> extent_base_t { return dim.extent; }, *this);
-    }
+    extent_type extent() const { return transform_into(extent_type{}, &dim_t::extent, *this); }
 
-    stride_type stride() const
-    {
-        return transform_into(
-            stride_type{}, [](const dim_t& dim) -> stride_base_t { return dim.stride; }, *this);
-    }
+    stride_type stride() const { return transform_into(stride_type{}, &dim_t::stride, *this); }
 
-    bounds_type bounds() const
-    {
-        return transform_into(
-            bounds_type{}, [](const dim_t& dim) -> mat::interval_t<extent_base_t> { return dim.bounds(); }, *this);
-    }
+    bounds_type bounds() const { return transform_into(bounds_type{}, &dim_t::bounds, *this); }
 
     location_type adjust_location(const location_type& loc) const
     {
@@ -297,7 +286,7 @@ struct shape_t<1>
     using stride_type = stride_base_t;
     using location_type = location_base_t;
     using slice_type = slice_base_t;
-    using bounds_type = zx::mat::interval_t<extent_base_t>;
+    using bounds_type = interval_type;
 
     using dims_type = std::array<dim_t, 1>;
 
@@ -604,16 +593,15 @@ struct array_t
 
 struct adjust_bounds_fn
 {
-    inline auto operator()(mat::interval_t<extent_base_t> dst, mat::interval_t<extent_base_t> src, location_base_t location)
-        const -> std::pair<mat::interval_t<extent_base_t>, mat::interval_t<extent_base_t>>
+    inline auto operator()(interval_type dst, interval_type src, location_base_t location) const
+        -> std::pair<interval_type, interval_type>
     {
-        constexpr auto adjust =
-            [](mat::interval_t<extent_base_t> interval, extent_base_t lo, extent_base_t up) -> mat::interval_t<extent_base_t>
+        constexpr auto adjust = [](interval_type interval, extent_base_t lo, extent_base_t up) -> interval_type
         {
             lo = std::clamp(lo, mat::lower(interval), mat::upper(interval));
             up = std::clamp(up, mat::lower(interval), mat::upper(interval));
             up = std::max(up, lo);
-            return mat::interval_t<extent_base_t>{ lo, up };
+            return interval_type{ lo, up };
         };
         const auto new_dst = adjust(
             dst,
@@ -626,14 +614,11 @@ struct adjust_bounds_fn
     }
 
     template <std::size_t D>
-    auto operator()(
-        mat::box_shape_t<D, extent_base_t> dst,
-        mat::box_shape_t<D, extent_base_t> src,
-        const mat::vector_t<D, location_base_t>& location) const
-        -> std::pair<mat::box_shape_t<D, extent_base_t>, mat::box_shape_t<D, extent_base_t>>
+    auto operator()(bounds_t<D> dst, bounds_t<D> src, const location_t<D>& location) const
+        -> std::pair<bounds_t<D>, bounds_t<D>>
     {
-        mat::box_shape_t<D, extent_base_t> new_dst = dst;
-        mat::box_shape_t<D, extent_base_t> new_src = src;
+        bounds_t<D> new_dst = dst;
+        bounds_t<D> new_src = src;
 
         for (std::size_t d = 0; d < D; ++d)
         {

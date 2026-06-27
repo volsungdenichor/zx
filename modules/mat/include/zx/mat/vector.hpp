@@ -45,12 +45,11 @@ constexpr struct inc_fn
 template <class Func, class Out, class... Ranges>
 constexpr Out transform_into(Out out, Func func, Ranges&&... ranges)
 {
-    auto it = std::tuple{ std::begin(ranges)... };
-    const auto end = std::tuple{ std::end(ranges)... };
-    auto b = std::begin(out);
-    for (; !eq(it, end); inc(it), ++b)
+    auto begin = std::tuple{ std::begin(out), std::begin(ranges)... };
+    const auto end = std::tuple{ std::end(out), std::end(ranges)... };
+    for (; !eq(begin, end); inc(begin))
     {
-        *b = std::apply([&](auto... iters) { return std::invoke(func, *iters...); }, it);
+        std::apply([&](auto in, auto... iters) { *in = std::invoke(func, *iters...); }, begin);
     }
     return out;
 }
@@ -58,12 +57,17 @@ constexpr Out transform_into(Out out, Func func, Ranges&&... ranges)
 template <class Func, class InOut, class... Ranges>
 constexpr InOut& transform(Func func, InOut& in_out, Ranges&&... ranges)
 {
-    auto it = std::tuple{ std::begin(ranges)... };
-    const auto end = std::tuple{ std::end(ranges)... };
-    auto b = std::begin(in_out);
-    for (; !eq(it, end); inc(it), ++b)
+    auto begin = std::tuple{ std::begin(in_out), std::begin(ranges)... };
+    const auto end = std::tuple{ std::end(in_out), std::end(ranges)... };
+    for (; !eq(begin, end); inc(begin))
     {
-        *b = std::apply([&](auto... iters) { return std::invoke(func, *b, *iters...); }, it);
+        std::apply(
+            [&](auto head, auto... tail)
+            {
+                auto& out = *head;
+                out = std::invoke(func, out, *tail...);
+            },
+            begin);
     }
     return in_out;
 }
@@ -106,12 +110,12 @@ struct md_base_t : public std::array<T, D>
         return os;
     }
 
-    friend bool operator==(const md_base_t& lhs, const md_base_t& rhs)
+    friend bool operator==(const self_type& lhs, const self_type& rhs)
     {
         return std::equal(lhs.begin(), lhs.end(), rhs.begin());
     }
 
-    friend bool operator!=(const md_base_t& lhs, const md_base_t& rhs) { return !(lhs == rhs); }
+    friend bool operator!=(const self_type& lhs, const self_type& rhs) { return !(lhs == rhs); }
 };
 
 template <class T>
