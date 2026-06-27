@@ -196,8 +196,8 @@ template <
     std::size_t C,
     class T,
     class U,
-    class = std::invoke_result_t<std::multiplies<>, T, U>,
-    class = std::enable_if_t<is_scalar<U>::value>>
+    enable_if_t<is_scalar<U>::value> = 0,
+    class = std::invoke_result_t<std::multiplies<>, T, U>>
 constexpr auto operator*=(matrix_t<R, C, T>& lhs, U rhs) -> matrix_t<R, C, T>&
 {
     std::transform(
@@ -213,8 +213,8 @@ template <
     std::size_t C,
     class T,
     class U,
-    class = std::invoke_result_t<std::divides<>, T, U>,
-    class = std::enable_if_t<is_scalar<U>::value>>
+    enable_if_t<is_scalar<U>::value> = 0,
+    class = std::invoke_result_t<std::divides<>, T, U>>
 constexpr auto operator/=(matrix_t<R, C, T>& lhs, U rhs) -> matrix_t<R, C, T>&
 {
     std::transform(
@@ -248,8 +248,8 @@ template <
     std::size_t C,
     class T,
     class U,
-    class Res = std::invoke_result_t<std::multiplies<>, T, U>,
-    class = std::enable_if_t<is_scalar<U>::value>>
+    enable_if_t<is_scalar<U>::value> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, T, U>>
 constexpr auto operator*(const matrix_t<R, C, T>& lhs, U rhs) -> matrix_t<R, C, Res>
 {
     matrix_t<R, C, Res> result{};
@@ -266,8 +266,8 @@ template <
     std::size_t C,
     class T,
     class U,
-    class Res = std::invoke_result_t<std::multiplies<>, T, U>,
-    class = std::enable_if_t<is_scalar<T>::value>>
+    enable_if_t<is_scalar<T>::value> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, T, U>>
 constexpr auto operator*(T lhs, const matrix_t<R, C, U>& rhs) -> matrix_t<R, C, Res>
 {
     return rhs * lhs;
@@ -278,8 +278,8 @@ template <
     std::size_t C,
     class T,
     class U,
-    class Res = std::invoke_result_t<std::divides<>, T, U>,
-    class = std::enable_if_t<is_scalar<U>::value>>
+    enable_if_t<is_scalar<U>::value> = 0,
+    class Res = std::invoke_result_t<std::divides<>, T, U>>
 constexpr auto operator/(const matrix_t<R, C, T>& lhs, U rhs) -> matrix_t<R, C, Res>
 {
     matrix_t<R, C, Res> result{};

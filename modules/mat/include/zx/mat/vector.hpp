@@ -189,8 +189,8 @@ template <
     std::size_t D,
     class L,
     class R,
-    class Res = std::invoke_result_t<std::multiplies<>, L, R>,
-    class = std::enable_if_t<is_scalar<R>::value>>
+    enable_if_t<is_scalar<R>::value> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*=(vector_t<D, L>& lhs, R rhs) -> vector_t<D, L>&
 {
     return lhs.transform_self([&](const L& value) -> L { return value * rhs; });
@@ -200,8 +200,8 @@ template <
     std::size_t D,
     class L,
     class R,
-    class Res = std::invoke_result_t<std::multiplies<>, L, R>,
-    class = std::enable_if_t<is_scalar<R>::value>>
+    enable_if_t<is_scalar<R>::value> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*(const vector_t<D, L>& lhs, R rhs) -> vector_t<D, Res>
 {
     return lhs.template transform_to<vector_t<D, Res>>([&](const L& value) -> Res { return value * rhs; });
@@ -211,8 +211,8 @@ template <
     class L,
     std::size_t D,
     class R,
-    class Res = std::invoke_result_t<std::multiplies<>, L, R>,
-    class = std::enable_if_t<is_scalar<L>::value>>
+    enable_if_t<is_scalar<L>::value> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*(L lhs, const vector_t<D, R>& rhs) -> vector_t<D, Res>
 {
     return rhs * lhs;
@@ -222,8 +222,8 @@ template <
     std::size_t D,
     class L,
     class R,
-    class Res = std::invoke_result_t<std::divides<>, L, R>,
-    class = std::enable_if_t<is_scalar<R>::value>>
+    enable_if_t<is_scalar<R>::value> = 0,
+    class Res = std::invoke_result_t<std::divides<>, L, R>>
 constexpr auto operator/=(vector_t<D, L>& lhs, R rhs) -> vector_t<D, L>&
 {
     return lhs.transform_self([&](const L& value) -> L { return value / rhs; });
@@ -233,8 +233,8 @@ template <
     std::size_t D,
     class L,
     class R,
-    class Res = std::invoke_result_t<std::divides<>, L, R>,
-    class = std::enable_if_t<is_scalar<R>::value>>
+    enable_if_t<is_scalar<R>::value> = 0,
+    class Res = std::invoke_result_t<std::divides<>, L, R>>
 constexpr auto operator/(const vector_t<D, L>& lhs, R rhs) -> vector_t<D, Res>
 {
     return lhs.template transform_to<vector_t<D, Res>>([&](const L& value) -> Res { return value / rhs; });
