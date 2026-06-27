@@ -199,8 +199,8 @@ struct load_bitmap_fn
 
     static auto prepare_array(const dib_header& header) -> rgb_image_t
     {
-        return rgb_image_t{ rgb_image_t::size_type{
-            static_cast<arrays::size_base_t>(header.height), static_cast<arrays::size_base_t>(header.width), 3 } };
+        return rgb_image_t{ rgb_image_t::extent_type{
+            static_cast<arrays::extent_base_t>(header.height), static_cast<arrays::extent_base_t>(header.width), 3 } };
     }
 
     static auto load_bitmap_8(std::istream& is, const dib_header& header) -> rgb_image_t
@@ -221,8 +221,8 @@ struct load_bitmap_fn
             is.ignore(1);
         }
 
-        const arrays::size_base_t h = ref.shape().m_dims[0].size;
-        const arrays::size_base_t w = ref.shape().m_dims[1].size;
+        const arrays::extent_base_t h = ref.shape()[0].extent;
+        const arrays::extent_base_t w = ref.shape()[1].extent;
 
         for (arrays::location_base_t y = h - 1; y >= 0; --y)
         {
@@ -248,8 +248,8 @@ struct load_bitmap_fn
         rgb_image_t result = prepare_array(header);
         auto ref = result.mut_view();
 
-        const arrays::size_base_t h = ref.shape().m_dims[0].size;
-        const arrays::size_base_t w = ref.shape().m_dims[1].size;
+        const arrays::extent_base_t h = ref.shape()[0].extent;
+        const arrays::extent_base_t w = ref.shape()[1].extent;
 
         for (arrays::location_base_t y = h - 1; y >= 0; --y)
         {
@@ -273,10 +273,10 @@ struct save_bitmap_fn
     void operator()(rgb_image_t::view_type image, std::ostream& os) const
     {
         static const std::size_t bits_per_pixel = 24;
-        const std::size_t padding = get_padding(static_cast<std::size_t>(image.shape().m_dims[1].size), bits_per_pixel);
+        const std::size_t padding = get_padding(static_cast<std::size_t>(image.shape()[1].extent), bits_per_pixel);
 
-        const arrays::size_base_t h = image.shape().m_dims[0].size;
-        const arrays::size_base_t w = image.shape().m_dims[1].size;
+        const arrays::extent_base_t h = image.shape()[0].extent;
+        const arrays::extent_base_t w = image.shape()[1].extent;
 
         save_header(os, static_cast<std::size_t>(w), static_cast<std::size_t>(h), padding, bits_per_pixel, 0);
 

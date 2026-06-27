@@ -7,48 +7,48 @@ namespace zx
 namespace mat
 {
 
-template <class T, std::size_t D>
+template <std::size_t D, class T>
 struct spherical_shape_t
 {
-    vector_t<T, D> center;
+    vector_t<D, T> center;
     T radius;
 };
 
 template <class T>
-std::ostream& operator<<(std::ostream& os, const spherical_shape_t<T, 2>& item)
+std::ostream& operator<<(std::ostream& os, const spherical_shape_t<2, T>& item)
 {
     return os << "(circle " << item.center << " " << item.radius << ")";
 }
 
 template <class T>
-std::ostream& operator<<(std::ostream& os, const spherical_shape_t<T, 3>& item)
+std::ostream& operator<<(std::ostream& os, const spherical_shape_t<3, T>& item)
 {
     return os << "(sphere " << item.center << " " << item.radius << ")";
 }
 
 template <class T, class U, std::size_t D>
-constexpr auto operator+=(spherical_shape_t<T, D>& lhs, const vector_t<U, D>& rhs) -> spherical_shape_t<T, D>&
+constexpr auto operator+=(spherical_shape_t<D, T>& lhs, const vector_t<D, U>& rhs) -> spherical_shape_t<D, T>&
 {
     lhs.center += rhs;
     return lhs;
 }
 
 template <class T, class U, std::size_t D>
-constexpr auto operator+(spherical_shape_t<T, D> lhs, const vector_t<U, D>& rhs) -> spherical_shape_t<T, D>
+constexpr auto operator+(spherical_shape_t<D, T> lhs, const vector_t<D, U>& rhs) -> spherical_shape_t<D, T>
 {
     lhs.center += rhs;
     return lhs;
 }
 
 template <class T, class U, std::size_t D>
-constexpr auto operator-=(spherical_shape_t<T, D>& lhs, const vector_t<U, D>& rhs) -> spherical_shape_t<T, D>&
+constexpr auto operator-=(spherical_shape_t<D, T>& lhs, const vector_t<D, U>& rhs) -> spherical_shape_t<D, T>&
 {
     lhs.center -= rhs;
     return lhs;
 }
 
 template <class T, class U, std::size_t D>
-constexpr auto operator-(spherical_shape_t<T, D> lhs, const vector_t<U, D>& rhs) -> spherical_shape_t<T, D>
+constexpr auto operator-(spherical_shape_t<D, T> lhs, const vector_t<D, U>& rhs) -> spherical_shape_t<D, T>
 {
     lhs.center -= rhs;
     return lhs;

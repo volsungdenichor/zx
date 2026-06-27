@@ -13,14 +13,14 @@ namespace zx
 
 namespace mat
 {
-template <class T, std::size_t R, std::size_t C>
+template <std::size_t R, std::size_t C, class T>
 struct matrix_view_t
 {
     using size_type = std::size_t;
     using volume_type = std::size_t;
 
-    using extents_type = vector_t<size_type, 2>;
-    using location_type = vector_t<size_type, 2>;
+    using extents_type = vector_t<2, size_type>;
+    using location_type = vector_t<2, size_type>;
 
     using pointer = T*;
     using reference = T&;
@@ -58,11 +58,11 @@ struct matrix_view_t
     }
 };
 
-template <class T, std::size_t R, std::size_t C = R>
+template <std::size_t R, std::size_t C, class T>
 struct matrix_t
 {
-    using view_type = matrix_view_t<T, R, C>;
-    using const_view_type = matrix_view_t<const T, R, C>;
+    using view_type = matrix_view_t<R, C, T>;
+    using const_view_type = matrix_view_t<R, C, const T>;
 
     using size_type = typename view_type::size_type;
     using volume_type = typename view_type::volume_type;
@@ -124,8 +124,13 @@ struct matrix_t
     constexpr const_column_type column(size_type n) const { return view().column(n); }
 };
 
-template <class T, std::size_t R, std::size_t C>
-std::ostream& operator<<(std::ostream& os, const matrix_view_t<T, R, C>& item)
+template <std::size_t R, std::size_t C, class T>
+struct is_matrix<matrix_t<R, C, T>> : public std::true_type
+{
+};
+
+template <std::size_t R, std::size_t C, class T>
+std::ostream& operator<<(std::ostream& os, const matrix_view_t<R, C, T>& item)
 {
     os << "[";
     for (std::size_t r = 0; r < item.row_count(); ++r)
@@ -150,44 +155,50 @@ std::ostream& operator<<(std::ostream& os, const matrix_view_t<T, R, C>& item)
     return os;
 }
 
-template <class T, std::size_t R, std::size_t C>
-std::ostream& operator<<(std::ostream& os, const matrix_t<T, R, C>& item)
+template <std::size_t R, std::size_t C, class T>
+std::ostream& operator<<(std::ostream& os, const matrix_t<R, C, T>& item)
 {
     return os << item.view();
 }
 
-template <class T, std::size_t R, std::size_t C>
-constexpr auto operator+(const matrix_t<T, R, C>& item) -> matrix_t<T, R, C>
+template <std::size_t R, std::size_t C, class T>
+constexpr auto operator+(const matrix_t<R, C, T>& item) -> matrix_t<R, C, T>
 {
     return item;
 }
 
-template <class T, std::size_t R, std::size_t C>
-constexpr auto operator-(const matrix_t<T, R, C>& item) -> matrix_t<T, R, C>
+template <std::size_t R, std::size_t C, class T>
+constexpr auto operator-(const matrix_t<R, C, T>& item) -> matrix_t<R, C, T>
 {
-    matrix_t<T, R, C> result{};
+    matrix_t<R, C, T> result{};
     std::transform(std::begin(item.data()), std::end(item.data()), std::begin(result.data()), std::negate<>{});
     return result;
 }
 
-template <class T, class U, std::size_t R, std::size_t C, class = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator+=(matrix_t<T, R, C>& lhs, const matrix_t<U, R, C>& rhs) -> matrix_t<T, R, C>&
+template <std::size_t R, std::size_t C, class T, class U, class = std::invoke_result_t<std::plus<>, T, U>>
+constexpr auto operator+=(matrix_t<R, C, T>& lhs, const matrix_t<R, C, U>& rhs) -> matrix_t<R, C, T>&
 {
     std::transform(
         std::begin(lhs.data()), std::end(lhs.data()), std::begin(rhs.data()), std::begin(lhs.data()), std::plus<>{});
     return lhs;
 }
 
-template <class T, class U, std::size_t R, std::size_t C, class = std::invoke_result_t<std::minus<>, T, U>>
-constexpr auto operator-=(matrix_t<T, R, C>& lhs, const matrix_t<U, R, C>& rhs) -> matrix_t<T, R, C>&
+template <std::size_t R, std::size_t C, class T, class U, class = std::invoke_result_t<std::minus<>, T, U>>
+constexpr auto operator-=(matrix_t<R, C, T>& lhs, const matrix_t<R, C, U>& rhs) -> matrix_t<R, C, T>&
 {
     std::transform(
         std::begin(lhs.data()), std::end(lhs.data()), std::begin(rhs.data()), std::begin(lhs.data()), std::minus<>{});
     return lhs;
 }
 
-template <class T, class U, std::size_t R, std::size_t C, class = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*=(matrix_t<T, R, C>& lhs, U rhs) -> matrix_t<T, R, C>&
+template <
+    std::size_t R,
+    std::size_t C,
+    class T,
+    class U,
+    class = std::invoke_result_t<std::multiplies<>, T, U>,
+    class = std::enable_if_t<is_scalar<U>::value>>
+constexpr auto operator*=(matrix_t<R, C, T>& lhs, U rhs) -> matrix_t<R, C, T>&
 {
     std::transform(
         std::begin(lhs.data()),
@@ -197,8 +208,14 @@ constexpr auto operator*=(matrix_t<T, R, C>& lhs, U rhs) -> matrix_t<T, R, C>&
     return lhs;
 }
 
-template <class T, class U, std::size_t R, std::size_t C, class = std::invoke_result_t<std::divides<>, T, U>>
-constexpr auto operator/=(matrix_t<T, R, C>& lhs, U rhs) -> matrix_t<T, R, C>&
+template <
+    std::size_t R,
+    std::size_t C,
+    class T,
+    class U,
+    class = std::invoke_result_t<std::divides<>, T, U>,
+    class = std::enable_if_t<is_scalar<U>::value>>
+constexpr auto operator/=(matrix_t<R, C, T>& lhs, U rhs) -> matrix_t<R, C, T>&
 {
     std::transform(
         std::begin(lhs.data()),
@@ -208,28 +225,34 @@ constexpr auto operator/=(matrix_t<T, R, C>& lhs, U rhs) -> matrix_t<T, R, C>&
     return lhs;
 }
 
-template <class T, class U, std::size_t R, std::size_t C, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator+(const matrix_t<T, R, C>& lhs, const matrix_t<U, R, C>& rhs) -> matrix_t<Res, R, C>
+template <std::size_t R, std::size_t C, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
+constexpr auto operator+(const matrix_t<R, C, T>& lhs, const matrix_t<R, C, U>& rhs) -> matrix_t<R, C, Res>
 {
-    matrix_t<Res, R, C> result{};
+    matrix_t<R, C, Res> result{};
     std::transform(
         std::begin(lhs.data()), std::end(lhs.data()), std::begin(rhs.data()), std::begin(result.data()), std::plus<>{});
     return result;
 }
 
-template <class T, class U, std::size_t R, std::size_t C, class Res = std::invoke_result_t<std::minus<>, T, U>>
-constexpr auto operator-(const matrix_t<T, R, C>& lhs, const matrix_t<U, R, C>& rhs) -> matrix_t<Res, R, C>
+template <std::size_t R, std::size_t C, class T, class U, class Res = std::invoke_result_t<std::minus<>, T, U>>
+constexpr auto operator-(const matrix_t<R, C, T>& lhs, const matrix_t<R, C, U>& rhs) -> matrix_t<R, C, Res>
 {
-    matrix_t<Res, R, C> result{};
+    matrix_t<R, C, Res> result{};
     std::transform(
         std::begin(lhs.data()), std::end(lhs.data()), std::begin(rhs.data()), std::begin(result.data()), std::minus<>{});
     return result;
 }
 
-template <class T, class U, std::size_t R, std::size_t C, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const matrix_t<T, R, C>& lhs, U rhs) -> matrix_t<Res, R, C>
+template <
+    std::size_t R,
+    std::size_t C,
+    class T,
+    class U,
+    class Res = std::invoke_result_t<std::multiplies<>, T, U>,
+    class = std::enable_if_t<is_scalar<U>::value>>
+constexpr auto operator*(const matrix_t<R, C, T>& lhs, U rhs) -> matrix_t<R, C, Res>
 {
-    matrix_t<Res, R, C> result{};
+    matrix_t<R, C, Res> result{};
     std::transform(
         std::begin(lhs.data()),
         std::end(lhs.data()),
@@ -238,16 +261,28 @@ constexpr auto operator*(const matrix_t<T, R, C>& lhs, U rhs) -> matrix_t<Res, R
     return result;
 }
 
-template <class T, class U, std::size_t R, std::size_t C, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(T lhs, const matrix_t<U, R, C>& rhs) -> matrix_t<Res, R, C>
+template <
+    std::size_t R,
+    std::size_t C,
+    class T,
+    class U,
+    class Res = std::invoke_result_t<std::multiplies<>, T, U>,
+    class = std::enable_if_t<is_scalar<T>::value>>
+constexpr auto operator*(T lhs, const matrix_t<R, C, U>& rhs) -> matrix_t<R, C, Res>
 {
     return rhs * lhs;
 }
 
-template <class T, class U, std::size_t R, std::size_t C, class Res = std::invoke_result_t<std::divides<>, T, U>>
-constexpr auto operator/(const matrix_t<T, R, C>& lhs, U rhs) -> matrix_t<Res, R, C>
+template <
+    std::size_t R,
+    std::size_t C,
+    class T,
+    class U,
+    class Res = std::invoke_result_t<std::divides<>, T, U>,
+    class = std::enable_if_t<is_scalar<U>::value>>
+constexpr auto operator/(const matrix_t<R, C, T>& lhs, U rhs) -> matrix_t<R, C, Res>
 {
-    matrix_t<Res, R, C> result{};
+    matrix_t<R, C, Res> result{};
     std::transform(
         std::begin(lhs.data()),
         std::end(lhs.data()),
@@ -256,28 +291,28 @@ constexpr auto operator/(const matrix_t<T, R, C>& lhs, U rhs) -> matrix_t<Res, R
     return result;
 }
 
-template <class T, class U, std::size_t R, std::size_t C, class = std::invoke_result_t<std::equal_to<>, T, U>>
-constexpr bool operator==(const matrix_t<T, R, C>& lhs, const matrix_t<U, R, C>& rhs)
+template <std::size_t R, std::size_t C, class T, class U, class = std::invoke_result_t<std::equal_to<>, T, U>>
+constexpr bool operator==(const matrix_t<R, C, T>& lhs, const matrix_t<R, C, U>& rhs)
 {
     return std::equal(std::begin(lhs.data()), std::end(lhs.data()), std::begin(rhs.data()));
 }
 
-template <class T, class U, std::size_t R, std::size_t C, class = std::invoke_result_t<std::equal_to<>, T, U>>
-constexpr bool operator!=(const matrix_t<T, R, C>& lhs, const matrix_t<U, R, C>& rhs)
+template <std::size_t R, std::size_t C, class T, class U, class = std::invoke_result_t<std::equal_to<>, T, U>>
+constexpr bool operator!=(const matrix_t<R, C, T>& lhs, const matrix_t<R, C, U>& rhs)
 {
     return !(lhs == rhs);
 }
 
 template <
-    class T,
-    class U,
     std::size_t R,
     std::size_t D,
     std::size_t C,
+    class T,
+    class U,
     class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const matrix_t<T, R, D>& lhs, const matrix_t<U, D, C>& rhs) -> matrix_t<Res, R, C>
+constexpr auto operator*(const matrix_t<R, D, T>& lhs, const matrix_t<D, C, U>& rhs) -> matrix_t<R, C, Res>
 {
-    matrix_t<Res, R, C> result{};
+    matrix_t<R, C, Res> result{};
 
     for (std::size_t r = 0; r < R; ++r)
     {
@@ -292,10 +327,10 @@ constexpr auto operator*(const matrix_t<T, R, D>& lhs, const matrix_t<U, D, C>& 
     return result;
 }
 
-template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const vector_t<T, D>& lhs, const matrix_t<U, D + 1>& rhs) -> vector_t<Res, D>
+template <std::size_t D, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+constexpr auto operator*(const vector_t<D, T>& lhs, const matrix_t<D + 1, D + 1, U>& rhs) -> vector_t<D, Res>
 {
-    vector_t<Res, D> result;
+    vector_t<D, Res> result;
 
     for (std::size_t d = 0; d < D; ++d)
     {
@@ -305,14 +340,14 @@ constexpr auto operator*(const vector_t<T, D>& lhs, const matrix_t<U, D + 1>& rh
     return result;
 }
 
-template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const matrix_t<T, D + 1>& lhs, const vector_t<U, D>& rhs) -> vector_t<Res, D>
+template <std::size_t D, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+constexpr auto operator*(const matrix_t<D + 1, D + 1, T>& lhs, const vector_t<D, U>& rhs) -> vector_t<D, Res>
 {
     return rhs * lhs;
 }
 
-template <class T, class U, std::size_t D, class = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*=(vector_t<T, D>& lhs, const matrix_t<U, D + 1>& rhs) -> vector_t<T, D>&
+template <std::size_t D, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+constexpr auto operator*=(vector_t<D, T>& lhs, const matrix_t<D + 1, D + 1, U>& rhs) -> vector_t<D, T>&
 {
     return lhs = lhs * rhs;
 }
@@ -322,8 +357,8 @@ namespace detail
 
 struct minor_fn
 {
-    template <class T, std::size_t R, std::size_t C>
-    auto operator()(const matrix_t<T, R, C>& item, const vector_t<std::size_t, 2>& loc) const -> matrix_t<T, R - 1, C - 1>
+    template <std::size_t R, std::size_t C, class T>
+    auto operator()(const matrix_t<R, C, T>& item, const vector_t<2, std::size_t>& loc) const -> matrix_t<R - 1, C - 1, T>
     {
         static_assert(R > 1, "minor: invalid row.");
         static_assert(C > 1, "minor: invalid col.");
@@ -333,7 +368,7 @@ struct minor_fn
             throw std::runtime_error{ "minor: invalid row or column" };
         }
 
-        matrix_t<T, R - 1, C - 1> result{};
+        matrix_t<R - 1, C - 1, T> result{};
 
         for (std::size_t r = 0; r + 1 < R; ++r)
         {
@@ -351,10 +386,10 @@ static constexpr inline auto minor = minor_fn{};
 
 struct transpose_fn
 {
-    template <class T, std::size_t R, std::size_t C>
-    auto operator()(const matrix_t<T, R, C>& item) const -> matrix_t<T, C, R>
+    template <std::size_t R, std::size_t C, class T>
+    auto operator()(const matrix_t<R, C, T>& item) const -> matrix_t<C, R, T>
     {
-        matrix_t<T, C, R> result{};
+        matrix_t<C, R, T> result{};
 
         for (std::size_t r = 0; r < R; ++r)
         {
@@ -372,19 +407,19 @@ static constexpr inline auto transpose = transpose_fn{};
 struct determinant_fn
 {
     template <class T>
-    constexpr auto operator()(const matrix_t<T, 1>& item) const -> T
+    constexpr auto operator()(const matrix_t<1, 1, T>& item) const -> T
     {
         return item[{ 0, 0 }];
     }
 
     template <class T>
-    constexpr auto operator()(const matrix_t<T, 2>& item) const -> T
+    constexpr auto operator()(const matrix_t<2, 2, T>& item) const -> T
     {
         return item[{ 0, 0 }] * item[{ 1, 1 }] - item[{ 0, 1 }] * item[{ 1, 0 }];
     }
 
     template <class T>
-    constexpr auto operator()(const matrix_t<T, 3>& item) const -> T
+    constexpr auto operator()(const matrix_t<3, 3, T>& item) const -> T
     {
         // clang-format off
         return
@@ -397,8 +432,8 @@ struct determinant_fn
         // clang-format on
     }
 
-    template <class T, std::size_t D>
-    constexpr auto operator()(const matrix_t<T, D>& item) const -> T
+    template <std::size_t D, class T>
+    constexpr auto operator()(const matrix_t<D, D, T>& item) const -> T
     {
         auto sum = T{};
 
@@ -421,8 +456,8 @@ struct invert_fn
         return math::abs(v) < std::numeric_limits<T>::epsilon();
     }
 
-    template <class T, std::size_t D>
-    auto operator()(const matrix_t<T, D>& value) const -> std::optional<matrix_t<T, D>>
+    template <std::size_t D, class T>
+    auto operator()(const matrix_t<D, D, T>& value) const -> std::optional<matrix_t<D, D, T>>
     {
         const auto det = determinant(value);
 
@@ -431,7 +466,7 @@ struct invert_fn
             return {};
         }
 
-        matrix_t<T, D> result{};
+        matrix_t<D, D, T> result{};
         for (std::size_t r = 0; r < D; ++r)
         {
             for (std::size_t c = 0; c < D; ++c)
@@ -448,10 +483,10 @@ static constexpr inline auto invert = invert_fn{};
 
 struct identity_fn
 {
-    template <size_t D, class T = double>
-    static constexpr matrix_t<T, D> create()
+    template <std::size_t D, class T = double>
+    static constexpr matrix_t<D, D, T> create()
     {
-        matrix_t<T, D> result;
+        matrix_t<D, D, T> result;
 
         for (std::size_t r = 0; r < D; ++r)
         {
@@ -464,8 +499,8 @@ struct identity_fn
         return result;
     }
 
-    template <class T, std::size_t D>
-    constexpr operator matrix_t<T, D>() const
+    template <std::size_t D, class T>
+    constexpr operator matrix_t<D, D, T>() const
     {
         return create<D, T>();
     }
@@ -476,9 +511,9 @@ static constexpr inline auto identity = identity_fn{};
 struct scale_fn
 {
     template <class T>
-    matrix_t<T, 3> operator()(const vector_t<T, 2>& scale) const
+    matrix_t<3, 3, T> operator()(const vector_t<2, T>& scale) const
     {
-        matrix_t<T, 3> result = identity;
+        matrix_t<3, 3, T> result = identity;
 
         result[{ 0, 0 }] = scale[0];
         result[{ 1, 1 }] = scale[1];
@@ -487,9 +522,9 @@ struct scale_fn
     }
 
     template <class T>
-    matrix_t<T, 4> operator()(const vector_t<T, 3>& scale) const
+    matrix_t<4, 4, T> operator()(const vector_t<3, T>& scale) const
     {
-        matrix_t<T, 4> result = identity;
+        matrix_t<4, 4, T> result = identity;
 
         result[{ 0, 0 }] = scale[0];
         result[{ 1, 1 }] = scale[1];
@@ -502,9 +537,9 @@ struct scale_fn
 struct rotation_fn
 {
     template <class T>
-    matrix_t<T, 3> operator()(T angle) const
+    matrix_t<3, 3, T> operator()(T angle) const
     {
-        matrix_t<T, 3> result = identity;
+        matrix_t<3, 3, T> result = identity;
 
         const auto c = math::cos(angle);
         const auto s = math::sin(angle);
@@ -521,9 +556,9 @@ struct rotation_fn
 struct translation_fn
 {
     template <class T>
-    matrix_t<T, 3> operator()(const vector_t<T, 2>& offset) const
+    matrix_t<3, 3, T> operator()(const vector_t<2, T>& offset) const
     {
-        matrix_t<T, 3> result = identity;
+        matrix_t<3, 3, T> result = identity;
 
         result[{ 2, 0 }] = offset[0];
         result[{ 2, 1 }] = offset[1];
@@ -532,9 +567,9 @@ struct translation_fn
     }
 
     template <class T>
-    matrix_t<T, 4> operator()(const vector_t<T, 3>& offset) const
+    matrix_t<4, 4, T> operator()(const vector_t<3, T>& offset) const
     {
-        matrix_t<T, 4> result = identity;
+        matrix_t<4, 4, T> result = identity;
 
         result[{ 3, 0 }] = offset[0];
         result[{ 3, 1 }] = offset[1];

@@ -7,7 +7,9 @@
 #include <variant>
 #include <vector>
 #include <zx/detail/terminal_backend.hpp>
+#include <zx/message_bus.hpp>
 #include <zx/surface.hpp>
+#include <zx/widget.hpp>
 
 namespace zx
 {
@@ -36,18 +38,27 @@ struct app_options
 class app_t
 {
 public:
-    using event_handler_t = std::function<void(const event_t&)>;
-    using render_handler_t = std::function<void(surface_t::mut_view_type)>;
-
-    explicit app_t(event_handler_t on_event = {}, render_handler_t on_render = {}, app_options opts = {})
-        : m_on_event(on_event)
-        , m_on_render(on_render)
+    explicit app_t(widget_t root, app_options opts = {})
+        : m_bus{}
+        , m_root(std::move(root))
         , m_opts(opts)
         , m_canvas({ 0, 0 })
         , m_prev_canvas({ 0, 0 })
         , m_cursor_pos{}
         , m_terminal{ detail::create_terminal_backend() }
     {
+        m_bus.set_route_builder(
+            [this](message_bus_t::subscriber_id_type subscriber_id) -> maybe_t<message_bus_t::subscriber_id_type>
+            {
+                if (auto w = m_root[subscriber_id])
+                {
+                    if (auto p = w->parent())
+                    {
+                        return p->id();
+                    }
+                }
+                return none;
+            });
     }
 
     ~app_t() { cleanup_terminal(); }
@@ -58,7 +69,7 @@ public:
 
         const auto size = get_terminal_size();
         m_canvas = surface_t{ size };
-        m_prev_canvas = surface_t{ surface_t::size_type{} };
+        m_prev_canvas = surface_t{ extent_t{} };
 
         m_running = true;
         detail::quit_flag().store(false);
@@ -83,13 +94,25 @@ public:
 
             if (ret == 0)
             {
-                m_on_event(tick_event_t{});
+                m_bus.publish(tick_event_t{});
             }
             else
             {
                 if (auto ev = read_event(); ev)
                 {
-                    m_on_event(*ev);
+                    if (auto e = std::get_if<key_event_t>(&*ev))
+                    {
+                        m_bus.publish_to(m_root.id(), *e);
+                    }
+                    if (auto e = std::get_if<mouse_event_t>(&*ev))
+                    {
+                        m_bus.publish_to(m_root.id(), *e);
+                    }
+                    if (auto e = std::get_if<resize_event_t>(&*ev))
+                    {
+                        m_bus.publish_to(m_root.id(), *e);
+                    }
+
                     if (auto event = std::get_if<quit_event_t>(&*ev))
                     {
                         detail::quit_flag().store(true);
@@ -101,8 +124,8 @@ public:
             {
                 const auto size = get_terminal_size();
                 m_canvas = surface_t{ size };
-                m_prev_canvas = surface_t{ surface_t::size_type{} };
-                m_on_event(resize_event_t{ size });
+                m_prev_canvas = surface_t{ extent_t{} };
+                m_bus.publish(resize_event_t{ size });
             }
 
             render();
@@ -127,6 +150,8 @@ public:
         }
     }
 
+    void subscribe(message_bus_t::subscription_info_t info) { m_bus.subscribe(std::move(info)); }
+
 private:
     void setup_terminal()
     {
@@ -135,7 +160,7 @@ private:
 
     void cleanup_terminal() { m_terminal->cleanup(m_opts.hide_cursor); }
 
-    surface_t::size_type get_terminal_size() const { return m_terminal->get_terminal_size(); }
+    extent_t get_terminal_size() const { return m_terminal->get_terminal_size(); }
 
     int wait_for_input() const { return m_terminal->wait_for_input(m_opts.tick_ms); }
 
@@ -145,7 +170,7 @@ private:
     {
         m_canvas.mut_view().fill(cell_t{});
         m_cursor_pos = std::nullopt;
-        m_on_render(m_canvas.mut_view());
+        m_root.render(m_canvas.mut_view());
 
         std::string frame = render_diff(m_prev_canvas, m_canvas);
 
@@ -169,8 +194,8 @@ private:
     }
 
 private:
-    event_handler_t m_on_event;
-    render_handler_t m_on_render;
+    message_bus_t m_bus;
+    widget_t m_root;
     app_options m_opts;
     surface_t m_canvas;
     surface_t m_prev_canvas;

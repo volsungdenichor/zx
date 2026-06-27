@@ -46,6 +46,10 @@ using symbols_mut_view_t = arrays::array_mut_view_t<symbol_t, 2>;
 using styles_view_t = arrays::array_view_t<style_t, 2>;
 using styles_mut_view_t = arrays::array_mut_view_t<style_t, 2>;
 
+using location_t = surface_t::location_type;
+using extent_t = surface_t::extent_type;
+using bounds_t = surface_t::bounds_type;
+
 namespace detail
 {
 
@@ -104,9 +108,9 @@ inline std::string render(surface_view_t surface)
     style_t current_style = {};
     out += str(escape_sequence_t{ 0 }, make_ansi_code(current_style));
 
-    for (arrays::location_base_t y = 0; y < surface.size()[0]; ++y)
+    for (arrays::location_base_t y = 0; y < surface.extent()[0]; ++y)
     {
-        for (arrays::location_base_t x = 0; x < surface.size()[1]; ++x)
+        for (arrays::location_base_t x = 0; x < surface.extent()[1]; ++x)
         {
             const cell_t& cell = surface[{ y, x }];
             if (cell.style != current_style)
@@ -117,7 +121,7 @@ inline std::string render(surface_view_t surface)
             out += str(cell.symbol);
         }
 
-        if (y + 1 < surface.size()[0])
+        if (y + 1 < surface.extent()[0])
         {
             out += "\r\n";
         }
@@ -127,25 +131,25 @@ inline std::string render(surface_view_t surface)
     return out;
 }
 
-inline cursor_move_t cursor_move(const surface_t::location_type& pos)
+inline cursor_move_t cursor_move(const location_t& pos)
 {
     return cursor_move_t{ static_cast<int>(pos[0]) + 1, static_cast<int>(pos[1]) + 1 };
 }
 
 inline std::string render_diff(surface_view_t prev, surface_view_t next)
 {
-    const bool same_size = prev.size() == next.size();
+    const bool same_size = prev.extent() == next.extent();
 
     std::string out = {};
     style_t current_style = {};
     bool style_emitted = false;
-    surface_t::location_type last = { -1, -1 };
+    location_t last = { -1, -1 };
 
-    for (arrays::location_base_t y = 0; y < next.size()[0]; ++y)
+    for (arrays::location_base_t y = 0; y < next.extent()[0]; ++y)
     {
-        for (arrays::location_base_t x = 0; x < next.size()[1]; ++x)
+        for (arrays::location_base_t x = 0; x < next.extent()[1]; ++x)
         {
-            const auto pos = surface_t::location_type{ y, x };
+            const location_t pos = { y, x };
             const cell_t& cell = next[pos];
 
             if (same_size)
@@ -203,10 +207,7 @@ const inline box_style_t heavy_box_style = { code_point_t{ "━" }, code_point_t
                                              code_point_t{ "┓" }, code_point_t{ "┗" }, code_point_t{ "┛" } };
 
 inline void draw_border(
-    surface_mut_view_t surface,
-    const surface_t::bounds_type& bounds,
-    const box_style_t& box_style = {},
-    const style_t& style = {})
+    surface_mut_view_t surface, const bounds_t& bounds, const box_style_t& box_style = {}, const style_t& style = {})
 {
     const auto top_left = bounds.get(mat::side_t::first);
     const auto bottom_right = bounds.get(mat::side_t::last);
@@ -230,9 +231,7 @@ inline void draw_border(
 }
 
 inline void draw_text(
-    const surface_t::bounds_type& dest,
-    const string_t& text,
-    const std::function<void(symbol_t, const surface_t::location_type&)>& draw_cell)
+    const bounds_t& dest, const string_t& text, const std::function<void(symbol_t, const location_t&)>& draw_cell)
 {
     auto pos = mat::lower(dest);
     for (const auto& ch : text)
@@ -249,10 +248,9 @@ inline void draw_text(
     }
 }
 
-inline void draw_text(
-    surface_mut_view_t surface, const surface_t::bounds_type& dest, const string_t& text, const style_t& style = {})
+inline void draw_text(surface_mut_view_t surface, const bounds_t& dest, const string_t& text, const style_t& style = {})
 {
-    draw_text(dest, text, [&](symbol_t symbol, const surface_t::location_type& pos) { surface[pos] = { symbol, style }; });
+    draw_text(dest, text, [&](symbol_t symbol, const location_t& pos) { surface[pos] = { symbol, style }; });
 }
 
 }  // namespace ansi

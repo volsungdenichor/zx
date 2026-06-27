@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "zx/ansi/widgets/label.hpp"
+#include "zx/ansi/widgets/layout.hpp"
 #include "zx/app.hpp"
 #include "zx/format.hpp"
 #include "zx/functional.hpp"
@@ -28,51 +29,13 @@ void run(const std::vector<std::string_view>&)
             it.mouse.sgr = true;
         });
 
-    auto label = zx::ansi::widgets::label(
-        zx::string_t{ "Press keys, resize the terminal, or click the mouse. Press 'q' to quit." });
+    auto root = zx::ansi::widgets::hstack(
+        zx::ansi::widgets::vstack(
+            zx::ansi::widgets::label(zx::string_t{ "ALPHA" }), zx::ansi::widgets::label(zx::string_t{ "BETA" })),
+        zx::ansi::widgets::vstack(
+            zx::ansi::widgets::label(zx::string_t{ "GAMMA" }), zx::ansi::widgets::label(zx::string_t{ "DELTA" })));
 
-    zx::ansi::app_t app{
-        [&](const zx::ansi::event_t& event)
-        {
-            if (auto e = std::get_if<zx::ansi::key_event_t>(&event))
-            {
-                list.emplace_back(zx::format(*e), zx::ansi::style_t{ zx::ansi::color_t::bright_cyan });
-            }
-            else if (auto e = std::get_if<zx::ansi::resize_event_t>(&event))
-            {
-                list.emplace_back(zx::format(*e), zx::ansi::style_t{ zx::ansi::color_t::bright_blue });
-            }
-            else if (auto e = std::get_if<zx::ansi::mouse_event_t>(&event))
-            {
-                list.emplace_back(zx::format(*e), zx::ansi::style_t{ zx::ansi::color_t::bright_red });
-            }
-            else if (auto e = std::get_if<zx::ansi::quit_event_t>(&event))
-            {
-                list.emplace_back(zx::format(*e), zx::ansi::style_t{ zx::ansi::color_t::blue });
-            }
-
-            while (list.size() > 20)
-            {
-                list.erase(list.begin());
-            }
-        },
-        [&](zx::ansi::surface_t::mut_view_type view)
-        {
-            auto bounds = zx::ansi::surface_t::bounds_type::from_lower_size({ 0, 0 }, { 1, view.size()[1] });
-            for (auto it = list.rbegin(); it != list.rend(); ++it)
-            {
-                if (!zx::mat::contains(view.bounds(), bounds))
-                {
-                    break;
-                }
-                const auto [text, style] = *it;
-                zx::ansi::draw_text(view, bounds, text, style);
-                bounds += zx::ansi::surface_t::location_type{ 1, 0 };
-            }
-            label.render(view);
-        },
-        options
-    };
+    zx::ansi::app_t app{ root, options };
     app.run();
 }
 

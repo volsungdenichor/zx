@@ -5,7 +5,7 @@
 TEST(image, load_image)
 {
     const auto img = zx::images::load_bitmap(std::string(TEST_DATA_DIR) + "/test-24.bmp");
-    EXPECT_THAT(img.size(), (zx::images::rgb_image_t::size_type{ 4, 8, 3 }));
+    EXPECT_THAT(img.extent(), (zx::images::rgb_image_t::extent_type{ 4, 8, 3 }));
 
     EXPECT_THAT((img[{ 0, 0, 0 }]), 255);
     EXPECT_THAT((img[{ 0, 0, 1 }]), 0);

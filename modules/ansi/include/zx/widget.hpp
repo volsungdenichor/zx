@@ -5,80 +5,15 @@
 #include <memory>
 #include <optional>
 #include <typeindex>
-#include <zx/sequence.hpp>
-#include <zx/surface.hpp>
 #include <utility>
 #include <vector>
+#include <zx/sequence.hpp>
+#include <zx/surface.hpp>
 
 namespace zx
 {
 namespace ansi
 {
-
-struct subscription_bus_t
-{
-    using subscription_id_type = std::size_t;
-    using subscriber_id_type = std::size_t;
-
-    struct control_t
-    {
-        virtual ~control_t() = default;
-
-        virtual void unsubscribe_self() = 0;
-        virtual void unsubscribe(subscription_id_type subscription_id) = 0;
-        virtual void unsubscribe_subscriber(subscriber_id_type subscriber_id) = 0;
-    };
-
-    virtual ~subscription_bus_t() = default;
-
-    virtual subscription_id_type subscribe_erased(
-        std::optional<subscriber_id_type> subscriber_id,
-        std::type_index type,
-        std::function<void(control_t&, const void*)> handler) = 0;
-
-    virtual void unsubscribe(subscription_id_type subscription_id) = 0;
-
-    virtual void unsubscribe_subscriber(subscriber_id_type subscriber_id) = 0;
-
-    template <class E>
-    subscription_id_type subscribe(subscriber_id_type subscriber_id, std::function<void(const E&)> handler)
-    {
-        return subscribe_erased(
-            subscriber_id,
-            typeid(E),
-            [handler = std::move(handler)](control_t&, const void* event) { handler(*static_cast<const E*>(event)); });
-    }
-
-    template <class E>
-    subscription_id_type subscribe(std::function<void(const E&)> handler)
-    {
-        return subscribe_erased(
-            {},
-            typeid(E),
-            [handler = std::move(handler)](control_t&, const void* event) { handler(*static_cast<const E*>(event)); });
-    }
-
-    template <class E>
-    subscription_id_type subscribe(
-        subscriber_id_type subscriber_id, std::function<void(control_t&, const E&)> handler)
-    {
-        return subscribe_erased(
-            subscriber_id,
-            typeid(E),
-            [handler = std::move(handler)](control_t& control, const void* event)
-            { handler(control, *static_cast<const E*>(event)); });
-    }
-
-    template <class E>
-    subscription_id_type subscribe(std::function<void(control_t&, const E&)> handler)
-    {
-        return subscribe_erased(
-            {},
-            typeid(E),
-            [handler = std::move(handler)](control_t& control, const void* event)
-            { handler(control, *static_cast<const E*>(event)); });
-    }
-};
 
 struct widget_t
 {
@@ -88,7 +23,7 @@ struct widget_t
     {
         virtual ~interface() = default;
 
-        virtual surface_t::size_type preferred_size() const { return {}; }
+        virtual extent_t preferred_size() const { return {}; }
 
         virtual bool is_focused() const { return false; }
 
@@ -96,9 +31,9 @@ struct widget_t
 
         virtual void render(surface_t::mut_view_type) const { }
 
-        virtual void on_attach(subscription_bus_t&) { }
+        virtual void on_attach() { }
 
-        virtual void on_detach(subscription_bus_t&) { }
+        virtual void on_detach() { }
 
         virtual id_type id() const { return reinterpret_cast<id_type>(this); }
 
@@ -194,11 +129,27 @@ struct widget_t
 
     void render(surface_t::mut_view_type view) const { m_impl->render(view); }
 
-    void on_attach(subscription_bus_t& bus) { m_impl->on_attach(bus); }
+    void on_attach() { m_impl->on_attach(); }
 
-    void on_detach(subscription_bus_t& bus) { m_impl->on_detach(bus); }
+    void on_detach() { m_impl->on_detach(); }
 
-    surface_t::size_type preferred_size() const { return m_impl->preferred_size(); }
+    extent_t preferred_size() const { return m_impl->preferred_size(); }
+
+    maybe_t<widget_t> operator[](id_type id) const
+    {
+        if (m_impl->id() == id)
+        {
+            return *this;
+        }
+        for (widget_t child : children())
+        {
+            if (auto result = child[id])
+            {
+                return *result;
+            }
+        }
+        return none;
+    }
 };
 
 }  // namespace ansi

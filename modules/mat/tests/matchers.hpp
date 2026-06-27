@@ -10,17 +10,17 @@ namespace detail
 template <class, class = void>
 struct ApproxEqualMatcher;
 
-template <class T, std::size_t R, std::size_t C>
-struct ApproxEqualMatcher<zx::mat::matrix_t<T, R, C>>
+template <std::size_t R, std::size_t C, class T>
+struct ApproxEqualMatcher<zx::mat::matrix_t<R, C, T>>
 {
     using is_gtest_matcher = void;
 
-    zx::mat::matrix_t<T, R, C> m_expected;
+    zx::mat::matrix_t<R, C, T> m_expected;
 
-    ApproxEqualMatcher(zx::mat::matrix_t<T, R, C> expected) : m_expected{ expected } { }
+    ApproxEqualMatcher(zx::mat::matrix_t<R, C, T> expected) : m_expected{ expected } { }
 
     template <class U = T>
-    bool MatchAndExplain(const zx::mat::matrix_t<U, R, C>& actual, ::testing::MatchResultListener* listener) const
+    bool MatchAndExplain(const zx::mat::matrix_t<R, C, U>& actual, ::testing::MatchResultListener* listener) const
     {
         constexpr auto epsilon = std::common_type_t<T, U>(0.1);
 
@@ -47,17 +47,17 @@ struct ApproxEqualMatcher<zx::mat::matrix_t<T, R, C>>
     void DescribeNegationTo(::std::ostream* os) const { *os << "is not approximately equal to " << m_expected; }
 };
 
-template <class T, std::size_t D>
-struct ApproxEqualMatcher<zx::mat::vector_t<T, D>>
+template <std::size_t D, class T>
+struct ApproxEqualMatcher<zx::mat::vector_t<D, T>>
 {
     using is_gtest_matcher = void;
 
-    zx::mat::vector_t<T, D> m_expected;
+    zx::mat::vector_t<D, T> m_expected;
 
-    ApproxEqualMatcher(zx::mat::vector_t<T, D> expected) : m_expected{ expected } { }
+    ApproxEqualMatcher(zx::mat::vector_t<D, T> expected) : m_expected{ expected } { }
 
     template <class U = T>
-    bool MatchAndExplain(const zx::mat::vector_t<U, D>& actual, ::testing::MatchResultListener* listener) const
+    bool MatchAndExplain(const zx::mat::vector_t<D, U>& actual, ::testing::MatchResultListener* listener) const
     {
         constexpr auto epsilon = std::common_type_t<T, U>(0.1);
 
@@ -80,17 +80,17 @@ struct ApproxEqualMatcher<zx::mat::vector_t<T, D>>
     void DescribeNegationTo(::std::ostream* os) const { *os << "is not approximately equal to " << m_expected; }
 };
 
-template <class T, std::size_t D>
-struct ApproxEqualMatcher<zx::mat::segment_t<T, D>>
+template <std::size_t D, class T>
+struct ApproxEqualMatcher<zx::mat::segment_t<D, T>>
 {
     using is_gtest_matcher = void;
 
-    zx::mat::segment_t<T, D> m_expected;
+    zx::mat::segment_t<D, T> m_expected;
 
-    ApproxEqualMatcher(zx::mat::segment_t<T, D> expected) : m_expected{ expected } { }
+    ApproxEqualMatcher(zx::mat::segment_t<D, T> expected) : m_expected{ expected } { }
 
     template <class U = T>
-    bool MatchAndExplain(const zx::mat::segment_t<U, D>& actual, ::testing::MatchResultListener* listener) const
+    bool MatchAndExplain(const zx::mat::segment_t<D, U>& actual, ::testing::MatchResultListener* listener) const
     {
         constexpr auto epsilon = std::common_type_t<T, U>(0.1);
 
@@ -117,17 +117,17 @@ struct ApproxEqualMatcher<zx::mat::segment_t<T, D>>
     void DescribeNegationTo(::std::ostream* os) const { *os << "is not approximately equal to " << m_expected; }
 };
 
-template <class T, std::size_t D, std::size_t N>
-struct ApproxEqualMatcher<zx::mat::polygonal_shape_t<T, D, N>>
+template <std::size_t D, std::size_t N, class T>
+struct ApproxEqualMatcher<zx::mat::polygonal_shape_t<D, T, N>>
 {
     using is_gtest_matcher = void;
 
-    zx::mat::polygonal_shape_t<T, D, N> m_expected;
+    zx::mat::polygonal_shape_t<D, T, N> m_expected;
 
-    ApproxEqualMatcher(zx::mat::polygonal_shape_t<T, D, N> expected) : m_expected{ expected } { }
+    ApproxEqualMatcher(zx::mat::polygonal_shape_t<D, T, N> expected) : m_expected{ expected } { }
 
     template <class U = T>
-    bool MatchAndExplain(const zx::mat::polygonal_shape_t<U, D, N>& actual, ::testing::MatchResultListener* listener) const
+    bool MatchAndExplain(const zx::mat::polygonal_shape_t<D, U, N>& actual, ::testing::MatchResultListener* listener) const
     {
         constexpr auto epsilon = std::common_type_t<T, U>(0.1);
 

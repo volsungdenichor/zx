@@ -157,31 +157,32 @@ TEST(dcel, access)
 
     dcel.m_boundary_halfedge = 3;
 
-    const auto vertices
-        = std::vector<testing::Matcher<D::vertex_t>>{ testing::AllOf(
-                                                          id_is(0),
-                                                          location_is(zx::mat::vector(648, 112)),
-                                                          out_halfedges_are(testing::ElementsAre(id_is(0), id_is(7), id_is(5))),
-                                                          in_halfedges_are(testing::ElementsAre(id_is(1), id_is(6), id_is(4))),
-                                                          incident_faces_are(testing::ElementsAre(id_is(1), id_is(0)))),
-                                                      testing::AllOf(
-                                                          id_is(1),
-                                                          location_is(zx::mat::vector(385, 147)),
-                                                          out_halfedges_are(testing::ElementsAre(id_is(2), id_is(1))),
-                                                          in_halfedges_are(testing::ElementsAre(id_is(3), id_is(0))),
-                                                          incident_faces_are(testing::ElementsAre(id_is(0)))),
-                                                      testing::AllOf(
-                                                          id_is(2),
-                                                          location_is(zx::mat::vector(459, 303)),
-                                                          out_halfedges_are(testing::ElementsAre(id_is(4), id_is(8), id_is(3))),
-                                                          in_halfedges_are(testing::ElementsAre(id_is(5), id_is(9), id_is(2))),
-                                                          incident_faces_are(testing::ElementsAre(id_is(1), id_is(0)))),
-                                                      testing::AllOf(
-                                                          id_is(3),
-                                                          location_is(zx::mat::vector(656, 330)),
-                                                          out_halfedges_are(testing::ElementsAre(id_is(6), id_is(9))),
-                                                          in_halfedges_are(testing::ElementsAre(id_is(7), id_is(8))),
-                                                          incident_faces_are(testing::ElementsAre(id_is(1)))) };
+    const auto vertices = std::vector<testing::Matcher<D::vertex_t>>{
+        testing::AllOf(
+            id_is(0),
+            location_is(zx::mat::vector(648, 112)),
+            out_halfedges_are(testing::ElementsAre(id_is(0), id_is(7), id_is(5))),
+            in_halfedges_are(testing::ElementsAre(id_is(1), id_is(6), id_is(4))),
+            incident_faces_are(testing::ElementsAre(id_is(1), id_is(0)))),
+        testing::AllOf(
+            id_is(1),
+            location_is(zx::mat::vector(385, 147)),
+            out_halfedges_are(testing::ElementsAre(id_is(2), id_is(1))),
+            in_halfedges_are(testing::ElementsAre(id_is(3), id_is(0))),
+            incident_faces_are(testing::ElementsAre(id_is(0)))),
+        testing::AllOf(
+            id_is(2),
+            location_is(zx::mat::vector(459, 303)),
+            out_halfedges_are(testing::ElementsAre(id_is(4), id_is(8), id_is(3))),
+            in_halfedges_are(testing::ElementsAre(id_is(5), id_is(9), id_is(2))),
+            incident_faces_are(testing::ElementsAre(id_is(1), id_is(0)))),
+        testing::AllOf(
+            id_is(3),
+            location_is(zx::mat::vector(656, 330)),
+            out_halfedges_are(testing::ElementsAre(id_is(6), id_is(9))),
+            in_halfedges_are(testing::ElementsAre(id_is(7), id_is(8))),
+            incident_faces_are(testing::ElementsAre(id_is(1))))
+    };
 
     const auto faces = std::vector<testing::Matcher<D::face_t>>{
         testing::AllOf(
@@ -189,98 +190,97 @@ TEST(dcel, access)
             halfedge_is(id_is(0)),
             halfedges_are(testing::ElementsAre(id_is(0), id_is(2), id_is(4))),
             vertices_are(testing::ElementsAre(id_is(0), id_is(1), id_is(2))),
-            as_polygon_is(zx::mat::polygon_t<int, 2>{
+            as_polygon_is(zx::mat::polygon_t<2, int>{
                 zx::mat::vector(648, 112), zx::mat::vector(385, 147), zx::mat::vector(459, 303) })),
         testing::AllOf(
             id_is(1),
             halfedge_is(id_is(6)),
             halfedges_are(testing::ElementsAre(id_is(6), id_is(5), id_is(8))),
             vertices_are(testing::ElementsAre(id_is(3), id_is(0), id_is(2))),
-            as_polygon_is(zx::mat::polygon_t<int, 2>{
+            as_polygon_is(zx::mat::polygon_t<2, int>{
                 zx::mat::vector(656, 330), zx::mat::vector(648, 112), zx::mat::vector(459, 303) }))
     };
 
-    const auto halfedges
-        = std::vector<testing::Matcher<D::halfedge_t>>{ testing::AllOf(
-                                                            id_is(0),
-                                                            twin_halfedge_is(id_is(1)),
-                                                            next_halfedge_is(id_is(2)),
-                                                            prev_halfedge_is(id_is(4)),
-                                                            incident_face_is(testing::Optional(id_is(0))),
-                                                            vertex_from_is(id_is(0)),
-                                                            vertex_to_is(id_is(1))),
-                                                        testing::AllOf(
-                                                            id_is(1),
-                                                            twin_halfedge_is(id_is(0)),
-                                                            next_halfedge_is(id_is(7)),
-                                                            prev_halfedge_is(id_is(3)),
-                                                            incident_face_is(testing::Eq(zx::none)),
-                                                            vertex_from_is(id_is(1)),
-                                                            vertex_to_is(id_is(0))),
-                                                        testing::AllOf(
-                                                            id_is(2),
-                                                            twin_halfedge_is(id_is(3)),
-                                                            next_halfedge_is(id_is(4)),
-                                                            prev_halfedge_is(id_is(0)),
-                                                            incident_face_is(testing::Optional(id_is(0))),
-                                                            vertex_from_is(id_is(1)),
-                                                            vertex_to_is(id_is(2))),
-                                                        testing::AllOf(
-                                                            id_is(3),
-                                                            twin_halfedge_is(id_is(2)),
-                                                            next_halfedge_is(id_is(1)),
-                                                            prev_halfedge_is(id_is(9)),
-                                                            incident_face_is(testing::Eq(zx::none)),
-                                                            vertex_from_is(id_is(2)),
-                                                            vertex_to_is(id_is(1))),
-                                                        testing::AllOf(
-                                                            id_is(4),
-                                                            twin_halfedge_is(id_is(5)),
-                                                            next_halfedge_is(id_is(0)),
-                                                            prev_halfedge_is(id_is(2)),
-                                                            incident_face_is(testing::Optional(id_is(0))),
-                                                            vertex_from_is(id_is(2)),
-                                                            vertex_to_is(id_is(0))),
-                                                        testing::AllOf(
-                                                            id_is(5),
-                                                            twin_halfedge_is(id_is(4)),
-                                                            next_halfedge_is(id_is(8)),
-                                                            prev_halfedge_is(id_is(6)),
-                                                            incident_face_is(testing::Optional(id_is(1))),
-                                                            vertex_from_is(id_is(0)),
-                                                            vertex_to_is(id_is(2))),
-                                                        testing::AllOf(
-                                                            id_is(6),
-                                                            twin_halfedge_is(id_is(7)),
-                                                            next_halfedge_is(id_is(5)),
-                                                            prev_halfedge_is(id_is(8)),
-                                                            incident_face_is(testing::Optional(id_is(1))),
-                                                            vertex_from_is(id_is(3)),
-                                                            vertex_to_is(id_is(0))),
-                                                        testing::AllOf(
-                                                            id_is(7),
-                                                            twin_halfedge_is(id_is(6)),
-                                                            next_halfedge_is(id_is(9)),
-                                                            prev_halfedge_is(id_is(1)),
-                                                            incident_face_is(testing::Eq(zx::none)),
-                                                            vertex_from_is(id_is(0)),
-                                                            vertex_to_is(id_is(3))),
-                                                        testing::AllOf(
-                                                            id_is(8),
-                                                            twin_halfedge_is(id_is(9)),
-                                                            next_halfedge_is(id_is(6)),
-                                                            prev_halfedge_is(id_is(5)),
-                                                            incident_face_is(testing::Optional(id_is(1))),
-                                                            vertex_from_is(id_is(2)),
-                                                            vertex_to_is(id_is(3))),
-                                                        testing::AllOf(
-                                                            id_is(9),
-                                                            twin_halfedge_is(id_is(8)),
-                                                            next_halfedge_is(id_is(3)),
-                                                            prev_halfedge_is(id_is(7)),
-                                                            incident_face_is(testing::Eq(zx::none)),
-                                                            vertex_from_is(id_is(3)),
-                                                            vertex_to_is(id_is(2))) };
+    const auto halfedges = std::vector<testing::Matcher<D::halfedge_t>>{ testing::AllOf(
+                                                                             id_is(0),
+                                                                             twin_halfedge_is(id_is(1)),
+                                                                             next_halfedge_is(id_is(2)),
+                                                                             prev_halfedge_is(id_is(4)),
+                                                                             incident_face_is(testing::Optional(id_is(0))),
+                                                                             vertex_from_is(id_is(0)),
+                                                                             vertex_to_is(id_is(1))),
+                                                                         testing::AllOf(
+                                                                             id_is(1),
+                                                                             twin_halfedge_is(id_is(0)),
+                                                                             next_halfedge_is(id_is(7)),
+                                                                             prev_halfedge_is(id_is(3)),
+                                                                             incident_face_is(testing::Eq(zx::none)),
+                                                                             vertex_from_is(id_is(1)),
+                                                                             vertex_to_is(id_is(0))),
+                                                                         testing::AllOf(
+                                                                             id_is(2),
+                                                                             twin_halfedge_is(id_is(3)),
+                                                                             next_halfedge_is(id_is(4)),
+                                                                             prev_halfedge_is(id_is(0)),
+                                                                             incident_face_is(testing::Optional(id_is(0))),
+                                                                             vertex_from_is(id_is(1)),
+                                                                             vertex_to_is(id_is(2))),
+                                                                         testing::AllOf(
+                                                                             id_is(3),
+                                                                             twin_halfedge_is(id_is(2)),
+                                                                             next_halfedge_is(id_is(1)),
+                                                                             prev_halfedge_is(id_is(9)),
+                                                                             incident_face_is(testing::Eq(zx::none)),
+                                                                             vertex_from_is(id_is(2)),
+                                                                             vertex_to_is(id_is(1))),
+                                                                         testing::AllOf(
+                                                                             id_is(4),
+                                                                             twin_halfedge_is(id_is(5)),
+                                                                             next_halfedge_is(id_is(0)),
+                                                                             prev_halfedge_is(id_is(2)),
+                                                                             incident_face_is(testing::Optional(id_is(0))),
+                                                                             vertex_from_is(id_is(2)),
+                                                                             vertex_to_is(id_is(0))),
+                                                                         testing::AllOf(
+                                                                             id_is(5),
+                                                                             twin_halfedge_is(id_is(4)),
+                                                                             next_halfedge_is(id_is(8)),
+                                                                             prev_halfedge_is(id_is(6)),
+                                                                             incident_face_is(testing::Optional(id_is(1))),
+                                                                             vertex_from_is(id_is(0)),
+                                                                             vertex_to_is(id_is(2))),
+                                                                         testing::AllOf(
+                                                                             id_is(6),
+                                                                             twin_halfedge_is(id_is(7)),
+                                                                             next_halfedge_is(id_is(5)),
+                                                                             prev_halfedge_is(id_is(8)),
+                                                                             incident_face_is(testing::Optional(id_is(1))),
+                                                                             vertex_from_is(id_is(3)),
+                                                                             vertex_to_is(id_is(0))),
+                                                                         testing::AllOf(
+                                                                             id_is(7),
+                                                                             twin_halfedge_is(id_is(6)),
+                                                                             next_halfedge_is(id_is(9)),
+                                                                             prev_halfedge_is(id_is(1)),
+                                                                             incident_face_is(testing::Eq(zx::none)),
+                                                                             vertex_from_is(id_is(0)),
+                                                                             vertex_to_is(id_is(3))),
+                                                                         testing::AllOf(
+                                                                             id_is(8),
+                                                                             twin_halfedge_is(id_is(9)),
+                                                                             next_halfedge_is(id_is(6)),
+                                                                             prev_halfedge_is(id_is(5)),
+                                                                             incident_face_is(testing::Optional(id_is(1))),
+                                                                             vertex_from_is(id_is(2)),
+                                                                             vertex_to_is(id_is(3))),
+                                                                         testing::AllOf(
+                                                                             id_is(9),
+                                                                             twin_halfedge_is(id_is(8)),
+                                                                             next_halfedge_is(id_is(3)),
+                                                                             prev_halfedge_is(id_is(7)),
+                                                                             incident_face_is(testing::Eq(zx::none)),
+                                                                             vertex_from_is(id_is(3)),
+                                                                             vertex_to_is(id_is(2))) };
 
     EXPECT_THAT(dcel.vertices(), testing::ElementsAreArray(vertices));
     EXPECT_THAT(dcel.vertex(0), vertices[0]);

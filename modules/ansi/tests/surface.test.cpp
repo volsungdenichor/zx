@@ -4,7 +4,7 @@
 
 TEST(ansi, surface_render)
 {
-    auto surface = zx::ansi::surface_t{ zx::ansi::surface_t::size_type{ 2, 2 } };
+    auto surface = zx::ansi::surface_t{ zx::ansi::extent_t{ 2, 2 } };
     surface[{ 0, 0 }] = zx::ansi::cell_t{ zx::code_point_t('A') };
     surface[{ 0, 1 }] = zx::ansi::cell_t{ zx::code_point_t('B') };
     surface[{ 1, 0 }] = zx::ansi::cell_t{ zx::code_point_t('C') };
@@ -17,7 +17,7 @@ TEST(ansi, surface_render)
 
 TEST(ansi, surface_render_diff_empty_when_unchanged)
 {
-    zx::ansi::surface_t prev{ zx::ansi::surface_t::size_type{ 1, 3 } };
+    zx::ansi::surface_t prev{ zx::ansi::extent_t{ 1, 3 } };
     zx::ansi::surface_t next = prev;
 
     prev[{ 0, 0 }] = zx::ansi::cell_t{ zx::code_point_t('x') };
@@ -30,8 +30,8 @@ TEST(ansi, surface_render_diff_empty_when_unchanged)
 
 TEST(ansi, surface_render_diff_changed_cell)
 {
-    zx::ansi::surface_t prev{ zx::ansi::surface_t::size_type{ 1, 3 } };
-    zx::ansi::surface_t next{ zx::ansi::surface_t::size_type{ 1, 3 } };
+    zx::ansi::surface_t prev{ zx::ansi::extent_t{ 1, 3 } };
+    zx::ansi::surface_t next{ zx::ansi::extent_t{ 1, 3 } };
 
     prev[{ 0, 0 }] = zx::ansi::cell_t{ zx::code_point_t('a') };
     prev[{ 0, 1 }] = zx::ansi::cell_t{ zx::code_point_t('b') };
@@ -51,7 +51,7 @@ TEST(ansi, surface_render_large_with_styles_and_unicode)
     const zx::ansi::style_t green_bg_underlined = { {}, zx::ansi::color_t::green, zx::ansi::font_t::underlined };
     const zx::ansi::style_t blue_italic = { zx::ansi::color_t::blue, {}, zx::ansi::font_t::italic };
 
-    auto surface = zx::ansi::surface_t{ zx::ansi::surface_t::size_type{ 2, 5 } };
+    auto surface = zx::ansi::surface_t{ zx::ansi::extent_t{ 2, 5 } };
 
     surface[{ 0, 0 }] = zx::ansi::cell_t{ zx::code_point_t('H') };
     surface[{ 0, 1 }] = zx::ansi::cell_t{ zx::code_point_t('e'), red_bold };
@@ -77,7 +77,7 @@ TEST(ansi, surface_render_diff_large_with_styles_and_unicode)
     const zx::ansi::style_t red_bold = { zx::ansi::color_t::red, {}, zx::ansi::font_t::bold };
     const zx::ansi::style_t blue_italic = { zx::ansi::color_t::blue, {}, zx::ansi::font_t::italic };
 
-    const auto prev = zx::ansi::surface_t{ zx::ansi::surface_t::size_type{ 3, 5 }, zx::code_point_t('a') };
+    const auto prev = zx::ansi::surface_t{ zx::ansi::extent_t{ 3, 5 }, zx::code_point_t('a') };
 
     zx::ansi::surface_t next = prev;
     next[{ 0, 2 }] = zx::ansi::cell_t{ zx::code_point_t("Ω"), red_bold };

@@ -67,9 +67,9 @@ template <class T>
 class dcel_t : public detail::dcel_base_t
 {
 public:
-    using location_type = mat::vector_t<T, 2>;
-    using segment_type = mat::segment_t<T, 2>;
-    using polygon_type = mat::polygon_t<T, 2>;
+    using location_type = mat::vector_t<2, T>;
+    using segment_type = mat::segment_t<2, T>;
+    using polygon_type = mat::polygon_t<2, T>;
 
     struct vertex_t;
     struct face_t;

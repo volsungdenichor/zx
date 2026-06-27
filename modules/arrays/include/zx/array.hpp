@@ -18,7 +18,7 @@ namespace arrays
 using byte_ptr = std::uint8_t*;
 
 using location_base_t = std::ptrdiff_t;
-using size_base_t = location_base_t;
+using extent_base_t = location_base_t;
 using stride_base_t = location_base_t;
 
 using flat_offset_t = std::ptrdiff_t;
@@ -71,12 +71,12 @@ struct slice_base_t
 
 struct dim_t
 {
-    size_base_t size = 0;
+    extent_base_t extent = 0;
     stride_base_t stride = 1;
 
     friend bool operator==(const dim_t& lhs, const dim_t& rhs)
     {
-        return std::tie(lhs.size, lhs.stride) == std::tie(rhs.size, rhs.stride);
+        return std::tie(lhs.extent, lhs.stride) == std::tie(rhs.extent, rhs.stride);
     }
 
     friend bool operator!=(const dim_t& lhs, const dim_t& rhs) { return !(lhs == rhs); }
@@ -84,19 +84,19 @@ struct dim_t
     friend std::ostream& operator<<(std::ostream& os, const dim_t& item)
     {
         return os << "{"
-                  << ":size " << item.size << " "
+                  << ":extent " << item.extent << " "
                   << ":stride " << item.stride << "}";
     }
 
-    location_base_t adjust_location(location_base_t loc) const { return loc >= 0 ? loc : (loc + size); }
-    mat::interval_t<location_base_t> bounds() const { return { 0, size }; }
+    location_base_t adjust_location(location_base_t loc) const { return loc >= 0 ? loc : (loc + extent); }
+    mat::interval_t<location_base_t> bounds() const { return { 0, extent }; }
 
     flat_offset_t flat_offset(const location_base_t& loc) const { return loc * stride; }
 
     std::pair<dim_t, location_base_t> slice(const slice_base_t& s) const
     {
         const auto clamp = [&](location_base_t value, location_base_t init) -> location_base_t
-        { return std::max(init, std::min(value, this->size + init)); };
+        { return std::max(init, std::min(value, this->extent + init)); };
 
         const stride_base_t actual_step = s.step.value_or(1);
         location_base_t actual_start, actual_stop;
@@ -104,21 +104,21 @@ struct dim_t
         if (actual_step > 0)
         {
             actual_start = s.start.value_or(0);
-            actual_stop = s.stop.value_or(this->size);
+            actual_stop = s.stop.value_or(this->extent);
 
-            actual_start = clamp(actual_start + (actual_start < 0 ? this->size : 0), 0);
-            actual_stop = clamp(actual_stop + (actual_stop < 0 ? this->size : 0), 0);
+            actual_start = clamp(actual_start + (actual_start < 0 ? this->extent : 0), 0);
+            actual_stop = clamp(actual_stop + (actual_stop < 0 ? this->extent : 0), 0);
         }
         else
         {
-            actual_start = s.start.value_or(this->size - 1);
-            actual_stop = s.stop.value_or(-this->size - 1);
+            actual_start = s.start.value_or(this->extent - 1);
+            actual_stop = s.stop.value_or(-this->extent - 1);
 
-            actual_start = clamp(actual_start + (actual_start < 0 ? this->size : 0), -1);
-            actual_stop = clamp(actual_stop + (actual_stop < 0 ? this->size : 0), -1);
+            actual_start = clamp(actual_start + (actual_start < 0 ? this->extent : 0), -1);
+            actual_stop = clamp(actual_stop + (actual_stop < 0 ? this->extent : 0), -1);
         }
 
-        const size_base_t new_size
+        const extent_base_t new_size
             = actual_step > 0
                   ? std::max(location_base_t(0), (actual_stop - actual_start + actual_step - 1) / actual_step)
                   : std::max(location_base_t(0), (actual_start - actual_stop - actual_step - 1) / (-actual_step));
@@ -131,19 +131,19 @@ struct dim_t
 };
 
 template <std::size_t D>
-using size_t = zx::mat::vector_t<size_base_t, D>;
+using extent_t = zx::mat::vector_t<D, extent_base_t>;
 
 template <std::size_t D>
-using stride_t = zx::mat::vector_t<stride_base_t, D>;
+using stride_t = zx::mat::vector_t<D, stride_base_t>;
 
 template <std::size_t D>
-using location_t = zx::mat::vector_t<location_base_t, D>;
+using location_t = zx::mat::vector_t<D, location_base_t>;
 
 template <std::size_t D>
-using slice_t = zx::mat::vector_t<slice_base_t, D>;
+using slice_t = zx::mat::vector_t<D, slice_base_t>;
 
 template <std::size_t D>
-using bounds_t = zx::mat::box_shape_t<size_base_t, D>;
+using bounds_t = zx::mat::box_shape_t<D, extent_base_t>;
 
 namespace detail
 {
@@ -181,10 +181,10 @@ struct iter_impl
 
 }  // namespace detail
 
-template <std::size_t D>
-struct shape_t
+template <std::size_t D, class...>
+struct shape_t : mat::md_base_t<D, dim_t, shape_t>
 {
-    using size_type = size_t<D>;
+    using extent_type = extent_t<D>;
     using stride_type = stride_t<D>;
     using location_type = location_t<D>;
     using slice_type = slice_t<D>;
@@ -192,26 +192,14 @@ struct shape_t
 
     using dims_type = std::array<dim_t, D>;
 
-    dims_type m_dims = {};
+    using base_t = mat::md_base_t<D, dim_t, shape_t>;
+    using base_t::base_t;
 
-    shape_t() = default;
-
-    shape_t(dims_type dims) : m_dims(dims) { }
-
-    template <class... Tail>
-    shape_t(dim_t head, Tail... tail) : m_dims{ head, static_cast<dim_t>(tail)... }
-    {
-        static_assert(sizeof...(tail) + 1 == D, "Invalid number of arguments to shape_t constructor");
-    }
-
-    const dim_t& dim(std::size_t d) const { return m_dims[d]; }
-
-    friend bool operator==(const shape_t& lhs, const shape_t& rhs) { return lhs.m_dims == rhs.m_dims; }
-    friend bool operator!=(const shape_t& lhs, const shape_t& rhs) { return !(lhs == rhs); }
+    const dim_t& dim(std::size_t d) const { return (*this)[d]; }
 
     friend std::ostream& operator<<(std::ostream& os, const shape_t& item)
     {
-        return os << "{ :size " << item.size() << " :stride " << item.stride() << " }";
+        return os << "{ :extent " << item.extent() << " :stride " << item.stride() << " }";
     }
 
     volume_t volume() const
@@ -219,49 +207,31 @@ struct shape_t
         volume_t result = 1;
         for (std::size_t d = 0; d < D; ++d)
         {
-            result *= m_dims[d].size;
+            result *= (*this)[d].extent;
         }
         return result;
     }
 
-    size_type size() const
+    extent_type extent() const
     {
-        size_type result = {};
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = m_dims[d].size;
-        }
-        return result;
+        return this->template transform_to<extent_type>([](const dim_t& dim) -> extent_base_t { return dim.extent; });
     }
 
     stride_type stride() const
     {
-        stride_type result = {};
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = m_dims[d].stride;
-        }
-        return result;
+        return this->template transform_to<stride_type>([](const dim_t& dim) -> stride_base_t { return dim.stride; });
     }
 
     bounds_type bounds() const
     {
-        bounds_type result = {};
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = m_dims[d].bounds();
-        }
-        return result;
+        return this->template transform_to<bounds_type>(
+            [](const dim_t& dim) -> mat::interval_t<extent_base_t> { return dim.bounds(); });
     }
 
     location_type adjust_location(const location_type& loc) const
     {
-        location_type result = {};
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = m_dims[d].adjust_location(loc[d]);
-        }
-        return result;
+        return this->template transform_to<location_type>(
+            [&](const dim_t& dim, const location_base_t& l) -> location_base_t { return dim.adjust_location(l); }, loc);
     }
 
     flat_offset_t flat_offset(const location_type& loc) const
@@ -269,22 +239,22 @@ struct shape_t
         flat_offset_t result = 0;
         for (std::size_t d = 0; d < D; ++d)
         {
-            result += m_dims[d].flat_offset(loc[d]);
+            result += dim(d).flat_offset(loc[d]);
         }
         return result;
     }
 
-    static shape_t from_size(const size_type& size, size_base_t element_size)
+    static shape_t from_extent(const extent_type& extent, extent_base_t element_size)
     {
         shape_t result;
         stride_base_t stride = element_size;
         for (int _d = D - 1; _d >= 0; --_d)
         {
             const auto d = static_cast<std::size_t>(_d);
-            auto& dim = result.m_dims[d];
-            dim.size = size[d];
+            auto& dim = result[d];
+            dim.extent = extent[d];
             dim.stride = stride;
-            stride *= dim.size;
+            stride *= dim.extent;
         }
         return result;
     }
@@ -295,7 +265,7 @@ struct shape_t
         location_type new_start = {};
         for (std::size_t d = 0; d < D; ++d)
         {
-            std::tie(new_shape.m_dims[d], new_start[d]) = m_dims[d].slice(s[d]);
+            std::tie(new_shape[d], new_start[d]) = dim(d).slice(s[d]);
         }
         return { new_shape, new_start };
     }
@@ -308,7 +278,7 @@ struct shape_t
         {
             if (i != index)
             {
-                result[j++] = m_dims[i];
+                result[j++] = dim(i);
             }
         }
         return shape_t<D - 1>{ result };
@@ -318,11 +288,11 @@ struct shape_t
 template <>
 struct shape_t<1>
 {
-    using size_type = size_base_t;
+    using extent_type = extent_base_t;
     using stride_type = stride_base_t;
     using location_type = location_base_t;
     using slice_type = slice_base_t;
-    using bounds_type = zx::mat::interval_t<size_base_t>;
+    using bounds_type = zx::mat::interval_t<extent_base_t>;
 
     using dims_type = std::array<dim_t, 1>;
 
@@ -341,12 +311,12 @@ struct shape_t<1>
 
     friend std::ostream& operator<<(std::ostream& os, const shape_t& item)
     {
-        return os << "{ :size " << item.size() << " :stride " << item.stride() << " }";
+        return os << "{ :extent " << item.extent() << " :stride " << item.stride() << " }";
     }
 
-    volume_t volume() const { return m_dims[0].size; }
+    volume_t volume() const { return m_dims[0].extent; }
 
-    size_type size() const { return m_dims[0].size; }
+    extent_type extent() const { return m_dims[0].extent; }
 
     stride_type stride() const { return m_dims[0].stride; }
 
@@ -356,9 +326,9 @@ struct shape_t<1>
 
     flat_offset_t flat_offset(const location_type& loc) const { return m_dims[0].flat_offset(loc); }
 
-    static shape_t from_size(const size_type& size, size_base_t element_size)
+    static shape_t from_extent(const extent_type& extent, extent_base_t element_size)
     {
-        return shape_t{ dim_t{ size, element_size } };
+        return shape_t{ dim_t{ extent, element_size } };
     }
 
     std::pair<shape_t, location_type> slice(const slice_type& s) const
@@ -379,7 +349,7 @@ struct array_view_base_t
     using iterator = void;
 
     using location_type = typename shape_type::location_type;
-    using size_type = typename shape_type::size_type;
+    using extent_type = typename shape_type::extent_type;
     using stride_type = typename shape_type::stride_type;
     using slice_type = typename shape_type::slice_type;
     using bounds_type = typename shape_type::bounds_type;
@@ -397,7 +367,7 @@ struct array_view_base_t
 
     operator array_view_base_t<std::add_const_t<T>, D>() const { return as_const(); }
 
-    size_type size() const { return m_shape.size(); }
+    extent_type extent() const { return m_shape.extent(); }
     stride_type stride() const { return m_shape.stride(); }
     location_type start() const { return m_shape.start(); }
     volume_t volume() const { return m_shape.volume(); }
@@ -411,7 +381,7 @@ struct array_view_base_t
         if (!mat::contains(bounds(), adjusted_loc))
         {
             throw std::out_of_range{
-                (std::ostringstream() << "Location " << loc << " is out of bounds (" << size() << ")").str()
+                (std::ostringstream() << "Location " << loc << " is out of bounds (" << extent() << ")").str()
             };
         }
         return from_offset(m_shape.flat_offset(adjusted_loc));
@@ -432,7 +402,7 @@ struct array_view_base_t
         if (!mat::contains(m_shape.dim(d).bounds(), adjusted_loc))
         {
             throw std::out_of_range{
-                (std::ostringstream() << "Index " << n << " is out of bounds (" << m_shape.dim(d).size << ")").str()
+                (std::ostringstream() << "Index " << n << " is out of bounds (" << m_shape.dim(d).extent << ")").str()
             };
         }
         const auto offset = adjusted_loc * m_shape.dim(d).stride;
@@ -444,7 +414,7 @@ struct array_view_base_t
     template <class T_ = T, enable_if_t<!std::is_const_v<T_>> = 0>
     void fill(const value_type& value)
     {
-        for (size_base_t i = 0; i < m_shape.dim(0).size; ++i)
+        for (extent_base_t i = 0; i < m_shape.dim(0).extent; ++i)
         {
             (*this)[i].fill(value);
         }
@@ -469,7 +439,7 @@ struct array_view_base_t<T, 1>
     using iterator = iterator_interface<detail::iter_impl<T>>;
 
     using location_type = typename shape_type::location_type;
-    using size_type = typename shape_type::size_type;
+    using extent_type = typename shape_type::extent_type;
     using stride_type = typename shape_type::stride_type;
     using slice_type = typename shape_type::slice_type;
     using bounds_type = typename shape_type::bounds_type;
@@ -488,7 +458,7 @@ struct array_view_base_t<T, 1>
 
     operator array_view_base_t<std::add_const_t<T>, 1>() const { return as_const(); }
 
-    size_type size() const { return m_shape.size(); }
+    extent_type extent() const { return m_shape.extent(); }
     stride_type stride() const { return m_shape.stride(); }
     volume_t volume() const { return m_shape.volume(); }
     bounds_type bounds() const { return m_shape.bounds(); }
@@ -501,7 +471,7 @@ struct array_view_base_t<T, 1>
         if (!mat::contains(bounds(), adjusted_loc))
         {
             throw std::out_of_range{
-                (std::ostringstream() << "Location " << loc << " is out of bounds (" << size() << ")").str()
+                (std::ostringstream() << "Location " << loc << " is out of bounds (" << extent() << ")").str()
             };
         }
         return from_offset(m_shape.flat_offset(adjusted_loc));
@@ -553,7 +523,7 @@ struct array_t
 
     using shape_type = typename view_type::shape_type;
     using location_type = typename view_type::location_type;
-    using size_type = typename view_type::size_type;
+    using extent_type = typename view_type::extent_type;
     using stride_type = typename view_type::stride_type;
     using bounds_type = typename view_type::bounds_type;
     using slice_type = typename view_type::slice_type;
@@ -566,15 +536,15 @@ struct array_t
     using reference = typename mut_view_type::reference;
     using iterator = typename mut_view_type::iterator;
 
-    array_t(const size_type size, const T& init = {})
-        : m_shape{ shape_type::from_size(size, sizeof(T)) }
+    array_t(const extent_type extent, const T& init = {})
+        : m_shape{ shape_type::from_extent(extent, sizeof(T)) }
         , m_data(static_cast<std::size_t>(m_shape.volume()), init)
     {
     }
 
     template <std::size_t D_ = D, enable_if_t<(D_ == 1)> = 0>
     explicit array_t(std::vector<T> init)
-        : m_shape{ shape_type::from_size(size_type{ static_cast<size_base_t>(init.size()) }, sizeof(T)) }
+        : m_shape{ shape_type::from_extent(extent_type{ static_cast<extent_base_t>(init.extent()) }, sizeof(T)) }
         , m_data(std::move(init))
     {
     }
@@ -592,7 +562,7 @@ struct array_t
     operator view_type() const { return view(); }
     operator mut_view_type() { return mut_view(); }
 
-    size_type size() const { return view().size(); }
+    extent_type extent() const { return view().extent(); }
     stride_type stride() const { return view().stride(); }
     volume_t volume() const { return view().volume(); }
     bounds_type bounds() const { return view().bounds(); }
@@ -629,16 +599,16 @@ struct array_t
 
 struct adjust_bounds_fn
 {
-    inline auto operator()(mat::interval_t<size_base_t> dst, mat::interval_t<size_base_t> src, location_base_t location)
-        const -> std::pair<mat::interval_t<size_base_t>, mat::interval_t<size_base_t>>
+    inline auto operator()(mat::interval_t<extent_base_t> dst, mat::interval_t<extent_base_t> src, location_base_t location)
+        const -> std::pair<mat::interval_t<extent_base_t>, mat::interval_t<extent_base_t>>
     {
-        constexpr auto adjust
-            = [](mat::interval_t<size_base_t> interval, size_base_t lo, size_base_t up) -> mat::interval_t<size_base_t>
+        constexpr auto adjust =
+            [](mat::interval_t<extent_base_t> interval, extent_base_t lo, extent_base_t up) -> mat::interval_t<extent_base_t>
         {
             lo = std::clamp(lo, mat::lower(interval), mat::upper(interval));
             up = std::clamp(up, mat::lower(interval), mat::upper(interval));
             up = std::max(up, lo);
-            return mat::interval_t<size_base_t>{ lo, up };
+            return mat::interval_t<extent_base_t>{ lo, up };
         };
         const auto new_dst = adjust(
             dst,
@@ -652,13 +622,13 @@ struct adjust_bounds_fn
 
     template <std::size_t D>
     auto operator()(
-        mat::box_shape_t<size_base_t, D> dst,
-        mat::box_shape_t<size_base_t, D> src,
-        const mat::vector_t<location_base_t, D>& location) const
-        -> std::pair<mat::box_shape_t<size_base_t, D>, mat::box_shape_t<size_base_t, D>>
+        mat::box_shape_t<D, extent_base_t> dst,
+        mat::box_shape_t<D, extent_base_t> src,
+        const mat::vector_t<D, location_base_t>& location) const
+        -> std::pair<mat::box_shape_t<D, extent_base_t>, mat::box_shape_t<D, extent_base_t>>
     {
-        mat::box_shape_t<size_base_t, D> new_dst = dst;
-        mat::box_shape_t<size_base_t, D> new_src = src;
+        mat::box_shape_t<D, extent_base_t> new_dst = dst;
+        mat::box_shape_t<D, extent_base_t> new_src = src;
 
         for (std::size_t d = 0; d < D; ++d)
         {
@@ -676,12 +646,12 @@ struct copy_fn
     template <class T, class U>
     void operator()(array_view_base_t<T, 1> dst, array_view_base_t<U, 1> src) const
     {
-        if (dst.size() != src.size())
+        if (dst.extent() != src.extent())
         {
             throw std::invalid_argument{ "Source and destination sizes do not match" };
         }
 
-        for (size_base_t i = 0; i < dst.size(); ++i)
+        for (extent_base_t i = 0; i < dst.extent(); ++i)
         {
             dst[i] = src[i];
         }
@@ -690,18 +660,18 @@ struct copy_fn
     template <class T, class U, std::size_t D>
     void operator()(array_view_base_t<T, D> dst, array_view_base_t<U, D> src) const
     {
-        if (dst.size() != src.size())
+        if (dst.extent() != src.extent())
         {
             throw std::invalid_argument{ "Source and destination sizes do not match" };
         }
 
-        for (size_base_t i = 0; i < dst.shape().dim(0).size; ++i)
+        for (extent_base_t i = 0; i < dst.shape().dim(0).extent; ++i)
         {
             (*this)(dst[i], src[i]);
         }
     }
 
-    static slice_base_t to_slice(const mat::interval_t<size_base_t>& bounds)
+    static slice_base_t to_slice(const mat::interval_t<extent_base_t>& bounds)
     {
         return slice_base_t{ mat::lower(bounds), mat::upper(bounds) };
     }
