@@ -46,54 +46,42 @@ using quad_t = polygonal_shape_t<D, T, 4>;
 template <std::size_t D, std::size_t N, class T, class U>
 constexpr auto operator+=(polygonal_shape_t<D, T, N>& lhs, const vector_t<D, U>& rhs) -> polygonal_shape_t<D, T, N>&
 {
-    std::transform(std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::plus<>{}, std::placeholders::_1, rhs));
-    return lhs;
+    return transform([&](const vector_t<D, T>& v) { return v + rhs; }, lhs);
 }
 
 template <std::size_t D, std::size_t N, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
 constexpr auto operator+(const polygonal_shape_t<D, T, N>& lhs, const vector_t<D, U>& rhs) -> polygonal_shape_t<D, Res, N>
 {
-    polygonal_shape_t<D, Res, N> result;
-    std::transform(std::begin(lhs), std::end(lhs), std::begin(result), std::bind(std::plus<>{}, std::placeholders::_1, rhs));
-    return result;
+    return transform_into(polygonal_shape_t<D, Res, N>{}, std::bind(std::plus<>{}, std::placeholders::_1, rhs), lhs);
 }
 
 template <std::size_t D, std::size_t N, class T, class U>
 constexpr auto operator-=(polygonal_shape_t<D, T, N>& lhs, const vector_t<D, U>& rhs) -> polygonal_shape_t<D, T, N>&
 {
-    std::transform(std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::minus<>{}, std::placeholders::_1, rhs));
-    return lhs;
+    return transform(bind_back(std::minus<>{}, rhs), lhs);
 }
 
 template <std::size_t D, std::size_t N, class T, class U, class Res = std::invoke_result_t<std::minus<>, T, U>>
 constexpr auto operator-(const polygonal_shape_t<D, T, N>& lhs, const vector_t<D, U>& rhs) -> polygonal_shape_t<D, Res, N>
 {
-    polygonal_shape_t<D, Res, N> result;
-    std::transform(
-        std::begin(lhs), std::end(lhs), std::begin(result), std::bind(std::minus<>{}, std::placeholders::_1, rhs));
-    return result;
+    return transform_into(polygonal_shape_t<D, Res, N>{}, bind_back(std::minus<>{}, rhs), lhs);
 }
 
 template <std::size_t D, std::size_t N, class T, class U>
 constexpr auto operator*=(polygonal_shape_t<D, T, N>& lhs, const matrix_t<D + 1, D + 1, U>& rhs)
     -> polygonal_shape_t<D, T, N>&
 {
-    std::transform(
-        std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::multiplies<>{}, std::placeholders::_1, rhs));
-    return lhs;
+    return transform(bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
-template <std::size_t D, std::size_t N, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
+template <std::size_t D, std::size_t N, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
 constexpr auto operator*(const polygonal_shape_t<D, T, N>& lhs, const matrix_t<D + 1, D + 1, U>& rhs)
     -> polygonal_shape_t<D, Res, N>
 {
-    polygonal_shape_t<D, Res, N> result;
-    std::transform(
-        std::begin(lhs), std::end(lhs), std::begin(result), std::bind(std::multiplies<>{}, std::placeholders::_1, rhs));
-    return result;
+    return transform_into(polygonal_shape_t<D, Res, N>{}, bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
-template <std::size_t D, std::size_t N, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
+template <std::size_t D, std::size_t N, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
 constexpr auto operator*(const matrix_t<D + 1, D + 1, U>& lhs, const polygonal_shape_t<D, T, N>& rhs)
     -> polygonal_shape_t<D, Res, N>
 {
@@ -151,43 +139,34 @@ std::ostream& operator<<(std::ostream& os, const polyline_t<D, T>& item)
 template <std::size_t D, class Tag, class T, class U>
 constexpr auto operator+=(vertex_list_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& rhs) -> vertex_list_shape_t<D, Tag, T>&
 {
-    std::transform(std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::plus<>{}, std::placeholders::_1, rhs));
-    return lhs;
+    return transform([&](const vector_t<D, T>& v) { return v + rhs; }, lhs);
 }
 
 template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
 constexpr auto operator+(const vertex_list_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& rhs)
     -> vertex_list_shape_t<D, Tag, Res>
 {
-    vertex_list_shape_t<D, Tag, Res> result(lhs.size());
-    std::transform(std::begin(lhs), std::end(lhs), std::begin(result), std::bind(std::plus<>{}, std::placeholders::_1, rhs));
-    return result;
+    return transform_into(vertex_list_shape_t<D, Tag, Res>{}, std::bind(std::plus<>{}, std::placeholders::_1, rhs), lhs);
 }
 
 template <std::size_t D, class Tag, class T, class U>
 constexpr auto operator-=(vertex_list_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& rhs) -> vertex_list_shape_t<D, Tag, T>&
 {
-    std::transform(std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::minus<>{}, std::placeholders::_1, rhs));
-    return lhs;
+    return transform(std::bind(std::minus<>{}, std::placeholders::_1, rhs), lhs);
 }
 
 template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::minus<>, T, U>>
 constexpr auto operator-(const vertex_list_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& rhs)
     -> vertex_list_shape_t<D, Tag, Res>
 {
-    vertex_list_shape_t<D, Tag, Res> result(lhs.size());
-    std::transform(
-        std::begin(lhs), std::end(lhs), std::begin(result), std::bind(std::minus<>{}, std::placeholders::_1, rhs));
-    return result;
+    return transform_into(vertex_list_shape_t<D, Tag, Res>{}, std::bind(std::minus<>{}, std::placeholders::_1, rhs), lhs);
 }
 
 template <std::size_t D, class Tag, class T, class U>
 constexpr auto operator*=(vertex_list_shape_t<D, Tag, T>& lhs, const matrix_t<D + 1, D + 1, U>& rhs)
     -> vertex_list_shape_t<D, Tag, T>&
 {
-    std::transform(
-        std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::multiplies<>{}, std::placeholders::_1, rhs));
-    return lhs;
+    return transform(std::bind(std::multiplies<>{}, std::placeholders::_1, rhs), lhs);
 }
 
 template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
@@ -195,9 +174,7 @@ constexpr auto operator*(const vertex_list_shape_t<D, Tag, T>& lhs, const matrix
     -> vertex_list_shape_t<D, Tag, Res>
 {
     vertex_list_shape_t<D, Tag, Res> result(lhs.size());
-    std::transform(
-        std::begin(lhs), std::end(lhs), std::begin(result), std::bind(std::multiplies<>{}, std::placeholders::_1, rhs));
-    return result;
+    return transform_into(std::move(result), std::bind(std::multiplies<>{}, std::placeholders::_1, rhs), lhs);
 }
 
 template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>

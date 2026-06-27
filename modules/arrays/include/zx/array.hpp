@@ -214,24 +214,29 @@ struct shape_t : mat::md_base_t<D, dim_t, shape_t>
 
     extent_type extent() const
     {
-        return this->template transform_to<extent_type>([](const dim_t& dim) -> extent_base_t { return dim.extent; });
+        return transform_into(
+            extent_type{}, [](const dim_t& dim) -> extent_base_t { return dim.extent; }, *this);
     }
 
     stride_type stride() const
     {
-        return this->template transform_to<stride_type>([](const dim_t& dim) -> stride_base_t { return dim.stride; });
+        return transform_into(
+            stride_type{}, [](const dim_t& dim) -> stride_base_t { return dim.stride; }, *this);
     }
 
     bounds_type bounds() const
     {
-        return this->template transform_to<bounds_type>(
-            [](const dim_t& dim) -> mat::interval_t<extent_base_t> { return dim.bounds(); });
+        return transform_into(
+            bounds_type{}, [](const dim_t& dim) -> mat::interval_t<extent_base_t> { return dim.bounds(); }, *this);
     }
 
     location_type adjust_location(const location_type& loc) const
     {
-        return this->template transform_to<location_type>(
-            [&](const dim_t& dim, const location_base_t& l) -> location_base_t { return dim.adjust_location(l); }, loc);
+        return transform_into(
+            location_type{},
+            [&](const dim_t& dim, const location_base_t& l) -> location_base_t { return dim.adjust_location(l); },
+            *this,
+            loc);
     }
 
     flat_offset_t flat_offset(const location_type& loc) const

@@ -12,6 +12,68 @@ namespace zx
 namespace mat
 {
 
+constexpr struct eq_fn
+{
+    template <class... Its, std::size_t... Is>
+    bool operator()(const std::tuple<Its...>& lhs, const std::tuple<Its...>& rhs, std::index_sequence<Is...>) const
+    {
+        return ((std::get<Is>(lhs) == std::get<Is>(rhs)) && ...);
+    }
+
+    template <class... Its>
+    bool operator()(const std::tuple<Its...>& lhs, const std::tuple<Its...>& rhs) const
+    {
+        return (*this)(lhs, rhs, std::make_index_sequence<sizeof...(Its)>{});
+    }
+} eq = {};
+
+constexpr struct inc_fn
+{
+    template <class... Its, std::size_t... Is>
+    void operator()(std::tuple<Its...>& it, std::index_sequence<Is...>) const
+    {
+        ((++std::get<Is>(it)), ...);
+    }
+
+    template <class... Its>
+    void operator()(std::tuple<Its...>& it) const
+    {
+        (*this)(it, std::make_index_sequence<sizeof...(Its)>{});
+    }
+} inc = {};
+
+template <class Func, class Out, class... Ranges>
+constexpr Out transform_into(Out out, Func func, Ranges&&... ranges)
+{
+    auto it = std::tuple{ std::begin(ranges)... };
+    const auto end = std::tuple{ std::end(ranges)... };
+    auto b = std::begin(out);
+    for (; !eq(it, end); inc(it), ++b)
+    {
+        *b = std::apply([&](auto... iters) { return std::invoke(func, *iters...); }, it);
+    }
+    return out;
+}
+
+template <class Func, class InOut, class... Ranges>
+constexpr InOut& transform(Func func, InOut& in_out, Ranges&&... ranges)
+{
+    auto it = std::tuple{ std::begin(ranges)... };
+    const auto end = std::tuple{ std::end(ranges)... };
+    auto b = std::begin(in_out);
+    for (; !eq(it, end); inc(it), ++b)
+    {
+        *b = std::apply([&](auto... iters) { return std::invoke(func, *b, *iters...); }, it);
+    }
+    return in_out;
+}
+
+template <class Op, class Arg>
+constexpr auto bind_back(Op op, Arg arg)
+{
+    return std::bind(std::move(op), std::placeholders::_1, std::move(arg));
+}
+
 template <std::size_t D, class T, template <std::size_t, class...> class Self>
 struct md_base_t : public std::array<T, D>
 {
@@ -50,44 +112,6 @@ struct md_base_t : public std::array<T, D>
     }
 
     friend bool operator!=(const md_base_t& lhs, const md_base_t& rhs) { return !(lhs == rhs); }
-
-    template <class Func, class Res = std::invoke_result_t<Func, T>>
-    constexpr std::array<Res, D> transform(Func func) const
-    {
-        std::array<Res, D> result;
-        std::transform(std::begin(*this), std::end(*this), std::begin(result), func);
-        return result;
-    }
-
-    template <class Res, class Func>
-    constexpr Res transform_to(Func func) const
-    {
-        Res result;
-        std::transform(std::begin(*this), std::end(*this), std::begin(result), func);
-        return result;
-    }
-
-    template <class Res, class Func, class Other>
-    Res transform_to(Func func, Other&& other) const
-    {
-        Res result;
-        std::transform(std::begin(*this), std::end(*this), std::begin(other), std::begin(result), func);
-        return result;
-    }
-
-    template <class Func>
-    self_type& transform_self(Func func)
-    {
-        std::transform(std::begin(*this), std::end(*this), std::begin(*this), func);
-        return static_cast<self_type&>(*this);
-    }
-
-    template <class Func, class Other>
-    self_type& transform_self(Func func, Other&& other)
-    {
-        std::transform(std::begin(*this), std::end(*this), std::begin(other), std::begin(*this), func);
-        return static_cast<self_type&>(*this);
-    }
 };
 
 template <class T>
@@ -158,31 +182,31 @@ constexpr auto operator+(const vector_t<D, T>& item) -> vector_t<D, T>
 template <std::size_t D, class T>
 constexpr auto operator-(const vector_t<D, T>& item) -> vector_t<D, T>
 {
-    return item.template transform_to<vector_t<D, T>>(std::negate<>{});
+    return transform_into(vector_t<D, T>{}, std::negate<>{}, item);
 }
 
 template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::plus<>, L, R>>
 constexpr auto operator+=(vector_t<D, L>& lhs, const vector_t<D, R>& rhs) -> vector_t<D, L>&
 {
-    return lhs.transform_self(std::plus<>{}, rhs);
+    return transform(std::plus<>{}, lhs, rhs);
 }
 
 template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::plus<>, L, R>>
 constexpr auto operator+(const vector_t<D, L>& lhs, const vector_t<D, R>& rhs) -> vector_t<D, Res>
 {
-    return lhs.template transform_to<vector_t<D, Res>>(std::plus<>{}, rhs);
+    return transform_into(vector_t<D, Res>{}, std::plus<>{}, lhs, rhs);
 }
 
 template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::minus<>, L, R>>
 constexpr auto operator-=(vector_t<D, L>& lhs, const vector_t<D, R>& rhs) -> vector_t<D, L>&
 {
-    return lhs.transform_self(std::minus<>{}, rhs);
+    return transform(std::minus<>{}, lhs, rhs);
 }
 
 template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::minus<>, L, R>>
 constexpr auto operator-(const vector_t<D, L>& lhs, const vector_t<D, R>& rhs) -> vector_t<D, Res>
 {
-    return lhs.template transform_to<vector_t<D, Res>>(std::minus<>{}, rhs);
+    return transform_into(vector_t<D, Res>{}, std::minus<>{}, lhs, rhs);
 }
 
 template <
@@ -193,7 +217,7 @@ template <
     class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*=(vector_t<D, L>& lhs, R rhs) -> vector_t<D, L>&
 {
-    return lhs.transform_self([&](const L& value) -> L { return value * rhs; });
+    return transform(bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
 template <
@@ -204,7 +228,7 @@ template <
     class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*(const vector_t<D, L>& lhs, R rhs) -> vector_t<D, Res>
 {
-    return lhs.template transform_to<vector_t<D, Res>>([&](const L& value) -> Res { return value * rhs; });
+    return transform_into(vector_t<D, Res>{}, bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
 template <
@@ -226,7 +250,7 @@ template <
     class Res = std::invoke_result_t<std::divides<>, L, R>>
 constexpr auto operator/=(vector_t<D, L>& lhs, R rhs) -> vector_t<D, L>&
 {
-    return lhs.transform_self([&](const L& value) -> L { return value / rhs; });
+    return transform(bind_back(std::divides<>{}, rhs), lhs);
 }
 
 template <
@@ -237,7 +261,7 @@ template <
     class Res = std::invoke_result_t<std::divides<>, L, R>>
 constexpr auto operator/(const vector_t<D, L>& lhs, R rhs) -> vector_t<D, Res>
 {
-    return lhs.template transform_to<vector_t<D, Res>>([&](const L& value) -> Res { return value / rhs; });
+    return transform_into(vector_t<D, Res>{}, bind_back(std::divides<>{}, rhs), lhs);
 }
 
 template <std::size_t D, class L, class R, class = std::invoke_result_t<std::equal_to<>, L, R>>

@@ -77,16 +77,15 @@ constexpr bool operator!=(const interval_t<T>& lhs, const interval_t<U>& rhs)
 template <class T, class U, class = std::invoke_result_t<std::plus<>, T, U>>
 constexpr auto operator+=(interval_t<T>& lhs, U rhs) -> interval_t<T>&
 {
-    std::transform(std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::plus<>{}, std::placeholders::_1, rhs));
+    lhs[0] += rhs;
+    lhs[1] += rhs;
     return lhs;
 }
 
 template <class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
 constexpr auto operator+(const interval_t<T>& lhs, U rhs) -> interval_t<Res>
 {
-    interval_t<Res> result;
-    std::transform(std::begin(lhs), std::end(lhs), std::begin(result), std::bind(std::plus<>{}, std::placeholders::_1, rhs));
-    return result;
+    return interval_t<Res>{ lhs[0] + rhs, lhs[1] + rhs };
 }
 
 template <class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
@@ -98,17 +97,15 @@ constexpr auto operator+(T lhs, const interval_t<U>& rhs) -> interval_t<Res>
 template <class T, class U, class = std::invoke_result_t<std::minus<>, T, U>>
 constexpr auto operator-=(interval_t<T>& lhs, U rhs) -> interval_t<T>&
 {
-    std::transform(std::begin(lhs), std::end(lhs), std::begin(lhs), std::bind(std::minus<>{}, std::placeholders::_1, rhs));
+    lhs[0] -= rhs;
+    lhs[1] -= rhs;
     return lhs;
 }
 
 template <class T, class U, class Res = std::invoke_result_t<std::minus<>, T, U>>
 constexpr auto operator-(const interval_t<T>& lhs, U rhs) -> interval_t<Res>
 {
-    interval_t<Res> result;
-    std::transform(
-        std::begin(lhs), std::end(lhs), std::begin(result), std::bind(std::minus<>{}, std::placeholders::_1, rhs));
-    return result;
+    return interval_t<Res>{ lhs[0] - rhs, lhs[1] - rhs };
 }
 
 template <std::size_t D, class T>
@@ -147,62 +144,44 @@ struct box_shape_t : public md_base_t<D, interval_t<T>, box_shape_t>
         return result;
     }
 
-    constexpr vector_t<D, T> get(side_t s) const
+    constexpr vector_t<D, T> get(side_t side) const
     {
-        return vector_t<D, T>{ this->transform([&](const interval_t<T>& interval) -> T { return interval.get(s); }) };
+        return transform_into(
+            vector_t<D, T>{}, [&](const interval_t<T>& interval) -> T { return interval.get(side); }, *this);
     }
 
-    constexpr vector_t<D, T> get(const std::array<side_t, D>& s) const
+    constexpr vector_t<D, T> get(const std::array<side_t, D>& sides) const
     {
-        vector_t<D, T> result;
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = (*this)[d].get(s[d]);
-        }
-        return result;
+        return transform_into(
+            vector_t<D, T>{},
+            [&](const interval_t<T>& interval, side_t side) -> T { return interval.get(side); },
+            *this,
+            sides);
     }
 };
 
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::plus<>, T, U>>
 constexpr auto operator+=(box_shape_t<D, T>& lhs, const vector_t<D, U>& rhs) -> box_shape_t<D, T>&
 {
-    for (std::size_t d = 0; d < D; ++d)
-    {
-        lhs[d] += rhs[d];
-    }
-    return lhs;
+    return transform(std::plus<>{}, lhs, rhs);
 }
 
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::plus<>, T, U>>
 constexpr auto operator+(const box_shape_t<D, T>& lhs, const vector_t<D, U>& rhs) -> box_shape_t<D, Res>
 {
-    box_shape_t<D, Res> result;
-    for (std::size_t d = 0; d < D; ++d)
-    {
-        result[d] = lhs[d] + rhs[d];
-    }
-    return result;
+    return transform_into(box_shape_t<D, Res>{}, std::plus<>{}, lhs, rhs);
 }
 
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::minus<>, T, U>>
 constexpr auto operator-=(box_shape_t<D, T>& lhs, const vector_t<D, U>& rhs) -> box_shape_t<D, T>&
 {
-    for (std::size_t d = 0; d < D; ++d)
-    {
-        lhs[d] -= rhs[d];
-    }
-    return lhs;
+    return transform(std::minus<>{}, lhs, rhs);
 }
 
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::minus<>, T, U>>
 constexpr auto operator-(const box_shape_t<D, T>& lhs, const vector_t<D, U>& rhs) -> box_shape_t<D, Res>
 {
-    box_shape_t<D, Res> result;
-    for (std::size_t d = 0; d < D; ++d)
-    {
-        result[d] = lhs[d] - rhs[d];
-    }
-    return result;
+    return transform_into(box_shape_t<D, Res>{}, std::minus<>{}, lhs, rhs);
 }
 
 }  // namespace mat
