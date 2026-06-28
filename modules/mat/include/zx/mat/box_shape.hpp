@@ -160,6 +160,16 @@ struct box_shape_t : public md_base_t<D, interval_t<T>, box_shape_t>
     }
 };
 
+template <class T>
+struct is_shape<interval_t<T>> : public std::true_type
+{
+};
+
+template <std::size_t D, class T>
+struct is_shape<box_shape_t<D, T>> : public std::true_type
+{
+};
+
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::plus<>, T, U>>
 constexpr auto operator+=(box_shape_t<D, T>& lhs, const vector_t<D, U>& rhs) -> box_shape_t<D, T>&
 {

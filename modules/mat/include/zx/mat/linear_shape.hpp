@@ -32,6 +32,11 @@ struct linear_shape_t : public std::array<vector_t<D, T>, 2>
     linear_shape_t(vector_t<D, T> p0, vector_t<D, T> p1) : base_t{ { p0, p1 } } { }
 };
 
+template <std::size_t D, class Tag, class T>
+struct is_shape<linear_shape_t<D, Tag, T>> : public std::true_type
+{
+};
+
 template <std::size_t D, class T>
 using line_t = linear_shape_t<D, detail::line_tag, T>;
 

@@ -37,6 +37,11 @@ struct polygonal_shape_t : public std::array<vector_t<D, T>, N>
     }
 };
 
+template <std::size_t D, class T, std::size_t N>
+struct is_shape<polygonal_shape_t<D, T, N>> : public std::true_type
+{
+};
+
 template <std::size_t D, class T>
 using triangle_t = polygonal_shape_t<D, T, 3>;
 

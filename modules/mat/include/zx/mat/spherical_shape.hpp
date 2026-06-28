@@ -14,6 +14,11 @@ struct spherical_shape_t
     T radius;
 };
 
+template <std::size_t D, class T>
+struct is_shape<spherical_shape_t<D, T>> : public std::true_type
+{
+};
+
 template <class T>
 std::ostream& operator<<(std::ostream& os, const spherical_shape_t<2, T>& item)
 {

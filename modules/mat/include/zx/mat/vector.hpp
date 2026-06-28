@@ -129,7 +129,12 @@ struct is_matrix : public std::false_type
 };
 
 template <class T>
-struct is_scalar : public std::bool_constant<!is_vector<T>::value && !is_matrix<T>::value>
+struct is_shape : public std::false_type
+{
+};
+
+template <class T>
+struct is_scalar : public std::bool_constant<!is_vector<T>::value && !is_matrix<T>::value && !is_shape<T>::value>
 {
 };
 
