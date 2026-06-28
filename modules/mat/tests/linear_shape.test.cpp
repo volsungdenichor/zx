@@ -40,10 +40,6 @@ TEST(segment, multiply_matrix)
     EXPECT_THAT(
         seg * mat,
         testing::ElementsAre((zx::mat::vector_t<2, float>{ 2.0f, 6.0f }), (zx::mat::vector_t<2, float>{ 6.0f, 12.0f })));
-
-    EXPECT_THAT(
-        mat * seg,
-        testing::ElementsAre((zx::mat::vector_t<2, float>{ 2.0f, 6.0f }), (zx::mat::vector_t<2, float>{ 6.0f, 12.0f })));
 }
 
 TEST(segment, equal)
@@ -95,10 +91,6 @@ TEST(ray, multiply_matrix)
 
     EXPECT_THAT(
         r * m,
-        testing::ElementsAre((zx::mat::vector_t<2, double>{ 2.0, 6.0 }), (zx::mat::vector_t<2, double>{ 6.0, 12.0 })));
-
-    EXPECT_THAT(
-        m * r,
         testing::ElementsAre((zx::mat::vector_t<2, double>{ 2.0, 6.0 }), (zx::mat::vector_t<2, double>{ 6.0, 12.0 })));
 }
 
@@ -163,9 +155,5 @@ TEST(line, multiply_matrix)
 
     EXPECT_THAT(
         line * mat,
-        testing::ElementsAre((zx::mat::vector_t<2, float>{ 2.0f, 6.0f }), (zx::mat::vector_t<2, float>{ 6.0f, 12.0f })));
-
-    EXPECT_THAT(
-        mat * line,
         testing::ElementsAre((zx::mat::vector_t<2, float>{ 2.0f, 6.0f }), (zx::mat::vector_t<2, float>{ 6.0f, 12.0f })));
 }

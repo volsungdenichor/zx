@@ -137,13 +137,6 @@ constexpr auto operator*(const linear_shape_t<D, Tag, T>& lhs, const matrix_t<D 
     return transform_into(linear_shape_t<D, Tag, Res>{}, bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
-template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const matrix_t<D + 1, D + 1, U>& lhs, const linear_shape_t<D, Tag, T>& rhs)
-    -> linear_shape_t<D, Tag, Res>
-{
-    return rhs * lhs;
-}
-
 template <std::size_t D, class T, class U>
 constexpr bool operator==(const segment_t<D, T>& lhs, const segment_t<D, U>& rhs)
 {

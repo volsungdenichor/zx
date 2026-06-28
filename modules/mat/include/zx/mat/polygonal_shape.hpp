@@ -182,13 +182,6 @@ constexpr auto operator*(const vertex_list_shape_t<D, Tag, T>& lhs, const matrix
     return transform_into(std::move(result), std::bind(std::multiplies<>{}, std::placeholders::_1, rhs), lhs);
 }
 
-template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator*(const matrix_t<D + 1, D + 1, U>& lhs, const vertex_list_shape_t<D, Tag, T>& rhs)
-    -> vertex_list_shape_t<D, Tag, Res>
-{
-    return rhs * lhs;
-}
-
 }  // namespace mat
 
 }  // namespace zx
