@@ -124,14 +124,29 @@ constexpr auto operator-(const linear_shape_t<D, Tag, T>& lhs, const vector_t<D,
     return transform_into(linear_shape_t<D, Tag, Res>{}, bind_back(std::minus<>{}, rhs), lhs);
 }
 
-template <std::size_t D, class Tag, class T, class U>
-constexpr auto operator*=(linear_shape_t<D, Tag, T>& lhs, const matrix_t<D + 1, D + 1, U>& rhs) -> linear_shape_t<D, Tag, T>&
+template <
+    std::size_t D,
+    class Tag,
+    class T,
+    std::size_t R,
+    std::size_t C,
+    class U,
+    enable_if_t<R == D + 1, C == D + 1> = 0>
+constexpr auto operator*=(linear_shape_t<D, Tag, T>& lhs, const matrix_t<R, C, U>& rhs) -> linear_shape_t<D, Tag, T>&
 {
     return transform(bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
-template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const linear_shape_t<D, Tag, T>& lhs, const matrix_t<D + 1, D + 1, U>& rhs)
+template <
+    std::size_t D,
+    class Tag,
+    class T,
+    std::size_t R,
+    std::size_t C,
+    class U,
+    enable_if_t<R == D + 1, C == D + 1> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+constexpr auto operator*(const linear_shape_t<D, Tag, T>& lhs, const matrix_t<R, C, U>& rhs)
     -> linear_shape_t<D, Tag, Res>
 {
     return transform_into(linear_shape_t<D, Tag, Res>{}, bind_back(std::multiplies<>{}, rhs), lhs);
