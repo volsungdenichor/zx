@@ -142,7 +142,8 @@ struct color_t
 
     static constexpr color_t from_rgb(const rgb_t& rgb)
     {
-        constexpr auto convert = [](value_type x) { return std::min(value_type(5), static_cast<value_type>((x * 6 + 128) / 256)); };
+        constexpr auto convert
+            = [](value_type x) { return std::min(value_type(5), static_cast<value_type>((x * 6 + 128) / 256)); };
         return color_t{ static_cast<value_type>(16 + 36 * convert(rgb[0]) + 6 * convert(rgb[1]) + convert(rgb[2])) };
     }
 
@@ -300,7 +301,7 @@ struct font_t
     constexpr friend bool operator<=(const font_t lhs, const font_t rhs) { return !(lhs > rhs); }
     constexpr friend bool operator>=(const font_t lhs, const font_t rhs) { return !(lhs < rhs); }
 
-    constexpr friend font_t operator~(const font_t item) { return font_t(~item.m_value); }
+    constexpr friend font_t operator~(const font_t item) { return font_t(static_cast<underlying_type>(~item.m_value)); }
     constexpr friend font_t operator&(const font_t lhs, const font_t rhs) { return font_t(lhs.m_value & rhs.m_value); }
     constexpr friend font_t& operator&=(font_t& lhs, const font_t rhs)
     {
