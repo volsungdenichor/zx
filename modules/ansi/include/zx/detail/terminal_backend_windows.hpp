@@ -174,7 +174,7 @@ public:
                 const key_modifiers_t modifiers = make_key_modifiers(mouse_rec.dwControlKeyState);
                 const std::ptrdiff_t x = static_cast<std::ptrdiff_t>(mouse_rec.dwMousePosition.X);
                 const std::ptrdiff_t y = static_cast<std::ptrdiff_t>(mouse_rec.dwMousePosition.Y);
-                const auto loc = mat::vector_t<std::ptrdiff_t, 2>{ y, x };
+                const auto loc = mat::vector_t<2, std::ptrdiff_t>{ y, x };
 
                 if (mouse_rec.dwEventFlags == MOUSE_MOVED)
                 {

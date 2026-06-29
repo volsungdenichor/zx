@@ -589,7 +589,7 @@ private:
         const int cb = parts[0];
         const int x = (parts[1] > 0) ? (parts[1] - 1) : 0;
         const int y = (parts[2] > 0) ? (parts[2] - 1) : 0;
-        const auto pos = mat::vector_t<std::ptrdiff_t, 2>{ y, x };
+        const auto pos = mat::vector_t<2, std::ptrdiff_t>{ y, x };
 
         const bool shift = (cb & 0x04) != 0;
         const bool alt = (cb & 0x08) != 0;
@@ -649,7 +649,7 @@ private:
             return std::nullopt;
         }
 
-        const auto pos = mat::vector_t<std::ptrdiff_t, 2>{ cy - 1, cx - 1 };
+        const auto pos = mat::vector_t<2, std::ptrdiff_t>{ cy - 1, cx - 1 };
 
         const bool shift = (cb & 0x04) != 0;
         const bool alt = (cb & 0x08) != 0;
