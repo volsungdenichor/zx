@@ -121,7 +121,7 @@ public:
         return false;
     }
 
-    mat::vector_t<std::ptrdiff_t, 2> get_terminal_size() const override
+    mat::vector_t<2, std::ptrdiff_t> get_terminal_size() const override
     {
         CONSOLE_SCREEN_BUFFER_INFO csbi{};
         if (m_stdout_handle != INVALID_HANDLE_VALUE && ::GetConsoleScreenBufferInfo(m_stdout_handle, &csbi))

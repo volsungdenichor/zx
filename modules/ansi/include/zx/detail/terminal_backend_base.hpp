@@ -38,7 +38,7 @@ public:
     virtual void cleanup(bool hide_cursor) = 0;
     virtual int wait_for_input(int tick_ms) const = 0;
     virtual bool should_retry_wait(int wait_result) const = 0;
-    virtual mat::vector_t<std::ptrdiff_t, 2> get_terminal_size() const = 0;
+    virtual mat::vector_t<2, std::ptrdiff_t> get_terminal_size() const = 0;
     virtual std::optional<event_t> read_event(std::atomic<bool>& resize_pending) = 0;
     virtual void write_escape(const char* seq) const = 0;
     virtual void write_output(const char* data, std::size_t size) const = 0;

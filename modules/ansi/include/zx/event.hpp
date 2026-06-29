@@ -178,7 +178,7 @@ struct key_event_t
 
 struct resize_event_t
 {
-    mat::vector_t<std::ptrdiff_t, 2> new_size;
+    mat::vector_t<2, std::ptrdiff_t> new_size;
 
     friend std::ostream& operator<<(std::ostream& os, const resize_event_t& item)
     {
@@ -235,7 +235,7 @@ struct mouse_event_t
 {
     mouse_event_kind_t kind = mouse_event_kind_t::move;
     mouse_button_t button = mouse_button_t::none;
-    mat::vector_t<std::ptrdiff_t, 2> location;
+    mat::vector_t<2, std::ptrdiff_t> location;
     std::ptrdiff_t scroll_y = 0;
     key_modifiers_t modifiers = key_modifiers_t::none;
 
