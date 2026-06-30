@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <limits>
@@ -10,6 +11,42 @@ namespace zx
 {
 namespace mat2
 {
+
+template <std::size_t D, class T>
+struct vec_t : public std::array<T, D>
+{
+    using base_t = std::array<T, D>;
+    using base_t::base_t;
+
+    constexpr vec_t() : base_t{} { std::fill(this->begin(), this->end(), T{}); }
+
+    template <class... Tail>
+    constexpr vec_t(T head, Tail... tail) : base_t{ { head, static_cast<T>(tail)... } }
+    {
+        static_assert(sizeof...(tail) + 1 == D, "Invalid number of arguments to vec_t constructor");
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const vec_t& item)
+    {
+        os << "[";
+        for (std::size_t i = 0; i < D; ++i)
+        {
+            if (i != 0)
+            {
+                os << " ";
+            }
+            os << item[i];
+        }
+        os << "]";
+        return os;
+    }
+
+    friend constexpr bool operator==(const vec_t& lhs, const vec_t& rhs)
+    {
+        return std::equal(lhs.begin(), lhs.end(), rhs.begin());
+    }
+    friend constexpr bool operator!=(const vec_t& lhs, const vec_t& rhs) { return !(lhs == rhs); }
+};
 
 struct flat_offset_t
 {
@@ -59,24 +96,22 @@ struct ptr_t
     }
 };
 
-using size_value_t = std::ptrdiff_t;
+using extent_value_t = std::ptrdiff_t;
 using stride_value_t = std::ptrdiff_t;
 using location_value_t = std::ptrdiff_t;
 using volume_value_t = std::ptrdiff_t;
 
-template <class T = location_value_t>
 struct interval_base_t
 {
-    using value_type = T;
-    value_type lower;
-    value_type upper;
+    location_value_t lower;
+    location_value_t upper;
 
-    friend bool operator==(const interval_base_t& lhs, const interval_base_t& rhs)
+    friend constexpr bool operator==(const interval_base_t& lhs, const interval_base_t& rhs)
     {
         return std::tie(lhs.lower, lhs.upper) == std::tie(rhs.lower, rhs.upper);
     }
 
-    friend bool operator!=(const interval_base_t& lhs, const interval_base_t& rhs) { return !(lhs == rhs); }
+    friend constexpr bool operator!=(const interval_base_t& lhs, const interval_base_t& rhs) { return !(lhs == rhs); }
 
     friend std::ostream& operator<<(std::ostream& os, const interval_base_t& item)
     {
@@ -90,12 +125,12 @@ struct slice_base_t
     std::optional<location_value_t> stop = {};
     std::optional<stride_value_t> step = {};
 
-    friend bool operator==(const slice_base_t& lhs, const slice_base_t& rhs)
+    friend constexpr bool operator==(const slice_base_t& lhs, const slice_base_t& rhs)
     {
         return std::tie(lhs.start, lhs.stop, lhs.step) == std::tie(rhs.start, rhs.stop, rhs.step);
     }
 
-    friend bool operator!=(const slice_base_t& lhs, const slice_base_t& rhs) { return !(lhs == rhs); }
+    friend constexpr bool operator!=(const slice_base_t& lhs, const slice_base_t& rhs) { return !(lhs == rhs); }
 
     friend std::ostream& operator<<(std::ostream& os, const slice_base_t& item)
     {
@@ -120,42 +155,62 @@ struct slice_base_t
 template <class T>
 constexpr T dynamic = std::numeric_limits<T>::max();
 
-template <size_value_t Size = dynamic<size_value_t>, stride_value_t Stride = dynamic<stride_value_t>>
+template <extent_value_t Extent = dynamic<extent_value_t>, stride_value_t Stride = dynamic<stride_value_t>>
 struct dim_t
 {
     dim_t() = default;
 
-    constexpr dim_t(size_value_t, stride_value_t) { }
+    constexpr dim_t(extent_value_t, stride_value_t) { }
 
-    constexpr size_value_t size() const { return Size; }
+    constexpr extent_value_t extent() const { return Extent; }
 
     constexpr stride_value_t stride() const { return Stride; }
 
     constexpr flat_offset_t flat_offset(location_value_t loc) const { return flat_offset_t{ loc * stride() }; }
+
+    friend std::ostream& operator<<(std::ostream& os, const dim_t& item)
+    {
+        return os << "{"
+                  << ":extent " << item.extent() << " "
+                  << ":stride " << item.stride() << "}";
+    }
 };
 
 template <>
-struct dim_t<dynamic<size_value_t>, dynamic<stride_value_t>>
+struct dim_t<dynamic<extent_value_t>, dynamic<stride_value_t>>
 {
-    size_value_t m_size;
+    extent_value_t m_extent;
     stride_value_t m_stride;
 
-    constexpr dim_t(size_value_t size, stride_value_t stride) : m_size(size), m_stride(stride) { }
+    constexpr dim_t(extent_value_t extent, stride_value_t stride) : m_extent(extent), m_stride(stride) { }
 
-    template <size_value_t Size, stride_value_t Stride>
-    constexpr dim_t(const dim_t<Size, Stride>& other) : m_size(other.size())
-                                                      , m_stride(other.stride())
+    template <extent_value_t Extent, stride_value_t Stride>
+    constexpr dim_t(const dim_t<Extent, Stride>& other) : m_extent(other.extent())
+                                                        , m_stride(other.stride())
     {
     }
 
-    constexpr size_value_t size() const { return m_size; }
+    constexpr extent_value_t extent() const { return m_extent; }
 
     constexpr stride_value_t stride() const { return m_stride; }
 
     constexpr flat_offset_t flat_offset(location_value_t loc) const { return flat_offset_t{ loc * stride() }; }
+
+    friend std::ostream& operator<<(std::ostream& os, const dim_t& item)
+    {
+        return os << "{"
+                  << ":extent " << item.extent() << " "
+                  << ":stride " << item.stride() << "}";
+    }
 };
 
-using dynamic_dim_t = dim_t<dynamic<size_value_t>, dynamic<stride_value_t>>;
+using dynamic_dim_t = dim_t<dynamic<extent_value_t>, dynamic<stride_value_t>>;
+
+template <extent_value_t Extent = dynamic<extent_value_t>, stride_value_t Stride = dynamic<stride_value_t>>
+constexpr dynamic_dim_t to_dynamic_dim(dim_t<Extent, Stride> dim)
+{
+    return dynamic_dim_t{ dim.extent(), dim.stride() };
+}
 
 enum class dim_type_t : std::uint8_t
 {
@@ -166,8 +221,8 @@ enum class dim_type_t : std::uint8_t
 template <class T>
 struct get_dim_type;
 
-template <size_value_t Size, stride_value_t Stride>
-struct get_dim_type<dim_t<Size, Stride>> : std::integral_constant<dim_type_t, dim_type_t::static_dim>
+template <extent_value_t Extent, stride_value_t Stride>
+struct get_dim_type<dim_t<Extent, Stride>> : std::integral_constant<dim_type_t, dim_type_t::static_dim>
 {
 };
 
@@ -176,32 +231,33 @@ struct get_dim_type<dynamic_dim_t> : std::integral_constant<dim_type_t, dim_type
 {
 };
 
-inline std::pair<dynamic_dim_t, location_value_t> do_slice(const dynamic_dim_t& dim, const slice_base_t& s)
+inline constexpr std::pair<dynamic_dim_t, location_value_t> do_slice(const dynamic_dim_t& dim, const slice_base_t& s)
 {
     const auto clamp = [&](location_value_t value, location_value_t init) -> location_value_t
-    { return std::max(init, std::min(value, dim.size() + init)); };
+    { return std::max(init, std::min(value, dim.extent() + init)); };
 
     const stride_value_t actual_step = s.step.value_or(stride_value_t{ 1 });
-    location_value_t actual_start, actual_stop;
+    location_value_t actual_start = 0;
+    location_value_t actual_stop = 0;
 
     if (actual_step > 0)
     {
         actual_start = s.start.value_or(location_value_t{ 0 });
-        actual_stop = s.stop.value_or(location_value_t{ dim.size() });
+        actual_stop = s.stop.value_or(location_value_t{ dim.extent() });
 
-        actual_start = clamp(actual_start + (actual_start < 0 ? dim.size() : 0), 0);
-        actual_stop = clamp(actual_stop + (actual_stop < 0 ? dim.size() : 0), 0);
+        actual_start = clamp(actual_start + (actual_start < 0 ? dim.extent() : 0), 0);
+        actual_stop = clamp(actual_stop + (actual_stop < 0 ? dim.extent() : 0), 0);
     }
     else
     {
-        actual_start = s.start.value_or(location_value_t{ dim.size() - 1 });
-        actual_stop = s.stop.value_or(location_value_t{ -dim.size() - 1 });
+        actual_start = s.start.value_or(location_value_t{ dim.extent() - 1 });
+        actual_stop = s.stop.value_or(location_value_t{ -dim.extent() - 1 });
 
-        actual_start = clamp(actual_start + (actual_start < 0 ? dim.size() : 0), -1);
-        actual_stop = clamp(actual_stop + (actual_stop < 0 ? dim.size() : 0), -1);
+        actual_start = clamp(actual_start + (actual_start < 0 ? dim.extent() : 0), -1);
+        actual_stop = clamp(actual_stop + (actual_stop < 0 ? dim.extent() : 0), -1);
     }
 
-    const size_value_t new_size
+    const extent_value_t new_size
         = actual_step > 0 ? std::max(location_value_t(0), (actual_stop - actual_start + actual_step - 1) / actual_step)
                           : std::max(location_value_t(0), (actual_start - actual_stop - actual_step - 1) / (-actual_step));
 
@@ -214,10 +270,14 @@ inline std::pair<dynamic_dim_t, location_value_t> do_slice(const dynamic_dim_t& 
 template <class... Dims>
 struct shape_t
 {
-    using storage_type = std::tuple<Dims...>;
-    using loc_type = std::array<location_value_t, sizeof...(Dims)>;
-
     static constexpr inline std::size_t dims_count = sizeof...(Dims);
+
+    using storage_type = std::tuple<Dims...>;
+    using dynamic_shape_type = shape_t<std::conditional_t<true, dynamic_dim_t, Dims>...>;
+    using loc_type = vec_t<dims_count, location_value_t>;
+    using extent_type = vec_t<dims_count, extent_value_t>;
+    using stride_type = vec_t<dims_count, stride_value_t>;
+
     storage_type m_storage;
 
     static constexpr bool is_static() { return ((get_dim_type<Dims>::value == dim_type_t::static_dim) && ...); }
@@ -235,6 +295,21 @@ struct shape_t
         return dynamic_dim_t{ std::get<N>(m_storage) };
     }
 
+    constexpr extent_type extents() const
+    {
+        return apply([](const auto&... dims) { return extent_type{ dims.extent()... }; });
+    }
+
+    constexpr stride_type stride() const
+    {
+        return apply([](const auto&... dims) { return stride_type{ dims.stride()... }; });
+    }
+
+    constexpr dynamic_shape_type to_dynamic_shape() const
+    {
+        return apply([](const auto&... dims) { return dynamic_shape_type{ to_dynamic_dim(dims)... }; });
+    }
+
     constexpr flat_offset_t flat_offset(const loc_type& loc) const
     {
         return flat_offset(loc, std::make_index_sequence<dims_count>{});
@@ -243,7 +318,7 @@ struct shape_t
     constexpr volume_value_t volume() const
     {
         volume_value_t vol = 1;
-        std::apply([&vol](const auto&... dims) { ((vol *= dims.size()), ...); }, m_storage);
+        apply([&vol](const auto&... dims) { ((vol *= dims.extent()), ...); });
         return vol;
     }
 
@@ -251,6 +326,11 @@ struct shape_t
     constexpr auto apply(Func&& func) const
     {
         return std::apply(std::forward<Func>(func), m_storage);
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const shape_t& item)
+    {
+        return os << "{ :size " << item.extents() << " :stride " << item.stride() << " }";
     }
 
 private:
@@ -281,7 +361,7 @@ struct shape_holder_t<dim_type_t::static_dim, Shape>
 {
     shape_holder_t() = default;
 
-    explicit shape_holder_t(const Shape&) { }
+    constexpr explicit shape_holder_t(const Shape&) { }
 
     const Shape& shape() const
     {
@@ -295,9 +375,9 @@ struct shape_holder_t<dim_type_t::dynamic_dim, Shape>
 {
     Shape m_shape;
 
-    shape_holder_t(Shape shape) : m_shape(std::move(shape)) { }
+    constexpr shape_holder_t(Shape shape) : m_shape(std::move(shape)) { }
 
-    const Shape& shape() const { return m_shape; }
+    constexpr const Shape& shape() const { return m_shape; }
 };
 
 template <class Shape, class T>
@@ -307,13 +387,13 @@ struct storage_holder_t<dim_type_t::static_dim, Shape, T>
 
     storage_type m_storage;
 
-    storage_holder_t() : m_storage{} { }
+    constexpr storage_holder_t() : m_storage{} { }
 
-    explicit storage_holder_t(const Shape&) : m_storage{} { }
+    constexpr explicit storage_holder_t(const Shape&) : m_storage{} { }
 
-    storage_type& storage() { return m_storage; }
+    constexpr storage_type& storage() { return m_storage; }
 
-    const storage_type& storage() const { return m_storage; }
+    constexpr const storage_type& storage() const { return m_storage; }
 };
 
 template <class Shape, class T>
@@ -323,11 +403,11 @@ struct storage_holder_t<dim_type_t::dynamic_dim, Shape, T>
 
     storage_type m_storage;
 
-    explicit storage_holder_t(const Shape& shape) : m_storage(static_cast<std::size_t>(shape.volume())) { }
+    constexpr explicit storage_holder_t(const Shape& shape) : m_storage(static_cast<std::size_t>(shape.volume())) { }
 
-    storage_type& storage() { return m_storage; }
+    constexpr storage_type& storage() { return m_storage; }
 
-    const storage_type& storage() const { return m_storage; }
+    constexpr const storage_type& storage() const { return m_storage; }
 };
 
 template <class Shape, class T>
@@ -352,9 +432,9 @@ struct array_t<shape_t<Dim0>, T> : private shape_holder_t<get_shape_type<shape_t
     using reference = typename view_type::reference;
 
     using location_type = location_value_t;
-    using extent_type = size_value_t;
+    using extent_type = extent_value_t;
     using volume_type = volume_value_t;
-    using bounds_type = interval_base_t<location_value_t>;
+    using bounds_type = interval_base_t;
     using slice_type = slice_base_t;
 
     using shape_holder_type::shape;
@@ -378,9 +458,9 @@ struct array_t<shape_t<Dim0>, T> : private shape_holder_t<get_shape_type<shape_t
     }
 
     template <bool S = shape_type::is_static(), std::enable_if_t<S, int> = 0>
-    constexpr operator std::array<value_type, static_cast<std::size_t>(shape_type{}.volume())>() const
+    constexpr operator vec_t<static_cast<std::size_t>(shape_type{}.volume()), value_type>() const
     {
-        std::array<value_type, static_cast<std::size_t>(shape_type{}.volume())> result{};
+        vec_t<static_cast<std::size_t>(shape_type{}.volume()), value_type> result{};
         for (std::size_t i = 0; i < result.size(); ++i)
         {
             result[i] = this->storage()[i];
@@ -435,7 +515,7 @@ struct array_t<shape_t<Dim0>, T> : private shape_holder_t<get_shape_type<shape_t
 };
 
 template <std::size_t D, class T>
-using dense_vector_t = array_t<shape_t<dim_t<static_cast<size_value_t>(D), static_cast<stride_value_t>(sizeof(T))>>, T>;
+using dense_vector_t = array_t<shape_t<dim_t<static_cast<extent_value_t>(D), static_cast<stride_value_t>(sizeof(T))>>, T>;
 
 template <class Shape, class T>
 struct array_view_t : private shape_holder_t<get_shape_type<Shape>::value, Shape>
@@ -446,10 +526,12 @@ struct array_view_t : private shape_holder_t<get_shape_type<Shape>::value, Shape
     using reference = T&;
 
     using location_type = dense_vector_t<shape_type::dims_count, location_value_t>;
-    using extent_type = dense_vector_t<shape_type::dims_count, size_value_t>;
+    using extent_type = dense_vector_t<shape_type::dims_count, extent_value_t>;
     using volume_type = volume_value_t;
-    using bounds_type = dense_vector_t<shape_type::dims_count, interval_base_t<location_value_t>>;
+    using bounds_type = dense_vector_t<shape_type::dims_count, interval_base_t>;
     using slice_type = dense_vector_t<shape_type::dims_count, slice_base_t>;
+    using dynamic_shape_type = typename shape_type::dynamic_shape_type;
+    using dynamic_view_type = array_view_t<dynamic_shape_type, T>;
 
     using shape_holder_type = shape_holder_t<get_shape_type<shape_type>::value, shape_type>;
 
@@ -464,18 +546,40 @@ struct array_view_t : private shape_holder_t<get_shape_type<Shape>::value, Shape
 
     extent_type extents() const
     {
-        return shape().apply([](const auto&... dims) { return extent_type{ static_cast<size_value_t>(dims.size())... }; });
+        return shape().apply([](const auto&... dims)
+                             { return extent_type{ static_cast<extent_value_t>(dims.extent())... }; });
     }
 
     bounds_type bounds() const
     {
         return shape().apply(
             [](const auto&... dims) {
-                return bounds_type{ interval_base_t<location_value_t>{ 0, static_cast<location_value_t>(dims.size()) }... };
+                return bounds_type{ interval_base_t{ 0, static_cast<location_value_t>(dims.extent()) }... };
             });
     }
 
     reference operator[](const location_type& loc) const { return *get(loc); }
+
+    dynamic_view_type slice(const slice_type& s) const
+    {
+        location_value_t i = 0;
+        flat_offset_t total_offset{ 0 };
+        const auto new_shape = this->shape().apply(
+            [&](const auto&... dims)
+            {
+                return dynamic_shape_type{ (
+                    [&]()
+                    {
+                        const auto [new_dim, new_start] = do_slice(to_dynamic_dim(dims), s[i++]);
+                        total_offset = total_offset + flat_offset_t{ new_start };
+                        return new_dim;
+                    }())... };
+            });
+
+        return dynamic_view_type{ new_shape, (m_data + total_offset).template as<T>() };
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const array_view_t& item) { return os << item.shape(); }
 };
 
 template <class Shape, class T>
@@ -499,6 +603,9 @@ struct array_t : private shape_holder_t<get_shape_type<Shape>::value, Shape>,
     using bounds_type = typename const_view_type::bounds_type;
     using slice_type = typename const_view_type::slice_type;
 
+    using dynamic_view_type = typename view_type::dynamic_view_type;
+    using dynamic_const_view_type = typename const_view_type::dynamic_view_type;
+
     using shape_holder_type::shape;
     using storage_holder_type::storage;
 
@@ -513,7 +620,17 @@ struct array_t : private shape_holder_t<get_shape_type<Shape>::value, Shape>,
 
     const_reference operator[](const location_type& loc) const { return view()[loc]; }
     reference operator[](const location_type& loc) { return view()[loc]; }
+
+    dynamic_const_view_type slice(const slice_type& s) const { return view().slice(s); }
+    dynamic_view_type slice(const slice_type& s) { return view().slice(s); }
 };
+
+template <std::size_t R, std::size_t C, class T>
+using dense_matrix_t = array_t<
+    shape_t<
+        dim_t<static_cast<extent_value_t>(R), static_cast<stride_value_t>(sizeof(T) * C)>,
+        dim_t<static_cast<extent_value_t>(C), static_cast<stride_value_t>(sizeof(T))>>,
+    T>;
 
 }  // namespace mat2
 }  // namespace zx
