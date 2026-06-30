@@ -26,6 +26,12 @@ struct vec_t : public std::array<T, D>
         static_assert(sizeof...(tail) + 1 == D, "Invalid number of arguments to vec_t constructor");
     }
 
+    template <class U>
+    constexpr vec_t(const vec_t<D, U>& other) : base_t{}
+    {
+        std::copy(other.begin(), other.end(), this->begin());
+    }
+
     friend std::ostream& operator<<(std::ostream& os, const vec_t& item)
     {
         os << "[";
@@ -47,6 +53,15 @@ struct vec_t : public std::array<T, D>
     }
     friend constexpr bool operator!=(const vec_t& lhs, const vec_t& rhs) { return !(lhs == rhs); }
 };
+
+template <class T>
+vec_t(T) -> vec_t<1, T>;
+
+template <class T>
+vec_t(T, T) -> vec_t<2, T>;
+
+template <class T>
+vec_t(T, T, T) -> vec_t<3, T>;
 
 struct flat_offset_t
 {
@@ -631,6 +646,27 @@ using dense_matrix_t = array_t<
         dim_t<static_cast<extent_value_t>(R), static_cast<stride_value_t>(sizeof(T) * C)>,
         dim_t<static_cast<extent_value_t>(C), static_cast<stride_value_t>(sizeof(T))>>,
     T>;
+
+inline auto shape_from_extent(extent_value_t extent, stride_value_t element_size) -> shape_t<dynamic_dim_t>
+{
+    return shape_t<dynamic_dim_t>{ dynamic_dim_t{ extent, element_size } };
+}
+
+inline auto shape_from_extent(const vec_t<2, extent_value_t>& extent, stride_value_t element_size)
+    -> shape_t<dynamic_dim_t, dynamic_dim_t>
+{
+    return shape_t<dynamic_dim_t, dynamic_dim_t>{ dynamic_dim_t{ extent[0], element_size * extent[1] },
+                                                  dynamic_dim_t{ extent[1], element_size } };
+}
+
+inline auto shape_from_extent(const vec_t<3, extent_value_t>& extent, stride_value_t element_size)
+    -> shape_t<dynamic_dim_t, dynamic_dim_t, dynamic_dim_t>
+{
+    return shape_t<dynamic_dim_t, dynamic_dim_t, dynamic_dim_t>{ dynamic_dim_t{ extent[0],
+                                                                                element_size * extent[1] * extent[2] },
+                                                                 dynamic_dim_t{ extent[1], element_size * extent[2] },
+                                                                 dynamic_dim_t{ extent[2], element_size } };
+}
 
 }  // namespace mat2
 }  // namespace zx
