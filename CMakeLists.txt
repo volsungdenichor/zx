@@ -26,16 +26,17 @@ set(ZX_MODULE_DEPENDENCIES "
         [nested_text [core iterator]]
         [yield [core]]
         [predicates [core nested_text]]
+        [mat2 [core]]
     ]
 ")
 
 string(REGEX REPLACE "[ \t\n\r]+" " " DEPS_NORMALIZED "${ZX_MODULE_DEPENDENCIES}")
-string(REGEX MATCHALL "\\[([a-z_]+) \\[[^]]*\\]\\]" MODULE_ENTRIES "${DEPS_NORMALIZED}")
+string(REGEX MATCHALL "\\[([a-z0-9_]+) \\[[^]]*\\]\\]" MODULE_ENTRIES "${DEPS_NORMALIZED}")
 
 set(ZX_ALL_MODULES "")
 
 foreach(ENTRY ${MODULE_ENTRIES})
-    if(ENTRY MATCHES "\\[([a-z_]+) ")
+    if(ENTRY MATCHES "\\[([a-z0-9_]+) ")
         list(APPEND ZX_ALL_MODULES "${CMAKE_MATCH_1}")
     endif()
 endforeach()
