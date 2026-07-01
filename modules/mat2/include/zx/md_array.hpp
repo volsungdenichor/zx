@@ -765,6 +765,41 @@ struct is_array_vector_t<array_t<shape_t<Dim0>, T>> : std::true_type
 template <class T>
 using is_scalar_t = std::bool_constant<!is_array_vector_t<std::decay_t<T>>::value>;
 
+template <class T>
+struct dense_vector_traits
+{
+    static constexpr std::size_t dims = 0;
+    using value_type = void;
+};
+
+template <extent_value_t E, stride_value_t S, class T>
+struct dense_vector_traits<array_t<shape_t<dim_t<E, S>>, T>>
+{
+    static constexpr dims_count_t dims = static_cast<dims_count_t>(E);
+    static constexpr stride_value_t stride = S;
+    using value_type = T;
+};
+
+template <class T>
+struct dense_matrix_traits
+{
+    static constexpr dims_count_t rows = 0;
+    static constexpr dims_count_t cols = 0;
+    static constexpr stride_value_t row_stride = 0;
+    static constexpr stride_value_t col_stride = 0;
+    using value_type = void;
+};
+
+template <extent_value_t R, stride_value_t RS, extent_value_t C, stride_value_t CS, class T>
+struct dense_matrix_traits<array_t<shape_t<dim_t<R, RS>, dim_t<C, CS>>, T>>
+{
+    static constexpr dims_count_t rows = R;
+    static constexpr dims_count_t cols = C;
+    static constexpr stride_value_t row_stride = RS;
+    static constexpr stride_value_t col_stride = CS;
+    using value_type = T;
+};
+
 template <class Dim0, class T>
 constexpr auto operator+(const array_t<shape_t<Dim0>, T>& item) -> array_t<shape_t<Dim0>, T>
 {
@@ -898,41 +933,6 @@ constexpr auto operator/(const array_t<shape_t<Dim0>, L>& lhs, R rhs) -> array_t
     }
     return out;
 }
-
-template <class T>
-struct dense_vector_traits
-{
-    static constexpr std::size_t dims = 0;
-    using value_type = void;
-};
-
-template <extent_value_t E, stride_value_t S, class T>
-struct dense_vector_traits<array_t<shape_t<dim_t<E, S>>, T>>
-{
-    static constexpr dims_count_t dims = static_cast<dims_count_t>(E);
-    static constexpr stride_value_t stride = S;
-    using value_type = T;
-};
-
-template <class T>
-struct dense_matrix_traits
-{
-    static constexpr dims_count_t rows = 0;
-    static constexpr dims_count_t cols = 0;
-    static constexpr stride_value_t row_stride = 0;
-    static constexpr stride_value_t col_stride = 0;
-    using value_type = void;
-};
-
-template <extent_value_t R, stride_value_t RS, extent_value_t C, stride_value_t CS, class T>
-struct dense_matrix_traits<array_t<shape_t<dim_t<R, RS>, dim_t<C, CS>>, T>>
-{
-    static constexpr dims_count_t rows = R;
-    static constexpr dims_count_t cols = C;
-    static constexpr stride_value_t row_stride = RS;
-    static constexpr stride_value_t col_stride = CS;
-    using value_type = T;
-};
 
 template <
     class Vec,
