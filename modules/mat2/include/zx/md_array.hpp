@@ -3,8 +3,10 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <optional>
+#include <type_traits>
 #include <vector>
 
 namespace zx
@@ -646,6 +648,301 @@ using dense_matrix_t = array_t<
         dim_t<static_cast<extent_value_t>(R), static_cast<stride_value_t>(sizeof(T) * C)>,
         dim_t<static_cast<extent_value_t>(C), static_cast<stride_value_t>(sizeof(T))>>,
     T>;
+
+template <class T>
+struct is_dense_vector : std::false_type
+{
+};
+
+template <extent_value_t E, stride_value_t S, class T>
+struct is_dense_vector<array_t<shape_t<dim_t<E, S>>, T>> : std::true_type
+{
+};
+
+template <class T>
+struct is_dense_matrix : std::false_type
+{
+};
+
+template <extent_value_t R, stride_value_t RS, extent_value_t C, stride_value_t CS, class T>
+struct is_dense_matrix<array_t<shape_t<dim_t<R, RS>, dim_t<C, CS>>, T>> : std::true_type
+{
+};
+
+template <class T>
+struct is_array_vector_t : std::false_type
+{
+};
+
+template <class Dim0, class T>
+struct is_array_vector_t<array_t<shape_t<Dim0>, T>> : std::true_type
+{
+};
+
+template <class T>
+using is_scalar_t = std::bool_constant<!is_array_vector_t<std::decay_t<T>>::value>;
+
+template <class Dim0, class T>
+constexpr auto operator+(const array_t<shape_t<Dim0>, T>& item) -> array_t<shape_t<Dim0>, T>
+{
+    return item;
+}
+
+template <class Dim0, class T>
+constexpr auto operator-(const array_t<shape_t<Dim0>, T>& item) -> array_t<shape_t<Dim0>, T>
+{
+    auto out = array_t<shape_t<Dim0>, T>{ item.shape() };
+    for (location_value_t i = 0; i < static_cast<location_value_t>(item.volume()); ++i)
+    {
+        out[i] = -item[i];
+    }
+    return out;
+}
+
+template <class Dim0, class L, class R, class Res = std::invoke_result_t<std::plus<>, L, R>>
+constexpr auto operator+=(array_t<shape_t<Dim0>, L>& lhs, const array_t<shape_t<Dim0>, R>& rhs)
+    -> array_t<shape_t<Dim0>, L>&
+{
+    for (location_value_t i = 0; i < static_cast<location_value_t>(lhs.volume()); ++i)
+    {
+        lhs[i] = std::plus<>{}(lhs[i], rhs[i]);
+    }
+    return lhs;
+}
+
+template <class Dim0, class L, class R, class Res = std::invoke_result_t<std::plus<>, L, R>>
+constexpr auto operator+(const array_t<shape_t<Dim0>, L>& lhs, const array_t<shape_t<Dim0>, R>& rhs)
+    -> array_t<shape_t<Dim0>, Res>
+{
+    auto out = array_t<shape_t<Dim0>, Res>{ lhs.shape() };
+    for (location_value_t i = 0; i < static_cast<location_value_t>(lhs.volume()); ++i)
+    {
+        out[i] = std::plus<>{}(lhs[i], rhs[i]);
+    }
+    return out;
+}
+
+template <class Dim0, class L, class R, class Res = std::invoke_result_t<std::minus<>, L, R>>
+constexpr auto operator-=(array_t<shape_t<Dim0>, L>& lhs, const array_t<shape_t<Dim0>, R>& rhs)
+    -> array_t<shape_t<Dim0>, L>&
+{
+    for (location_value_t i = 0; i < static_cast<location_value_t>(lhs.volume()); ++i)
+    {
+        lhs[i] = std::minus<>{}(lhs[i], rhs[i]);
+    }
+    return lhs;
+}
+
+template <class Dim0, class L, class R, class Res = std::invoke_result_t<std::minus<>, L, R>>
+constexpr auto operator-(const array_t<shape_t<Dim0>, L>& lhs, const array_t<shape_t<Dim0>, R>& rhs)
+    -> array_t<shape_t<Dim0>, Res>
+{
+    auto out = array_t<shape_t<Dim0>, Res>{ lhs.shape() };
+    for (location_value_t i = 0; i < static_cast<location_value_t>(lhs.volume()); ++i)
+    {
+        out[i] = std::minus<>{}(lhs[i], rhs[i]);
+    }
+    return out;
+}
+
+template <
+    class Dim0,
+    class L,
+    class R,
+    std::enable_if_t<is_scalar_t<R>::value && std::is_invocable_v<std::multiplies<>, L, R>, int> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, L, R>>
+constexpr auto operator*=(array_t<shape_t<Dim0>, L>& lhs, R rhs) -> array_t<shape_t<Dim0>, L>&
+{
+    for (location_value_t i = 0; i < static_cast<location_value_t>(lhs.volume()); ++i)
+    {
+        lhs[i] = std::multiplies<>{}(lhs[i], rhs);
+    }
+    return lhs;
+}
+
+template <
+    class Dim0,
+    class L,
+    class R,
+    std::enable_if_t<is_scalar_t<R>::value && std::is_invocable_v<std::multiplies<>, L, R>, int> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, L, R>>
+constexpr auto operator*(const array_t<shape_t<Dim0>, L>& lhs, R rhs) -> array_t<shape_t<Dim0>, Res>
+{
+    auto out = array_t<shape_t<Dim0>, Res>{ lhs.shape() };
+    for (location_value_t i = 0; i < static_cast<location_value_t>(lhs.volume()); ++i)
+    {
+        out[i] = std::multiplies<>{}(lhs[i], rhs);
+    }
+    return out;
+}
+
+template <
+    class L,
+    class Dim0,
+    class R,
+    std::enable_if_t<is_scalar_t<L>::value && std::is_invocable_v<std::multiplies<>, L, R>, int> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, L, R>>
+constexpr auto operator*(L lhs, const array_t<shape_t<Dim0>, R>& rhs) -> array_t<shape_t<Dim0>, Res>
+{
+    return rhs * lhs;
+}
+
+template <
+    class Dim0,
+    class L,
+    class R,
+    std::enable_if_t<is_scalar_t<R>::value && std::is_invocable_v<std::divides<>, L, R>, int> = 0,
+    class Res = std::invoke_result_t<std::divides<>, L, R>>
+constexpr auto operator/=(array_t<shape_t<Dim0>, L>& lhs, R rhs) -> array_t<shape_t<Dim0>, L>&
+{
+    for (location_value_t i = 0; i < static_cast<location_value_t>(lhs.volume()); ++i)
+    {
+        lhs[i] = std::divides<>{}(lhs[i], rhs);
+    }
+    return lhs;
+}
+
+template <
+    class Dim0,
+    class L,
+    class R,
+    std::enable_if_t<is_scalar_t<R>::value && std::is_invocable_v<std::divides<>, L, R>, int> = 0,
+    class Res = std::invoke_result_t<std::divides<>, L, R>>
+constexpr auto operator/(const array_t<shape_t<Dim0>, L>& lhs, R rhs) -> array_t<shape_t<Dim0>, Res>
+{
+    auto out = array_t<shape_t<Dim0>, Res>{ lhs.shape() };
+    for (location_value_t i = 0; i < static_cast<location_value_t>(lhs.volume()); ++i)
+    {
+        out[i] = std::divides<>{}(lhs[i], rhs);
+    }
+    return out;
+}
+
+template <class T>
+struct dense_vector_traits
+{
+    static constexpr std::size_t dims = 0;
+    using value_type = void;
+};
+
+template <extent_value_t E, stride_value_t S, class T>
+struct dense_vector_traits<array_t<shape_t<dim_t<E, S>>, T>>
+{
+    static constexpr std::size_t dims = static_cast<std::size_t>(E);
+    static constexpr stride_value_t stride = S;
+    using value_type = T;
+};
+
+template <class T>
+struct dense_matrix_traits
+{
+    static constexpr std::size_t rows = 0;
+    static constexpr std::size_t cols = 0;
+    static constexpr stride_value_t row_stride = 0;
+    static constexpr stride_value_t col_stride = 0;
+    using value_type = void;
+};
+
+template <extent_value_t R, stride_value_t RS, extent_value_t C, stride_value_t CS, class T>
+struct dense_matrix_traits<array_t<shape_t<dim_t<R, RS>, dim_t<C, CS>>, T>>
+{
+    static constexpr std::size_t rows = static_cast<std::size_t>(R);
+    static constexpr std::size_t cols = static_cast<std::size_t>(C);
+    static constexpr stride_value_t row_stride = RS;
+    static constexpr stride_value_t col_stride = CS;
+    using value_type = T;
+};
+
+template <
+    class Vec,
+    class Mat,
+    std::enable_if_t<
+        is_dense_vector<std::decay_t<Vec>>::value && is_dense_matrix<std::decay_t<Mat>>::value
+            && (dense_vector_traits<std::decay_t<Vec>>::dims + 1 == dense_matrix_traits<std::decay_t<Mat>>::rows)
+            && (dense_matrix_traits<std::decay_t<Mat>>::rows == dense_matrix_traits<std::decay_t<Mat>>::cols)
+            && (dense_vector_traits<std::decay_t<Vec>>::stride
+                == static_cast<stride_value_t>(sizeof(typename dense_vector_traits<std::decay_t<Vec>>::value_type)))
+            && (dense_matrix_traits<std::decay_t<Mat>>::col_stride
+                == static_cast<stride_value_t>(sizeof(typename dense_matrix_traits<std::decay_t<Mat>>::value_type)))
+            && (dense_matrix_traits<std::decay_t<Mat>>::row_stride
+                == static_cast<stride_value_t>(
+                    sizeof(typename dense_matrix_traits<std::decay_t<Mat>>::value_type)
+                    * dense_matrix_traits<std::decay_t<Mat>>::cols)),
+        int> = 0,
+    class Res = std::invoke_result_t<
+        std::multiplies<>,
+        typename dense_vector_traits<std::decay_t<Vec>>::value_type,
+        typename dense_matrix_traits<std::decay_t<Mat>>::value_type>>
+constexpr auto operator*(const Vec& lhs, const Mat& rhs) -> dense_vector_t<dense_vector_traits<std::decay_t<Vec>>::dims, Res>
+{
+    constexpr std::size_t D = dense_vector_traits<std::decay_t<Vec>>::dims;
+    dense_vector_t<D, Res> result{};
+
+    for (std::size_t column = 0; column < D; ++column)
+    {
+        const auto loc_column = static_cast<location_value_t>(column);
+        Res sum = static_cast<Res>(rhs[{ static_cast<location_value_t>(D), loc_column }]);
+        for (std::size_t row = 0; row < D; ++row)
+        {
+            const auto loc_row = static_cast<location_value_t>(row);
+            sum += lhs[loc_row] * rhs[{ loc_row, loc_column }];
+        }
+        result[loc_column] = sum;
+    }
+
+    return result;
+}
+
+template <
+    class Lhs,
+    class Rhs,
+    std::enable_if_t<
+        is_dense_matrix<std::decay_t<Lhs>>::value && is_dense_matrix<std::decay_t<Rhs>>::value
+            && (dense_matrix_traits<std::decay_t<Lhs>>::cols == dense_matrix_traits<std::decay_t<Rhs>>::rows)
+            && (dense_matrix_traits<std::decay_t<Lhs>>::col_stride
+                == static_cast<stride_value_t>(sizeof(typename dense_matrix_traits<std::decay_t<Lhs>>::value_type)))
+            && (dense_matrix_traits<std::decay_t<Rhs>>::col_stride
+                == static_cast<stride_value_t>(sizeof(typename dense_matrix_traits<std::decay_t<Rhs>>::value_type)))
+            && (dense_matrix_traits<std::decay_t<Lhs>>::row_stride
+                == static_cast<stride_value_t>(
+                    sizeof(typename dense_matrix_traits<std::decay_t<Lhs>>::value_type)
+                    * dense_matrix_traits<std::decay_t<Lhs>>::cols))
+            && (dense_matrix_traits<std::decay_t<Rhs>>::row_stride
+                == static_cast<stride_value_t>(
+                    sizeof(typename dense_matrix_traits<std::decay_t<Rhs>>::value_type)
+                    * dense_matrix_traits<std::decay_t<Rhs>>::cols)),
+        int> = 0,
+    class Res = std::invoke_result_t<
+        std::multiplies<>,
+        typename dense_matrix_traits<std::decay_t<Lhs>>::value_type,
+        typename dense_matrix_traits<std::decay_t<Rhs>>::value_type>>
+constexpr auto operator*(const Lhs& lhs, const Rhs& rhs)
+    -> dense_matrix_t<dense_matrix_traits<std::decay_t<Lhs>>::rows, dense_matrix_traits<std::decay_t<Rhs>>::cols, Res>
+{
+    constexpr std::size_t R = dense_matrix_traits<std::decay_t<Lhs>>::rows;
+    constexpr std::size_t D = dense_matrix_traits<std::decay_t<Lhs>>::cols;
+    constexpr std::size_t C = dense_matrix_traits<std::decay_t<Rhs>>::cols;
+
+    dense_matrix_t<R, C, Res> result{};
+
+    for (std::size_t row = 0; row < R; ++row)
+    {
+        const auto loc_row = static_cast<location_value_t>(row);
+        for (std::size_t column = 0; column < C; ++column)
+        {
+            const auto loc_column = static_cast<location_value_t>(column);
+            Res sum{};
+            for (std::size_t inner = 0; inner < D; ++inner)
+            {
+                const auto loc_inner = static_cast<location_value_t>(inner);
+                sum += lhs[{ loc_row, loc_inner }] * rhs[{ loc_inner, loc_column }];
+            }
+            result[{ loc_row, loc_column }] = sum;
+        }
+    }
+
+    return result;
+}
 
 inline auto shape_from_extent(extent_value_t extent, stride_value_t element_size) -> shape_t<dynamic_dim_t>
 {

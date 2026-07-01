@@ -82,3 +82,43 @@ TEST(md_array, static_array_2d)
                 typename array_type::dynamic_view_type::bounds_type{ zx::mat2::interval_base_t{ 0, 2 },
                                                                      zx::mat2::interval_base_t{ 0, 2 } })));
 }
+
+TEST(md_array, dense_vector_times_dense_matrix)
+{
+    zx::mat2::dense_vector_t<3, int> vector{ 1, 2, 3 };
+    zx::mat2::dense_matrix_t<4, 4, int> matrix{};
+    matrix[{ 0, 0 }] = 1;
+    matrix[{ 1, 1 }] = 1;
+    matrix[{ 2, 2 }] = 1;
+    matrix[{ 3, 0 }] = 10;
+    matrix[{ 3, 1 }] = 20;
+    matrix[{ 3, 2 }] = 30;
+    matrix[{ 3, 3 }] = 1;
+
+    EXPECT_THAT((vector * matrix), (zx::mat2::dense_vector_t<3, int>{ 11, 22, 33 }));
+}
+
+TEST(md_array, dense_matrix_times_dense_matrix)
+{
+    zx::mat2::dense_matrix_t<2, 3, int> lhs{};
+    lhs[{ 0, 0 }] = 1;
+    lhs[{ 0, 1 }] = 2;
+    lhs[{ 0, 2 }] = 3;
+    lhs[{ 1, 0 }] = 4;
+    lhs[{ 1, 1 }] = 5;
+    lhs[{ 1, 2 }] = 6;
+
+    zx::mat2::dense_matrix_t<3, 2, int> rhs{};
+    rhs[{ 0, 0 }] = 7;
+    rhs[{ 0, 1 }] = 8;
+    rhs[{ 1, 0 }] = 9;
+    rhs[{ 1, 1 }] = 10;
+    rhs[{ 2, 0 }] = 11;
+    rhs[{ 2, 1 }] = 12;
+
+    const auto result = lhs * rhs;
+    EXPECT_THAT((result[{ 0, 0 }]), 58);
+    EXPECT_THAT((result[{ 0, 1 }]), 64);
+    EXPECT_THAT((result[{ 1, 0 }]), 139);
+    EXPECT_THAT((result[{ 1, 1 }]), 154);
+}
