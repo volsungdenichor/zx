@@ -1,5 +1,6 @@
 #include <gmock/gmock.h>
 
+#include <type_traits>
 #include <zx/md_array.hpp>
 
 TEST(md_array, shape_with_all_static_dims)
@@ -22,6 +23,13 @@ TEST(md_array, shape_with_all_static_dims)
 TEST(md_array, shape_from_extent)
 {
     EXPECT_THAT(zx::mat2::shape_from_extent(zx::mat2::vec_t{ 3, 4 }, 4), testing::_);
+}
+
+TEST(md_array, static_shape_builder)
+{
+    using built_shape = zx::mat2::shape_from_extent_t<zx::mat2::extent_t<3, 4, 5>, 4>;
+    using expected_shape = zx::mat2::shape_t<zx::mat2::dim_t<3, 80>, zx::mat2::dim_t<4, 20>, zx::mat2::dim_t<5, 4>>;
+    static_assert(std::is_same_v<built_shape, expected_shape>);
 }
 
 TEST(md_array, array_view_of_static_shape_has_static_instance_of_shape)

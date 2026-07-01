@@ -358,6 +358,88 @@ private:
     }
 };
 
+template <extent_value_t... Dims>
+struct extent_t
+{
+};
+
+namespace detail
+{
+
+template <stride_value_t ElementSize, extent_value_t... Dims>
+struct static_shape_builder_impl;
+
+template <stride_value_t ElementSize, extent_value_t... Dims>
+struct static_shape_builder_impl
+{
+    static constexpr std::size_t dims_count = sizeof...(Dims);
+    static_assert(dims_count > 0, "shape_builder_t requires at least one dimension");
+
+    static constexpr std::array<extent_value_t, dims_count> extents{ Dims... };
+
+    template <std::size_t I>
+    static constexpr extent_value_t extent_at()
+    {
+        return extents[I];
+    }
+
+    template <std::size_t I>
+    static constexpr stride_value_t stride_at()
+    {
+        stride_value_t stride = ElementSize;
+        for (std::size_t j = I + 1; j < dims_count; ++j)
+        {
+            stride *= extents[j];
+        }
+        return stride;
+    }
+
+    template <std::size_t... Is>
+    static auto make_shape_type(std::index_sequence<Is...>) -> shape_t<dim_t<extent_at<Is>(), stride_at<Is>()>...>;
+
+    using type = decltype(make_shape_type(std::make_index_sequence<dims_count>{}));
+};
+
+}  // namespace detail
+
+template <stride_value_t ElementSize, extent_value_t... Dims>
+struct shape_builder_t
+{
+    using type = typename detail::static_shape_builder_impl<ElementSize, Dims...>::type;
+};
+
+template <stride_value_t ElementSize, class Size>
+struct shape_builder_from_size_t;
+
+template <stride_value_t ElementSize, extent_value_t... Dims>
+struct shape_builder_from_size_t<ElementSize, extent_t<Dims...>> : shape_builder_t<ElementSize, Dims...>
+{
+};
+
+template <class Extents, stride_value_t ElementSize>
+using shape_from_extent_t = typename shape_builder_from_size_t<ElementSize, Extents>::type;
+
+inline auto shape_from_extent(extent_value_t extent, stride_value_t element_size) -> shape_t<dynamic_dim_t>
+{
+    return shape_t<dynamic_dim_t>{ dynamic_dim_t{ extent, element_size } };
+}
+
+inline auto shape_from_extent(const vec_t<2, extent_value_t>& extent, stride_value_t element_size)
+    -> shape_t<dynamic_dim_t, dynamic_dim_t>
+{
+    return shape_t<dynamic_dim_t, dynamic_dim_t>{ dynamic_dim_t{ extent[0], element_size * extent[1] },
+                                                  dynamic_dim_t{ extent[1], element_size } };
+}
+
+inline auto shape_from_extent(const vec_t<3, extent_value_t>& extent, stride_value_t element_size)
+    -> shape_t<dynamic_dim_t, dynamic_dim_t, dynamic_dim_t>
+{
+    return shape_t<dynamic_dim_t, dynamic_dim_t, dynamic_dim_t>{ dynamic_dim_t{ extent[0],
+                                                                                element_size * extent[1] * extent[2] },
+                                                                 dynamic_dim_t{ extent[1], element_size * extent[2] },
+                                                                 dynamic_dim_t{ extent[2], element_size } };
+}
+
 template <class T>
 struct get_shape_type;
 
@@ -488,9 +570,9 @@ struct array_t<shape_t<Dim0>, T> : private shape_holder_t<get_shape_type<shape_t
     const_view_type view() const { return const_view_type{ this->shape(), this->storage().data() }; }
     view_type view() { return view_type{ this->shape(), this->storage().data() }; }
 
-    volume_type volume() const { return this->shape().volume(); }
-    extent_type extents() const { return this->volume(); }
-    bounds_type bounds() const { return bounds_type{ 0, this->extents() }; }
+    volume_type volume() const { return view().volume(); }
+    extent_type extents() const { return view().extents()[0]; }
+    bounds_type bounds() const { return view().bounds()[0]; }
 
     const_reference operator[](const location_type& loc) const { return view()[{ loc }]; }
     reference operator[](const location_type& loc) { return view()[{ loc }]; }
@@ -700,8 +782,7 @@ constexpr auto operator-(const array_t<shape_t<Dim0>, T>& item) -> array_t<shape
 }
 
 template <class Dim0, class L, class R, class Res = std::invoke_result_t<std::plus<>, L, R>>
-constexpr auto operator+=(array_t<shape_t<Dim0>, L>& lhs, const array_t<shape_t<Dim0>, R>& rhs)
-    -> array_t<shape_t<Dim0>, L>&
+constexpr auto operator+=(array_t<shape_t<Dim0>, L>& lhs, const array_t<shape_t<Dim0>, R>& rhs) -> array_t<shape_t<Dim0>, L>&
 {
     for (location_value_t i = 0; i < static_cast<location_value_t>(lhs.volume()); ++i)
     {
@@ -723,8 +804,7 @@ constexpr auto operator+(const array_t<shape_t<Dim0>, L>& lhs, const array_t<sha
 }
 
 template <class Dim0, class L, class R, class Res = std::invoke_result_t<std::minus<>, L, R>>
-constexpr auto operator-=(array_t<shape_t<Dim0>, L>& lhs, const array_t<shape_t<Dim0>, R>& rhs)
-    -> array_t<shape_t<Dim0>, L>&
+constexpr auto operator-=(array_t<shape_t<Dim0>, L>& lhs, const array_t<shape_t<Dim0>, R>& rhs) -> array_t<shape_t<Dim0>, L>&
 {
     for (location_value_t i = 0; i < static_cast<location_value_t>(lhs.volume()); ++i)
     {
@@ -942,27 +1022,6 @@ constexpr auto operator*(const Lhs& lhs, const Rhs& rhs)
     }
 
     return result;
-}
-
-inline auto shape_from_extent(extent_value_t extent, stride_value_t element_size) -> shape_t<dynamic_dim_t>
-{
-    return shape_t<dynamic_dim_t>{ dynamic_dim_t{ extent, element_size } };
-}
-
-inline auto shape_from_extent(const vec_t<2, extent_value_t>& extent, stride_value_t element_size)
-    -> shape_t<dynamic_dim_t, dynamic_dim_t>
-{
-    return shape_t<dynamic_dim_t, dynamic_dim_t>{ dynamic_dim_t{ extent[0], element_size * extent[1] },
-                                                  dynamic_dim_t{ extent[1], element_size } };
-}
-
-inline auto shape_from_extent(const vec_t<3, extent_value_t>& extent, stride_value_t element_size)
-    -> shape_t<dynamic_dim_t, dynamic_dim_t, dynamic_dim_t>
-{
-    return shape_t<dynamic_dim_t, dynamic_dim_t, dynamic_dim_t>{ dynamic_dim_t{ extent[0],
-                                                                                element_size * extent[1] * extent[2] },
-                                                                 dynamic_dim_t{ extent[1], element_size * extent[2] },
-                                                                 dynamic_dim_t{ extent[2], element_size } };
 }
 
 }  // namespace mat2
