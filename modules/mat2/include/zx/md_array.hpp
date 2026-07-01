@@ -70,35 +70,7 @@ vec_t(T, T) -> vec_t<2, T>;
 template <class T>
 vec_t(T, T, T) -> vec_t<3, T>;
 
-struct flat_offset_t
-{
-    std::ptrdiff_t m_value;
-
-    constexpr explicit flat_offset_t(std::ptrdiff_t value) : m_value(value) { }
-
-    constexpr friend flat_offset_t operator+(const flat_offset_t& lhs, const flat_offset_t& rhs)
-    {
-        return flat_offset_t{ lhs.m_value + rhs.m_value };
-    }
-
-    constexpr friend bool operator==(const flat_offset_t& lhs, const flat_offset_t& rhs)
-    {
-        return lhs.m_value == rhs.m_value;
-    }
-    constexpr friend bool operator!=(const flat_offset_t& lhs, const flat_offset_t& rhs) { return lhs != rhs; }
-    constexpr friend bool operator<(const flat_offset_t& lhs, const flat_offset_t& rhs) { return lhs.m_value < rhs.m_value; }
-    constexpr friend bool operator<=(const flat_offset_t& lhs, const flat_offset_t& rhs)
-    {
-        return lhs.m_value <= rhs.m_value;
-    }
-    constexpr friend bool operator>(const flat_offset_t& lhs, const flat_offset_t& rhs) { return lhs.m_value > rhs.m_value; }
-    constexpr friend bool operator>=(const flat_offset_t& lhs, const flat_offset_t& rhs)
-    {
-        return lhs.m_value >= rhs.m_value;
-    }
-
-    friend std::ostream& operator<<(std::ostream& os, const flat_offset_t& item) { return os << item.m_value; }
-};
+using flat_offset_t = std::ptrdiff_t;
 
 struct ptr_t
 {
@@ -109,7 +81,7 @@ struct ptr_t
     {
     }
 
-    constexpr friend ptr_t operator+(ptr_t ptr, flat_offset_t offset) { return ptr_t{ ptr.m_ptr + offset.m_value }; }
+    constexpr friend ptr_t operator+(ptr_t ptr, flat_offset_t offset) { return ptr_t{ ptr.m_ptr + offset }; }
 
     template <class T>
     constexpr T* as() const
