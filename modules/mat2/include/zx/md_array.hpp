@@ -865,7 +865,9 @@ template <
     class Dim0,
     class L,
     class R,
-    std::enable_if_t<is_scalar_t<R>::value && std::is_invocable_v<std::multiplies<>, L, R>, int> = 0,
+    std::enable_if_t<
+        is_scalar_t<R>::value && !is_dense_matrix<std::decay_t<R>>::value && std::is_invocable_v<std::multiplies<>, L, R>,
+        int> = 0,
     class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*=(array_t<shape_t<Dim0>, L>& lhs, R rhs) -> array_t<shape_t<Dim0>, L>&
 {
@@ -880,7 +882,9 @@ template <
     class Dim0,
     class L,
     class R,
-    std::enable_if_t<is_scalar_t<R>::value && std::is_invocable_v<std::multiplies<>, L, R>, int> = 0,
+    std::enable_if_t<
+        is_scalar_t<R>::value && !is_dense_matrix<std::decay_t<R>>::value && std::is_invocable_v<std::multiplies<>, L, R>,
+        int> = 0,
     class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*(const array_t<shape_t<Dim0>, L>& lhs, R rhs) -> array_t<shape_t<Dim0>, Res>
 {
@@ -896,7 +900,9 @@ template <
     class L,
     class Dim0,
     class R,
-    std::enable_if_t<is_scalar_t<L>::value && std::is_invocable_v<std::multiplies<>, L, R>, int> = 0,
+    std::enable_if_t<
+        is_scalar_t<L>::value && !is_dense_matrix<std::decay_t<L>>::value && std::is_invocable_v<std::multiplies<>, L, R>,
+        int> = 0,
     class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*(L lhs, const array_t<shape_t<Dim0>, R>& rhs) -> array_t<shape_t<Dim0>, Res>
 {
@@ -907,7 +913,9 @@ template <
     class Dim0,
     class L,
     class R,
-    std::enable_if_t<is_scalar_t<R>::value && std::is_invocable_v<std::divides<>, L, R>, int> = 0,
+    std::enable_if_t<
+        is_scalar_t<R>::value && !is_dense_matrix<std::decay_t<R>>::value && std::is_invocable_v<std::divides<>, L, R>,
+        int> = 0,
     class Res = std::invoke_result_t<std::divides<>, L, R>>
 constexpr auto operator/=(array_t<shape_t<Dim0>, L>& lhs, R rhs) -> array_t<shape_t<Dim0>, L>&
 {
@@ -922,7 +930,9 @@ template <
     class Dim0,
     class L,
     class R,
-    std::enable_if_t<is_scalar_t<R>::value && std::is_invocable_v<std::divides<>, L, R>, int> = 0,
+    std::enable_if_t<
+        is_scalar_t<R>::value && !is_dense_matrix<std::decay_t<R>>::value && std::is_invocable_v<std::divides<>, L, R>,
+        int> = 0,
     class Res = std::invoke_result_t<std::divides<>, L, R>>
 constexpr auto operator/(const array_t<shape_t<Dim0>, L>& lhs, R rhs) -> array_t<shape_t<Dim0>, Res>
 {
@@ -967,6 +977,142 @@ constexpr auto operator*(const Vec& lhs, const Mat& rhs) -> dense_vector_t<dense
             sum += lhs[row] * rhs[{ row, column }];
         }
         result[column] = sum;
+    }
+
+    return result;
+}
+
+template <
+    class Lhs,
+    class Rhs,
+    std::enable_if_t<
+        is_dense_matrix<std::decay_t<Lhs>>::value && is_dense_matrix<std::decay_t<Rhs>>::value
+            && (dense_matrix_traits<std::decay_t<Lhs>>::rows == dense_matrix_traits<std::decay_t<Rhs>>::rows)
+            && (dense_matrix_traits<std::decay_t<Lhs>>::cols == dense_matrix_traits<std::decay_t<Rhs>>::cols)
+            && std::is_invocable_v<
+                std::plus<>,
+                typename dense_matrix_traits<std::decay_t<Lhs>>::value_type,
+                typename dense_matrix_traits<std::decay_t<Rhs>>::value_type>,
+        int> = 0,
+    class Res = std::invoke_result_t<
+        std::plus<>,
+        typename dense_matrix_traits<std::decay_t<Lhs>>::value_type,
+        typename dense_matrix_traits<std::decay_t<Rhs>>::value_type>>
+constexpr auto operator+(const Lhs& lhs, const Rhs& rhs)
+    -> dense_matrix_t<dense_matrix_traits<std::decay_t<Lhs>>::rows, dense_matrix_traits<std::decay_t<Lhs>>::cols, Res>
+{
+    constexpr dims_count_t R = dense_matrix_traits<std::decay_t<Lhs>>::rows;
+    constexpr dims_count_t C = dense_matrix_traits<std::decay_t<Lhs>>::cols;
+
+    dense_matrix_t<R, C, Res> result{};
+    for (location_value_t row = 0; row < R; ++row)
+    {
+        for (location_value_t column = 0; column < C; ++column)
+        {
+            result[{ row, column }] = std::plus<>{}(lhs[{ row, column }], rhs[{ row, column }]);
+        }
+    }
+
+    return result;
+}
+
+template <
+    class Lhs,
+    class Rhs,
+    std::enable_if_t<
+        is_dense_matrix<std::decay_t<Lhs>>::value && is_dense_matrix<std::decay_t<Rhs>>::value
+            && (dense_matrix_traits<std::decay_t<Lhs>>::rows == dense_matrix_traits<std::decay_t<Rhs>>::rows)
+            && (dense_matrix_traits<std::decay_t<Lhs>>::cols == dense_matrix_traits<std::decay_t<Rhs>>::cols)
+            && std::is_invocable_v<
+                std::minus<>,
+                typename dense_matrix_traits<std::decay_t<Lhs>>::value_type,
+                typename dense_matrix_traits<std::decay_t<Rhs>>::value_type>,
+        int> = 0,
+    class Res = std::invoke_result_t<
+        std::minus<>,
+        typename dense_matrix_traits<std::decay_t<Lhs>>::value_type,
+        typename dense_matrix_traits<std::decay_t<Rhs>>::value_type>>
+constexpr auto operator-(const Lhs& lhs, const Rhs& rhs)
+    -> dense_matrix_t<dense_matrix_traits<std::decay_t<Lhs>>::rows, dense_matrix_traits<std::decay_t<Lhs>>::cols, Res>
+{
+    constexpr dims_count_t R = dense_matrix_traits<std::decay_t<Lhs>>::rows;
+    constexpr dims_count_t C = dense_matrix_traits<std::decay_t<Lhs>>::cols;
+
+    dense_matrix_t<R, C, Res> result{};
+    for (location_value_t row = 0; row < R; ++row)
+    {
+        for (location_value_t column = 0; column < C; ++column)
+        {
+            result[{ row, column }] = std::minus<>{}(lhs[{ row, column }], rhs[{ row, column }]);
+        }
+    }
+
+    return result;
+}
+
+template <
+    class Mat,
+    class Scalar,
+    std::enable_if_t<
+        is_dense_matrix<std::decay_t<Mat>>::value
+            && std::is_arithmetic_v<std::decay_t<
+                Scalar>> && std::is_invocable_v<std::multiplies<>, typename dense_matrix_traits<std::decay_t<Mat>>::value_type, Scalar>,
+        int> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, typename dense_matrix_traits<std::decay_t<Mat>>::value_type, Scalar>>
+constexpr auto operator*(const Mat& lhs, Scalar rhs)
+    -> dense_matrix_t<dense_matrix_traits<std::decay_t<Mat>>::rows, dense_matrix_traits<std::decay_t<Mat>>::cols, Res>
+{
+    constexpr dims_count_t R = dense_matrix_traits<std::decay_t<Mat>>::rows;
+    constexpr dims_count_t C = dense_matrix_traits<std::decay_t<Mat>>::cols;
+
+    dense_matrix_t<R, C, Res> result{};
+    for (location_value_t row = 0; row < R; ++row)
+    {
+        for (location_value_t column = 0; column < C; ++column)
+        {
+            result[{ row, column }] = std::multiplies<>{}(lhs[{ row, column }], rhs);
+        }
+    }
+
+    return result;
+}
+
+template <
+    class Scalar,
+    class Mat,
+    std::enable_if_t<
+        std::is_arithmetic_v<std::decay_t<Scalar>> && is_dense_matrix<std::decay_t<Mat>>::value
+            && std::is_invocable_v<std::multiplies<>, Scalar, typename dense_matrix_traits<std::decay_t<Mat>>::value_type>,
+        int> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, Scalar, typename dense_matrix_traits<std::decay_t<Mat>>::value_type>>
+constexpr auto operator*(Scalar lhs, const Mat& rhs)
+    -> dense_matrix_t<dense_matrix_traits<std::decay_t<Mat>>::rows, dense_matrix_traits<std::decay_t<Mat>>::cols, Res>
+{
+    return rhs * lhs;
+}
+
+template <
+    class Mat,
+    class Scalar,
+    std::enable_if_t<
+        is_dense_matrix<std::decay_t<Mat>>::value
+            && std::is_arithmetic_v<std::decay_t<
+                Scalar>> && std::is_invocable_v<std::divides<>, typename dense_matrix_traits<std::decay_t<Mat>>::value_type, Scalar>,
+        int> = 0,
+    class Res = std::invoke_result_t<std::divides<>, typename dense_matrix_traits<std::decay_t<Mat>>::value_type, Scalar>>
+constexpr auto operator/(const Mat& lhs, Scalar rhs)
+    -> dense_matrix_t<dense_matrix_traits<std::decay_t<Mat>>::rows, dense_matrix_traits<std::decay_t<Mat>>::cols, Res>
+{
+    constexpr dims_count_t R = dense_matrix_traits<std::decay_t<Mat>>::rows;
+    constexpr dims_count_t C = dense_matrix_traits<std::decay_t<Mat>>::cols;
+
+    dense_matrix_t<R, C, Res> result{};
+    for (location_value_t row = 0; row < R; ++row)
+    {
+        for (location_value_t column = 0; column < C; ++column)
+        {
+            result[{ row, column }] = std::divides<>{}(lhs[{ row, column }], rhs);
+        }
     }
 
     return result;

@@ -130,3 +130,81 @@ TEST(md_array, dense_matrix_times_dense_matrix)
     EXPECT_THAT((result[{ 1, 0 }]), 139);
     EXPECT_THAT((result[{ 1, 1 }]), 154);
 }
+
+TEST(md_array, dense_matrix_addition)
+{
+    zx::mat2::dense_matrix_t<2, 2, int> lhs{};
+    lhs[{ 0, 0 }] = 1;
+    lhs[{ 0, 1 }] = 2;
+    lhs[{ 1, 0 }] = 3;
+    lhs[{ 1, 1 }] = 4;
+
+    zx::mat2::dense_matrix_t<2, 2, int> rhs{};
+    rhs[{ 0, 0 }] = 5;
+    rhs[{ 0, 1 }] = 6;
+    rhs[{ 1, 0 }] = 7;
+    rhs[{ 1, 1 }] = 8;
+
+    const auto result = lhs + rhs;
+    EXPECT_THAT((result[{ 0, 0 }]), 6);
+    EXPECT_THAT((result[{ 0, 1 }]), 8);
+    EXPECT_THAT((result[{ 1, 0 }]), 10);
+    EXPECT_THAT((result[{ 1, 1 }]), 12);
+}
+
+TEST(md_array, dense_matrix_subtraction)
+{
+    zx::mat2::dense_matrix_t<2, 2, int> lhs{};
+    lhs[{ 0, 0 }] = 9;
+    lhs[{ 0, 1 }] = 8;
+    lhs[{ 1, 0 }] = 7;
+    lhs[{ 1, 1 }] = 6;
+
+    zx::mat2::dense_matrix_t<2, 2, int> rhs{};
+    rhs[{ 0, 0 }] = 1;
+    rhs[{ 0, 1 }] = 2;
+    rhs[{ 1, 0 }] = 3;
+    rhs[{ 1, 1 }] = 4;
+
+    const auto result = lhs - rhs;
+    EXPECT_THAT((result[{ 0, 0 }]), 8);
+    EXPECT_THAT((result[{ 0, 1 }]), 6);
+    EXPECT_THAT((result[{ 1, 0 }]), 4);
+    EXPECT_THAT((result[{ 1, 1 }]), 2);
+}
+
+TEST(md_array, dense_matrix_scalar_multiplication)
+{
+    zx::mat2::dense_matrix_t<2, 2, int> matrix{};
+    matrix[{ 0, 0 }] = 1;
+    matrix[{ 0, 1 }] = 2;
+    matrix[{ 1, 0 }] = 3;
+    matrix[{ 1, 1 }] = 4;
+
+    const auto left = matrix * 3;
+    EXPECT_THAT((left[{ 0, 0 }]), 3);
+    EXPECT_THAT((left[{ 0, 1 }]), 6);
+    EXPECT_THAT((left[{ 1, 0 }]), 9);
+    EXPECT_THAT((left[{ 1, 1 }]), 12);
+
+    const auto right = 3 * matrix;
+    EXPECT_THAT((right[{ 0, 0 }]), 3);
+    EXPECT_THAT((right[{ 0, 1 }]), 6);
+    EXPECT_THAT((right[{ 1, 0 }]), 9);
+    EXPECT_THAT((right[{ 1, 1 }]), 12);
+}
+
+TEST(md_array, dense_matrix_scalar_division)
+{
+    zx::mat2::dense_matrix_t<2, 2, int> matrix{};
+    matrix[{ 0, 0 }] = 4;
+    matrix[{ 0, 1 }] = 8;
+    matrix[{ 1, 0 }] = 12;
+    matrix[{ 1, 1 }] = 16;
+
+    const auto result = matrix / 4;
+    EXPECT_THAT((result[{ 0, 0 }]), 1);
+    EXPECT_THAT((result[{ 0, 1 }]), 2);
+    EXPECT_THAT((result[{ 1, 0 }]), 3);
+    EXPECT_THAT((result[{ 1, 1 }]), 4);
+}
