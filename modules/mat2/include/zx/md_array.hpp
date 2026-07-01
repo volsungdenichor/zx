@@ -14,10 +14,15 @@ namespace zx
 namespace mat2
 {
 
-template <std::size_t D, class T>
-struct vec_t : public std::array<T, D>
+using dims_count_t = std::ptrdiff_t;
+
+template <dims_count_t dims_count>
+using make_dims_sequence = std::make_index_sequence<static_cast<std::size_t>(dims_count)>;
+
+template <dims_count_t D, class T>
+struct vec_t : public std::array<T, static_cast<std::size_t>(D)>
 {
-    using base_t = std::array<T, D>;
+    using base_t = std::array<T, static_cast<std::size_t>(D)>;
     using base_t::base_t;
 
     constexpr vec_t() : base_t{} { std::fill(this->begin(), this->end(), T{}); }
@@ -37,13 +42,13 @@ struct vec_t : public std::array<T, D>
     friend std::ostream& operator<<(std::ostream& os, const vec_t& item)
     {
         os << "[";
-        for (std::size_t i = 0; i < D; ++i)
+        for (dims_count_t i = 0; i < D; ++i)
         {
             if (i != 0)
             {
                 os << " ";
             }
-            os << item[i];
+            os << item[static_cast<std::size_t>(i)];
         }
         os << "]";
         return os;
@@ -287,7 +292,7 @@ inline constexpr std::pair<dynamic_dim_t, location_value_t> do_slice(const dynam
 template <class... Dims>
 struct shape_t
 {
-    static constexpr inline std::size_t dims_count = sizeof...(Dims);
+    static constexpr inline dims_count_t dims_count = sizeof...(Dims);
 
     using storage_type = std::tuple<Dims...>;
     using dynamic_shape_type = shape_t<std::conditional_t<true, dynamic_dim_t, Dims>...>;
@@ -306,10 +311,10 @@ struct shape_t
 
     constexpr explicit shape_t(Dims... dims) : m_storage(std::move(dims)...) { }
 
-    template <std::size_t N>
+    template <dims_count_t N>
     constexpr dynamic_dim_t dim() const
     {
-        return dynamic_dim_t{ std::get<N>(m_storage) };
+        return dynamic_dim_t{ std::get<static_cast<std::size_t>(N)>(m_storage) };
     }
 
     constexpr extent_type extents() const
@@ -329,7 +334,7 @@ struct shape_t
 
     constexpr flat_offset_t flat_offset(const loc_type& loc) const
     {
-        return flat_offset(loc, std::make_index_sequence<dims_count>{});
+        return flat_offset(loc, make_dims_sequence<dims_count>{});
     }
 
     constexpr volume_value_t volume() const
@@ -372,10 +377,10 @@ struct static_shape_builder_impl;
 template <stride_value_t ElementSize, extent_value_t... Dims>
 struct static_shape_builder_impl
 {
-    static constexpr std::size_t dims_count = sizeof...(Dims);
+    static constexpr dims_count_t dims_count = sizeof...(Dims);
     static_assert(dims_count > 0, "shape_builder_t requires at least one dimension");
 
-    static constexpr std::array<extent_value_t, dims_count> extents{ Dims... };
+    static constexpr std::array<extent_value_t, static_cast<std::size_t>(dims_count)> extents{ Dims... };
 
     template <std::size_t I>
     static constexpr extent_value_t extent_at()
@@ -387,9 +392,9 @@ struct static_shape_builder_impl
     static constexpr stride_value_t stride_at()
     {
         stride_value_t stride = ElementSize;
-        for (std::size_t j = I + 1; j < dims_count; ++j)
+        for (dims_count_t j = I + 1; j < dims_count; ++j)
         {
-            stride *= extents[j];
+            stride *= extents[static_cast<std::size_t>(j)];
         }
         return stride;
     }
@@ -397,7 +402,7 @@ struct static_shape_builder_impl
     template <std::size_t... Is>
     static auto make_shape_type(std::index_sequence<Is...>) -> shape_t<dim_t<extent_at<Is>(), stride_at<Is>()>...>;
 
-    using type = decltype(make_shape_type(std::make_index_sequence<dims_count>{}));
+    using type = decltype(make_shape_type(make_dims_sequence<dims_count>{}));
 };
 
 }  // namespace detail
@@ -557,9 +562,9 @@ struct array_t<shape_t<Dim0>, T> : private shape_holder_t<get_shape_type<shape_t
     }
 
     template <bool S = shape_type::is_static(), std::enable_if_t<S, int> = 0>
-    constexpr operator vec_t<static_cast<std::size_t>(shape_type{}.volume()), value_type>() const
+    constexpr operator vec_t<shape_type{}.volume(), value_type>() const
     {
-        vec_t<static_cast<std::size_t>(shape_type{}.volume()), value_type> result{};
+        vec_t<shape_type{}.volume(), value_type> result{};
         for (std::size_t i = 0; i < result.size(); ++i)
         {
             result[i] = this->storage()[i];
@@ -613,8 +618,8 @@ struct array_t<shape_t<Dim0>, T> : private shape_holder_t<get_shape_type<shape_t
     friend bool operator!=(const array_t& lhs, const array_t& rhs) { return !(lhs == rhs); }
 };
 
-template <std::size_t D, class T>
-using dense_vector_t = array_t<shape_t<dim_t<static_cast<extent_value_t>(D), static_cast<stride_value_t>(sizeof(T))>>, T>;
+template <extent_value_t D, class T>
+using dense_vector_t = array_t<shape_t<dim_t<D, static_cast<stride_value_t>(sizeof(T))>>, T>;
 
 template <class Shape, class T>
 struct array_view_t : private shape_holder_t<get_shape_type<Shape>::value, Shape>
@@ -724,12 +729,8 @@ struct array_t : private shape_holder_t<get_shape_type<Shape>::value, Shape>,
     dynamic_view_type slice(const slice_type& s) { return view().slice(s); }
 };
 
-template <std::size_t R, std::size_t C, class T>
-using dense_matrix_t = array_t<
-    shape_t<
-        dim_t<static_cast<extent_value_t>(R), static_cast<stride_value_t>(sizeof(T) * C)>,
-        dim_t<static_cast<extent_value_t>(C), static_cast<stride_value_t>(sizeof(T))>>,
-    T>;
+template <extent_value_t R, extent_value_t C, class T>
+using dense_matrix_t = array_t<shape_from_extent_t<extent_t<R, C>, static_cast<stride_value_t>(sizeof(T))>, T>;
 
 template <class T>
 struct is_dense_vector : std::false_type
@@ -908,7 +909,7 @@ struct dense_vector_traits
 template <extent_value_t E, stride_value_t S, class T>
 struct dense_vector_traits<array_t<shape_t<dim_t<E, S>>, T>>
 {
-    static constexpr std::size_t dims = static_cast<std::size_t>(E);
+    static constexpr dims_count_t dims = static_cast<dims_count_t>(E);
     static constexpr stride_value_t stride = S;
     using value_type = T;
 };
@@ -916,8 +917,8 @@ struct dense_vector_traits<array_t<shape_t<dim_t<E, S>>, T>>
 template <class T>
 struct dense_matrix_traits
 {
-    static constexpr std::size_t rows = 0;
-    static constexpr std::size_t cols = 0;
+    static constexpr dims_count_t rows = 0;
+    static constexpr dims_count_t cols = 0;
     static constexpr stride_value_t row_stride = 0;
     static constexpr stride_value_t col_stride = 0;
     using value_type = void;
@@ -926,8 +927,8 @@ struct dense_matrix_traits
 template <extent_value_t R, stride_value_t RS, extent_value_t C, stride_value_t CS, class T>
 struct dense_matrix_traits<array_t<shape_t<dim_t<R, RS>, dim_t<C, CS>>, T>>
 {
-    static constexpr std::size_t rows = static_cast<std::size_t>(R);
-    static constexpr std::size_t cols = static_cast<std::size_t>(C);
+    static constexpr dims_count_t rows = R;
+    static constexpr dims_count_t cols = C;
     static constexpr stride_value_t row_stride = RS;
     static constexpr stride_value_t col_stride = CS;
     using value_type = T;
@@ -955,19 +956,17 @@ template <
         typename dense_matrix_traits<std::decay_t<Mat>>::value_type>>
 constexpr auto operator*(const Vec& lhs, const Mat& rhs) -> dense_vector_t<dense_vector_traits<std::decay_t<Vec>>::dims, Res>
 {
-    constexpr std::size_t D = dense_vector_traits<std::decay_t<Vec>>::dims;
+    constexpr dims_count_t D = dense_vector_traits<std::decay_t<Vec>>::dims;
     dense_vector_t<D, Res> result{};
 
-    for (std::size_t column = 0; column < D; ++column)
+    for (location_value_t column = 0; column < D; ++column)
     {
-        const auto loc_column = static_cast<location_value_t>(column);
-        Res sum = static_cast<Res>(rhs[{ static_cast<location_value_t>(D), loc_column }]);
-        for (std::size_t row = 0; row < D; ++row)
+        Res sum = static_cast<Res>(rhs[{ D, column }]);
+        for (location_value_t row = 0; row < D; ++row)
         {
-            const auto loc_row = static_cast<location_value_t>(row);
-            sum += lhs[loc_row] * rhs[{ loc_row, loc_column }];
+            sum += lhs[row] * rhs[{ row, column }];
         }
-        result[loc_column] = sum;
+        result[column] = sum;
     }
 
     return result;
@@ -999,25 +998,22 @@ template <
 constexpr auto operator*(const Lhs& lhs, const Rhs& rhs)
     -> dense_matrix_t<dense_matrix_traits<std::decay_t<Lhs>>::rows, dense_matrix_traits<std::decay_t<Rhs>>::cols, Res>
 {
-    constexpr std::size_t R = dense_matrix_traits<std::decay_t<Lhs>>::rows;
-    constexpr std::size_t D = dense_matrix_traits<std::decay_t<Lhs>>::cols;
-    constexpr std::size_t C = dense_matrix_traits<std::decay_t<Rhs>>::cols;
+    constexpr dims_count_t R = dense_matrix_traits<std::decay_t<Lhs>>::rows;
+    constexpr dims_count_t D = dense_matrix_traits<std::decay_t<Lhs>>::cols;
+    constexpr dims_count_t C = dense_matrix_traits<std::decay_t<Rhs>>::cols;
 
     dense_matrix_t<R, C, Res> result{};
 
-    for (std::size_t row = 0; row < R; ++row)
+    for (location_value_t row = 0; row < R; ++row)
     {
-        const auto loc_row = static_cast<location_value_t>(row);
-        for (std::size_t column = 0; column < C; ++column)
+        for (location_value_t column = 0; column < C; ++column)
         {
-            const auto loc_column = static_cast<location_value_t>(column);
             Res sum{};
-            for (std::size_t inner = 0; inner < D; ++inner)
+            for (location_value_t inner = 0; inner < D; ++inner)
             {
-                const auto loc_inner = static_cast<location_value_t>(inner);
-                sum += lhs[{ loc_row, loc_inner }] * rhs[{ loc_inner, loc_column }];
+                sum += lhs[{ row, inner }] * rhs[{ inner, column }];
             }
-            result[{ loc_row, loc_column }] = sum;
+            result[{ row, column }] = sum;
         }
     }
 
