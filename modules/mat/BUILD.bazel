@@ -12,6 +12,8 @@ zx_module_test(
     name = "mat_tests",
     module = ":mat",
     extra_copts = ["-iquote", "modules/mat/tests"],
+    defines = ["TEST_DATA_DIR=\"modules/mat/tests\""],
+    data = ["tests/test-24.bmp"],
     srcs = [
         "tests/matchers.hpp",
         "tests/vector.test.cpp",
@@ -22,5 +24,7 @@ zx_module_test(
         "tests/polygonal_shape.test.cpp",
         "tests/spherical_shape.test.cpp",
         "tests/mat.test.cpp",
+        "tests/array.test.cpp",
+        "tests/image.test.cpp",
     ],
 )

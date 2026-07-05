@@ -95,10 +95,11 @@ using stride_value_t = std::ptrdiff_t;
 using location_value_t = std::ptrdiff_t;
 using volume_value_t = std::ptrdiff_t;
 
+template <class T>
 struct interval_base_t
 {
-    location_value_t lower;
-    location_value_t upper;
+    T lower;
+    T upper;
 
     friend constexpr bool operator==(const interval_base_t& lhs, const interval_base_t& rhs)
     {
@@ -113,11 +114,12 @@ struct interval_base_t
     }
 };
 
+template <class T>
 struct slice_base_t
 {
-    std::optional<location_value_t> start = {};
-    std::optional<location_value_t> stop = {};
-    std::optional<stride_value_t> step = {};
+    std::optional<T> start = {};
+    std::optional<T> stop = {};
+    std::optional<T> step = {};
 
     friend constexpr bool operator==(const slice_base_t& lhs, const slice_base_t& rhs)
     {
@@ -145,6 +147,11 @@ struct slice_base_t
         return os;
     }
 };
+
+template <dims_count_t D, class T>
+using box_shape_base_t = vec_t<D, interval_base_t<T>>;
+
+using interval_t = interval_base_t<location_value_t>;
 
 template <class T>
 constexpr T dynamic = std::numeric_limits<T>::max();
@@ -225,7 +232,9 @@ struct get_dim_type<dynamic_dim_t> : std::integral_constant<dim_type_t, dim_type
 {
 };
 
-inline constexpr std::pair<dynamic_dim_t, location_value_t> do_slice(const dynamic_dim_t& dim, const slice_base_t& s)
+using slice_t = slice_base_t<location_value_t>;
+
+inline constexpr std::pair<dynamic_dim_t, location_value_t> do_slice(const dynamic_dim_t& dim, const slice_t& s)
 {
     const auto clamp = [&](location_value_t value, location_value_t init) -> location_value_t
     { return std::max(init, std::min(value, dim.extent() + init)); };
@@ -510,8 +519,9 @@ struct array_t<shape_t<Dim0>, T> : private shape_holder_t<get_shape_type<shape_t
     using location_type = location_value_t;
     using extent_type = extent_value_t;
     using volume_type = volume_value_t;
-    using bounds_type = interval_base_t;
-    using slice_type = slice_base_t;
+    using bounds_type = interval_t;
+
+    using slice_type = slice_t;
 
     using shape_holder_type::shape;
     using storage_holder_type::storage;
@@ -604,8 +614,8 @@ struct array_view_t : private shape_holder_t<get_shape_type<Shape>::value, Shape
     using location_type = dense_vector_t<shape_type::dims_count, location_value_t>;
     using extent_type = dense_vector_t<shape_type::dims_count, extent_value_t>;
     using volume_type = volume_value_t;
-    using bounds_type = dense_vector_t<shape_type::dims_count, interval_base_t>;
-    using slice_type = dense_vector_t<shape_type::dims_count, slice_base_t>;
+    using bounds_type = box_shape_base_t<shape_type::dims_count, location_value_t>;
+    using slice_type = dense_vector_t<shape_type::dims_count, slice_t>;
     using dynamic_shape_type = typename shape_type::dynamic_shape_type;
     using dynamic_view_type = array_view_t<dynamic_shape_type, T>;
 
@@ -630,7 +640,7 @@ struct array_view_t : private shape_holder_t<get_shape_type<Shape>::value, Shape
     {
         return shape().apply(
             [](const auto&... dims) {
-                return bounds_type{ interval_base_t{ 0, static_cast<location_value_t>(dims.extent()) }... };
+                return bounds_type{ interval_t{ 0, static_cast<location_value_t>(dims.extent()) }... };
             });
     }
 

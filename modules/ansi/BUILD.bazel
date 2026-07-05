@@ -4,7 +4,8 @@ zx_module(
     name = "ansi",
     deps = [
         "//modules/core:core",
-        "//modules/arrays:arrays",
+        "//modules/mat:mat",
+        "//modules/sequence:sequence",
     ],
 )
 

@@ -28,18 +28,8 @@ alias(
 )
 
 alias(
-    name = "arrays",
-    actual = "//modules/arrays:arrays",
-)
-
-alias(
     name = "ansi",
     actual = "//modules/ansi:ansi",
-)
-
-alias(
-    name = "images",
-    actual = "//modules/images:images",
 )
 
 alias(
@@ -66,11 +56,9 @@ cc_library(
     name = "zx",
     deps = [
         "//modules/ansi:ansi",
-        "//modules/arrays:arrays",
         "//modules/core:core",
         "//modules/functional:functional",
         "//modules/geometry:geometry",
-        "//modules/images:images",
         "//modules/iterator:iterator",
         "//modules/mat:mat",
         "//modules/nested_text:nested_text",

@@ -11,4 +11,11 @@ zx_add_module(
     tests/polygonal_shape.test.cpp
     tests/spherical_shape.test.cpp
     tests/mat.test.cpp
+    tests/array.test.cpp
 )
+
+if(ZX_BUILD_TESTS)
+    target_compile_definitions(mat_tests PRIVATE
+        TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests"
+    )
+endif()

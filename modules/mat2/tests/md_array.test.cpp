@@ -60,7 +60,7 @@ TEST(md_array, array_1d)
         testing::AllOf(
             testing::Property("volume", &zx::mat2::array_t<shape_type, std::int32_t>::volume, 3),
             testing::Property(
-                "bounds", &zx::mat2::array_t<shape_type, std::int32_t>::bounds, zx::mat2::interval_base_t{ 0, 3 })));
+                "bounds", &zx::mat2::array_t<shape_type, std::int32_t>::bounds, zx::mat2::interval_t{ 0, 3 })));
 }
 
 TEST(md_array, static_array_2d)
@@ -78,17 +78,17 @@ TEST(md_array, static_array_2d)
             testing::Property(
                 "bounds",
                 &array_type::bounds,
-                typename array_type::bounds_type{ zx::mat2::interval_base_t{ 0, 3 }, zx::mat2::interval_base_t{ 0, 4 } })));
+                typename array_type::bounds_type{ zx::mat2::interval_t{ 0, 3 }, zx::mat2::interval_t{ 0, 4 } })));
 
     EXPECT_THAT(
-        array.view().slice(array_type::slice_type{ zx::mat2::slice_base_t{ 1, 3 }, zx::mat2::slice_base_t{ 2, 4 } }),
+        array.view().slice(array_type::slice_type{ zx::mat2::slice_t{ 1, 3 }, zx::mat2::slice_t{ 2, 4 } }),
         testing::AllOf(
             testing::Property("volume", &array_type::dynamic_view_type::volume, 4),
             testing::Property(
                 "bounds",
                 &array_type::dynamic_view_type::bounds,
-                typename array_type::dynamic_view_type::bounds_type{ zx::mat2::interval_base_t{ 0, 2 },
-                                                                     zx::mat2::interval_base_t{ 0, 2 } })));
+                typename array_type::dynamic_view_type::bounds_type{ zx::mat2::interval_t{ 0, 2 },
+                                                                     zx::mat2::interval_t{ 0, 2 } })));
 }
 
 TEST(md_array, dense_vector_times_dense_matrix)
