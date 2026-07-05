@@ -12,6 +12,7 @@ zx_add_module(
     tests/spherical_shape.test.cpp
     tests/mat.test.cpp
     tests/array.test.cpp
+    tests/image.test.cpp
 )
 
 if(ZX_BUILD_TESTS)

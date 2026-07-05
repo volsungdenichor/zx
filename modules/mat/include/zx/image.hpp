@@ -7,11 +7,11 @@
 
 namespace zx
 {
-namespace images
+namespace mat
 {
 
-using rgb_image_t = arrays::array_t<byte_t, 3>;
-using greyscale_image_t = arrays::array_t<byte_t, 2>;
+using rgb_image_t = mat::array_t<byte_t, 3>;
+using greyscale_image_t = mat::array_t<byte_t, 2>;
 
 namespace detail
 {
@@ -200,7 +200,7 @@ struct load_bitmap_fn
     static auto prepare_array(const dib_header& header) -> rgb_image_t
     {
         return rgb_image_t{ rgb_image_t::extent_type{
-            static_cast<arrays::extent_base_t>(header.height), static_cast<arrays::extent_base_t>(header.width), 3 } };
+            static_cast<mat::extent_base_t>(header.height), static_cast<mat::extent_base_t>(header.width), 3 } };
     }
 
     static auto load_bitmap_8(std::istream& is, const dib_header& header) -> rgb_image_t
@@ -210,7 +210,7 @@ struct load_bitmap_fn
         rgb_image_t result = prepare_array(header);
         auto ref = result.mut_view();
 
-        using palette_t = std::array<images::rgb_color_t, 256>;
+        using palette_t = std::array<mat::rgb_color_t, 256>;
         palette_t palette = {};
 
         for (std::size_t i = 0; i < 256; ++i)
@@ -221,14 +221,14 @@ struct load_bitmap_fn
             is.ignore(1);
         }
 
-        const arrays::extent_base_t h = ref.shape()[0].extent;
-        const arrays::extent_base_t w = ref.shape()[1].extent;
+        const mat::extent_base_t h = ref.shape()[0].extent;
+        const mat::extent_base_t w = ref.shape()[1].extent;
 
-        for (arrays::location_base_t y = h - 1; y >= 0; --y)
+        for (mat::location_base_t y = h - 1; y >= 0; --y)
         {
-            for (arrays::location_base_t x = 0; x < w; ++x)
+            for (mat::location_base_t x = 0; x < w; ++x)
             {
-                const images::rgb_color_t rgb = palette.at(read<byte_t>(is));
+                const mat::rgb_color_t rgb = palette.at(read<byte_t>(is));
                 for (std::size_t z = 0; z < 3; ++z)
                 {
                     ref[rgb_image_t::location_type{ y, x, z }] = rgb[z];
@@ -248,14 +248,14 @@ struct load_bitmap_fn
         rgb_image_t result = prepare_array(header);
         auto ref = result.mut_view();
 
-        const arrays::extent_base_t h = ref.shape()[0].extent;
-        const arrays::extent_base_t w = ref.shape()[1].extent;
+        const mat::extent_base_t h = ref.shape()[0].extent;
+        const mat::extent_base_t w = ref.shape()[1].extent;
 
-        for (arrays::location_base_t y = h - 1; y >= 0; --y)
+        for (mat::location_base_t y = h - 1; y >= 0; --y)
         {
-            for (arrays::location_base_t x = 0; x < w; ++x)
+            for (mat::location_base_t x = 0; x < w; ++x)
             {
-                for (arrays::location_base_t z = 2; z >= 0; --z)
+                for (mat::location_base_t z = 2; z >= 0; --z)
                 {
                     const byte_t value = read<byte_t>(is);
                     ref[rgb_image_t::location_type{ y, x, z }] = value;
@@ -275,16 +275,16 @@ struct save_bitmap_fn
         static const std::size_t bits_per_pixel = 24;
         const std::size_t padding = get_padding(static_cast<std::size_t>(image.shape()[1].extent), bits_per_pixel);
 
-        const arrays::extent_base_t h = image.shape()[0].extent;
-        const arrays::extent_base_t w = image.shape()[1].extent;
+        const mat::extent_base_t h = image.shape()[0].extent;
+        const mat::extent_base_t w = image.shape()[1].extent;
 
         save_header(os, static_cast<std::size_t>(w), static_cast<std::size_t>(h), padding, bits_per_pixel, 0);
 
-        for (arrays::location_base_t y = h - 1; y >= 0; --y)
+        for (mat::location_base_t y = h - 1; y >= 0; --y)
         {
-            for (arrays::location_base_t x = 0; x < w; ++x)
+            for (mat::location_base_t x = 0; x < w; ++x)
             {
-                for (arrays::location_base_t z = 2; z >= 0; --z)
+                for (mat::location_base_t z = 2; z >= 0; --z)
                 {
                     write<byte_t>(os, image[rgb_image_t::location_type{ y, x, z }]);
                 }
@@ -304,7 +304,7 @@ struct save_bitmap_fn
 }  // namespace detail
 
 template <std::size_t D>
-using location_type = typename arrays::array_view_t<const byte_t, D>::location_type;
+using location_type = typename mat::array_view_t<const byte_t, D>::location_type;
 
 static constexpr inline auto load_bitmap = detail::load_bitmap_fn{};
 static constexpr inline auto save_bitmap = detail::save_bitmap_fn{};
@@ -327,7 +327,7 @@ inline void at(const rgb_image_t::mut_view_type& image, const location_type<2>& 
     }
 }
 
-inline arrays::shape_t<2> get_channel_shape(const rgb_image_t::shape_type& shape)
+inline mat::shape_t<2> get_channel_shape(const rgb_image_t::shape_type& shape)
 {
     return shape.erase(2);
 }
@@ -342,6 +342,6 @@ inline greyscale_image_t::mut_view_type channel(const rgb_image_t::mut_view_type
     return greyscale_image_t::mut_view_type{ image.data() + channel_index, get_channel_shape(image.shape()) };
 }
 
-}  // namespace images
+}  // namespace mat
 
 }  // namespace zx

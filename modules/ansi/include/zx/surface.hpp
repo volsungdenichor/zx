@@ -36,15 +36,15 @@ struct cell_t
     }
 };
 
-using surface_t = arrays::array_t<cell_t, 2>;
+using surface_t = mat::array_t<cell_t, 2>;
 using surface_view_t = surface_t::view_type;
 using surface_mut_view_t = surface_t::mut_view_type;
 
-using symbols_view_t = arrays::array_view_t<symbol_t, 2>;
-using symbols_mut_view_t = arrays::array_mut_view_t<symbol_t, 2>;
+using symbols_view_t = mat::array_view_t<symbol_t, 2>;
+using symbols_mut_view_t = mat::array_mut_view_t<symbol_t, 2>;
 
-using styles_view_t = arrays::array_view_t<style_t, 2>;
-using styles_mut_view_t = arrays::array_mut_view_t<style_t, 2>;
+using styles_view_t = mat::array_view_t<style_t, 2>;
+using styles_mut_view_t = mat::array_mut_view_t<style_t, 2>;
 
 using location_t = surface_t::location_type;
 using extent_t = surface_t::extent_type;
@@ -66,7 +66,7 @@ struct cell_layout_validator
 };
 
 template <class U, class T, std::size_t D>
-arrays::array_view_base_t<U, D> shift(arrays::array_view_base_t<T, D> view, std::ptrdiff_t member_offset)
+mat::array_view_base_t<U, D> shift(mat::array_view_base_t<T, D> view, std::ptrdiff_t member_offset)
 {
     U* p = const_cast<U*>(reinterpret_cast<const U*>(reinterpret_cast<const std::byte*>(view.data()) + member_offset));
     return { p, view.shape() };
@@ -108,9 +108,9 @@ inline std::string render(surface_view_t surface)
     style_t current_style = {};
     out += str(escape_sequence_t{ 0 }, make_ansi_code(current_style));
 
-    for (arrays::location_base_t y = 0; y < surface.extent()[0]; ++y)
+    for (mat::location_base_t y = 0; y < surface.extent()[0]; ++y)
     {
-        for (arrays::location_base_t x = 0; x < surface.extent()[1]; ++x)
+        for (mat::location_base_t x = 0; x < surface.extent()[1]; ++x)
         {
             const cell_t& cell = surface[{ y, x }];
             if (cell.style != current_style)
@@ -145,9 +145,9 @@ inline std::string render_diff(surface_view_t prev, surface_view_t next)
     bool style_emitted = false;
     location_t last = { -1, -1 };
 
-    for (arrays::location_base_t y = 0; y < next.extent()[0]; ++y)
+    for (mat::location_base_t y = 0; y < next.extent()[0]; ++y)
     {
-        for (arrays::location_base_t x = 0; x < next.extent()[1]; ++x)
+        for (mat::location_base_t x = 0; x < next.extent()[1]; ++x)
         {
             const location_t pos = { y, x };
             const cell_t& cell = next[pos];

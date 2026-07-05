@@ -7,7 +7,7 @@
 namespace zx
 {
 
-namespace images
+namespace mat
 {
 
 using byte_t = std::uint8_t;
@@ -26,5 +26,5 @@ struct rgb_color_t : public std::array<byte_t, 3>
     }
 };
 
-}  // namespace images
+}  // namespace mat
 }  // namespace zx

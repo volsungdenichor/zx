@@ -12,7 +12,7 @@
 namespace zx
 {
 
-namespace arrays
+namespace mat
 {
 
 using byte_ptr = std::uint8_t*;
@@ -690,6 +690,6 @@ struct copy_fn
 
 static constexpr inline auto copy = copy_fn{};
 
-}  // namespace arrays
+}  // namespace mat
 
 }  // namespace zx

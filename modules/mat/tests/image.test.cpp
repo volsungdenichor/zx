@@ -4,8 +4,8 @@
 
 TEST(image, load_image)
 {
-    const auto img = zx::images::load_bitmap(std::string(TEST_DATA_DIR) + "/test-24.bmp");
-    EXPECT_THAT(img.extent(), (zx::images::rgb_image_t::extent_type{ 4, 8, 3 }));
+    const auto img = zx::mat::load_bitmap(std::string(TEST_DATA_DIR) + "/test-24.bmp");
+    EXPECT_THAT(img.extent(), (zx::mat::rgb_image_t::extent_type{ 4, 8, 3 }));
 
     EXPECT_THAT((img[{ 0, 0, 0 }]), 255);
     EXPECT_THAT((img[{ 0, 0, 1 }]), 0);
@@ -45,19 +45,19 @@ TEST(image, load_image)
 
     EXPECT_THAT(img[-1][-1], testing::ElementsAre(96, 96, 96));
 
-    EXPECT_THAT(zx::images::at(img, { 0, 0 }), (zx::images::rgb_color_t{ 255, 0, 0 }));
-    EXPECT_THAT(zx::images::at(img, { 0, 1 }), (zx::images::rgb_color_t{ 255, 106, 0 }));
-    EXPECT_THAT(zx::images::at(img, { 0, 2 }), (zx::images::rgb_color_t{ 255, 216, 0 }));
+    EXPECT_THAT(zx::mat::at(img, { 0, 0 }), (zx::mat::rgb_color_t{ 255, 0, 0 }));
+    EXPECT_THAT(zx::mat::at(img, { 0, 1 }), (zx::mat::rgb_color_t{ 255, 106, 0 }));
+    EXPECT_THAT(zx::mat::at(img, { 0, 2 }), (zx::mat::rgb_color_t{ 255, 216, 0 }));
 
-    EXPECT_THAT(zx::images::at(img, { 1, 0 }), (zx::images::rgb_color_t{ 127, 0, 0 }));
-    EXPECT_THAT(zx::images::at(img, { 1, 1 }), (zx::images::rgb_color_t{ 127, 51, 0 }));
-    EXPECT_THAT(zx::images::at(img, { 1, 2 }), (zx::images::rgb_color_t{ 127, 106, 0 }));
+    EXPECT_THAT(zx::mat::at(img, { 1, 0 }), (zx::mat::rgb_color_t{ 127, 0, 0 }));
+    EXPECT_THAT(zx::mat::at(img, { 1, 1 }), (zx::mat::rgb_color_t{ 127, 51, 0 }));
+    EXPECT_THAT(zx::mat::at(img, { 1, 2 }), (zx::mat::rgb_color_t{ 127, 106, 0 }));
 
-    EXPECT_THAT(zx::images::at(img, { 2, 0 }), (zx::images::rgb_color_t{ 255, 127, 127 }));
-    EXPECT_THAT(zx::images::at(img, { 2, 1 }), (zx::images::rgb_color_t{ 255, 178, 127 }));
-    EXPECT_THAT(zx::images::at(img, { 2, 2 }), (zx::images::rgb_color_t{ 255, 233, 127 }));
+    EXPECT_THAT(zx::mat::at(img, { 2, 0 }), (zx::mat::rgb_color_t{ 255, 127, 127 }));
+    EXPECT_THAT(zx::mat::at(img, { 2, 1 }), (zx::mat::rgb_color_t{ 255, 178, 127 }));
+    EXPECT_THAT(zx::mat::at(img, { 2, 2 }), (zx::mat::rgb_color_t{ 255, 233, 127 }));
 
-    const auto red_channel = zx::images::channel(img, 0);
+    const auto red_channel = zx::mat::channel(img, 0);
     EXPECT_THAT((red_channel[{ 0, 0 }]), 255);
     EXPECT_THAT((red_channel[{ 0, 1 }]), 255);
     EXPECT_THAT((red_channel[{ 0, 2 }]), 255);
@@ -70,7 +70,7 @@ TEST(image, load_image)
     EXPECT_THAT((red_channel[{ 2, 1 }]), 255);
     EXPECT_THAT((red_channel[{ 2, 2 }]), 255);
 
-    const auto green_channel = zx::images::channel(img, 1);
+    const auto green_channel = zx::mat::channel(img, 1);
     EXPECT_THAT((green_channel[{ 0, 0 }]), 0);
     EXPECT_THAT((green_channel[{ 0, 1 }]), 106);
     EXPECT_THAT((green_channel[{ 0, 2 }]), 216);
@@ -83,7 +83,7 @@ TEST(image, load_image)
     EXPECT_THAT((green_channel[{ 2, 1 }]), 178);
     EXPECT_THAT((green_channel[{ 2, 2 }]), 233);
 
-    const auto blue_channel = zx::images::channel(img, 2);
+    const auto blue_channel = zx::mat::channel(img, 2);
     EXPECT_THAT((blue_channel[{ 0, 0 }]), 0);
     EXPECT_THAT((blue_channel[{ 0, 1 }]), 0);
     EXPECT_THAT((blue_channel[{ 0, 2 }]), 0);

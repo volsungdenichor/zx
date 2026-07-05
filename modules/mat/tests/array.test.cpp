@@ -3,36 +3,36 @@
 #include <zx/array.hpp>
 
 template <class T>
-zx::arrays::stride_base_t stride_of(zx::arrays::location_base_t n)
+zx::mat::stride_base_t stride_of(zx::mat::location_base_t n)
 {
-    return static_cast<zx::arrays::stride_base_t>(n * static_cast<zx::arrays::stride_base_t>(sizeof(T)));
+    return static_cast<zx::mat::stride_base_t>(n * static_cast<zx::mat::stride_base_t>(sizeof(T)));
 }
 
 TEST(array, slicing)
 {
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ {}, {}, {} })), testing::FieldsAre(zx::arrays::dim_t{ 10, 1 }, 0));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 3, {}, {} })), testing::FieldsAre(zx::arrays::dim_t{ 7, 1 }, 3));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ {}, 7, {} })), testing::FieldsAre(zx::arrays::dim_t{ 7, 1 }, 0));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 2, 8, {} })), testing::FieldsAre(zx::arrays::dim_t{ 6, 1 }, 2));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 0, 10, 3 })), testing::FieldsAre(zx::arrays::dim_t{ 4, 3 }, 0));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 2, 8, 2 })), testing::FieldsAre(zx::arrays::dim_t{ 3, 2 }, 2));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ -8, -2, {} })), testing::FieldsAre(zx::arrays::dim_t{ 6, 1 }, 2));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ -5, {}, {} })), testing::FieldsAre(zx::arrays::dim_t{ 5, 1 }, 5));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ {}, -3, {} })), testing::FieldsAre(zx::arrays::dim_t{ 7, 1 }, 0));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ {}, {}, -1 })), testing::FieldsAre(zx::arrays::dim_t{ 10, -1 }, 9));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 8, 2, -2 })), testing::FieldsAre(zx::arrays::dim_t{ 3, -2 }, 8));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 9, {}, -1 })), testing::FieldsAre(zx::arrays::dim_t{ 10, -1 }, 9));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 0, 100, {} })), testing::FieldsAre(zx::arrays::dim_t{ 10, 1 }, 0));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ -100, 5, {} })), testing::FieldsAre(zx::arrays::dim_t{ 5, 1 }, 0));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 5, 5, {} })), testing::FieldsAre(zx::arrays::dim_t{ 0, 1 }, 5));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 2 }.slice({ 1, 5, {} })), testing::FieldsAre(zx::arrays::dim_t{ 4, 2 }, 2));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 2 }.slice({ 0, 10, 2 })), testing::FieldsAre(zx::arrays::dim_t{ 5, 4 }, 0));
-    EXPECT_THAT((zx::arrays::dim_t{ 10, 1 }.slice({ 2, 8, {} })), testing::FieldsAre(zx::arrays::dim_t{ 6, 1 }, 2));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ {}, {}, {} })), testing::FieldsAre(zx::mat::dim_t{ 10, 1 }, 0));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ 3, {}, {} })), testing::FieldsAre(zx::mat::dim_t{ 7, 1 }, 3));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ {}, 7, {} })), testing::FieldsAre(zx::mat::dim_t{ 7, 1 }, 0));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ 2, 8, {} })), testing::FieldsAre(zx::mat::dim_t{ 6, 1 }, 2));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ 0, 10, 3 })), testing::FieldsAre(zx::mat::dim_t{ 4, 3 }, 0));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ 2, 8, 2 })), testing::FieldsAre(zx::mat::dim_t{ 3, 2 }, 2));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ -8, -2, {} })), testing::FieldsAre(zx::mat::dim_t{ 6, 1 }, 2));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ -5, {}, {} })), testing::FieldsAre(zx::mat::dim_t{ 5, 1 }, 5));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ {}, -3, {} })), testing::FieldsAre(zx::mat::dim_t{ 7, 1 }, 0));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ {}, {}, -1 })), testing::FieldsAre(zx::mat::dim_t{ 10, -1 }, 9));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ 8, 2, -2 })), testing::FieldsAre(zx::mat::dim_t{ 3, -2 }, 8));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ 9, {}, -1 })), testing::FieldsAre(zx::mat::dim_t{ 10, -1 }, 9));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ 0, 100, {} })), testing::FieldsAre(zx::mat::dim_t{ 10, 1 }, 0));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ -100, 5, {} })), testing::FieldsAre(zx::mat::dim_t{ 5, 1 }, 0));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ 5, 5, {} })), testing::FieldsAre(zx::mat::dim_t{ 0, 1 }, 5));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 2 }.slice({ 1, 5, {} })), testing::FieldsAre(zx::mat::dim_t{ 4, 2 }, 2));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 2 }.slice({ 0, 10, 2 })), testing::FieldsAre(zx::mat::dim_t{ 5, 4 }, 0));
+    EXPECT_THAT((zx::mat::dim_t{ 10, 1 }.slice({ 2, 8, {} })), testing::FieldsAre(zx::mat::dim_t{ 6, 1 }, 2));
 }
 
 TEST(array, empty_array_1d_slice)
 {
-    zx::arrays::array_t<int, 1> a{ 10 };
+    zx::mat::array_t<int, 1> a{ 10 };
     auto view = a.view().slice({ 5, 5 }).slice({ {}, {}, -1 });
     EXPECT_THAT(view.extent(), 0);
     EXPECT_THAT(view.stride(), -stride_of<int>(1));
@@ -42,11 +42,11 @@ TEST(array, empty_array_1d_slice)
 
 TEST(array, array_1d)
 {
-    zx::arrays::array_t<int, 1> a{ 10 };
+    zx::mat::array_t<int, 1> a{ 10 };
     a[1] = 42;
     EXPECT_THAT(
         a.shape(),
-        (zx::arrays::shape_t<1>{ { zx::arrays::dim_t{ 10, static_cast<zx::arrays::stride_base_t>(sizeof(int)) } } }));
+        (zx::mat::shape_t<1>{ { zx::mat::dim_t{ 10, static_cast<zx::mat::stride_base_t>(sizeof(int)) } } }));
     EXPECT_THAT(a.extent(), 10);
     EXPECT_THAT(a.stride(), stride_of<int>(1));
     EXPECT_THAT(a.volume(), 10);
@@ -77,7 +77,7 @@ TEST(array, array_1d)
 
 TEST(array, array_1d_access)
 {
-    zx::arrays::array_t<int, 1> a{ 10 };
+    zx::mat::array_t<int, 1> a{ 10 };
     for (int i = 0; i < 10; ++i)
     {
         a[i] = i;
@@ -95,7 +95,7 @@ TEST(array, array_1d_access)
 
 TEST(array, array_1d_slice)
 {
-    zx::arrays::array_t<int, 1> a{ 10 };
+    zx::mat::array_t<int, 1> a{ 10 };
     for (int i = 0; i < 10; ++i)
     {
         a[i] = i;
@@ -116,7 +116,7 @@ TEST(array, array_1d_slice)
 
 TEST(array, array_1d_slice_step)
 {
-    zx::arrays::array_t<int, 1> a{ 10 };
+    zx::mat::array_t<int, 1> a{ 10 };
     for (int i = 0; i < 10; ++i)
     {
         a[i] = i;
@@ -134,7 +134,7 @@ TEST(array, array_1d_slice_step)
 
 TEST(array, array_1d_slice_negative)
 {
-    zx::arrays::array_t<int, 1> a{ 10 };
+    zx::mat::array_t<int, 1> a{ 10 };
     for (int i = 0; i < 10; ++i)
     {
         a[i] = i;
@@ -155,7 +155,7 @@ TEST(array, array_1d_slice_negative)
 
 TEST(array, array_1d_slice_negative_step)
 {
-    zx::arrays::array_t<int, 1> a{ 10 };
+    zx::mat::array_t<int, 1> a{ 10 };
     EXPECT_THAT(a.view().slice({ {}, {}, -1 }).slice({ {}, {}, -1 }).shape(), testing::Eq(a.shape()));
     for (int i = 0; i < 10; ++i)
     {
@@ -174,7 +174,7 @@ TEST(array, array_1d_slice_negative_step)
 
 TEST(array, array_2d_indexing)
 {
-    zx::arrays::array_t<int, 2> a{ { 3, 4 } };
+    zx::mat::array_t<int, 2> a{ { 3, 4 } };
     a[0][0] = 1;
     a[0][1] = 42;
     a[1][0] = 53;
@@ -188,28 +188,28 @@ TEST(array, array_2d_indexing)
 
 TEST(array, array_2d_copy)
 {
-    zx::arrays::array_t<int, 2> a{ { 3, 4 } };
+    zx::mat::array_t<int, 2> a{ { 3, 4 } };
     for (std::size_t i = 0; i < 12; ++i)
     {
         a.m_data[i] = static_cast<int>(i);
     }
-    zx::arrays::array_t<int, 2> b{ { 3, 4 } };
-    zx::arrays::copy(b.mut_view(), a.view());
+    zx::mat::array_t<int, 2> b{ { 3, 4 } };
+    zx::mat::copy(b.mut_view(), a.view());
     EXPECT_THAT(b.m_data, testing::ElementsAreArray({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }));
 }
 
 TEST(array, array_2d_copy_with_positive_location)
 {
-    zx::arrays::array_t<int, 2> src{ { 3, 4 } };
+    zx::mat::array_t<int, 2> src{ { 3, 4 } };
     for (std::size_t i = 0; i < src.m_data.size(); ++i)
     {
         src.m_data[i] = static_cast<int>(i);
     }
 
-    zx::arrays::array_t<int, 2> dst{ { 4, 5 } };
+    zx::mat::array_t<int, 2> dst{ { 4, 5 } };
     dst.mut_view().fill(-1);
 
-    zx::arrays::copy(dst.mut_view(), src.view(), { 1, 2 });
+    zx::mat::copy(dst.mut_view(), src.view(), { 1, 2 });
 
     EXPECT_THAT(
         dst.m_data,
@@ -223,16 +223,16 @@ TEST(array, array_2d_copy_with_positive_location)
 
 TEST(array, array_2d_copy_with_negative_location)
 {
-    zx::arrays::array_t<int, 2> src{ { 3, 4 } };
+    zx::mat::array_t<int, 2> src{ { 3, 4 } };
     for (std::size_t i = 0; i < src.m_data.size(); ++i)
     {
         src.m_data[i] = static_cast<int>(i);
     }
 
-    zx::arrays::array_t<int, 2> dst{ { 4, 5 } };
+    zx::mat::array_t<int, 2> dst{ { 4, 5 } };
     dst.mut_view().fill(-1);
 
-    zx::arrays::copy(dst.mut_view(), src.view(), { -1, -2 });
+    zx::mat::copy(dst.mut_view(), src.view(), { -1, -2 });
 
     EXPECT_THAT(
         dst.m_data,
@@ -246,14 +246,14 @@ TEST(array, array_2d_copy_with_negative_location)
 
 TEST(array, array_2d_copy_bounds_adjustment)
 {
-    zx::arrays::array_t<int, 2> src{ { 3, 4 } };
-    zx::arrays::array_t<int, 2> dst{ { 4, 5 } };
+    zx::mat::array_t<int, 2> src{ { 3, 4 } };
+    zx::mat::array_t<int, 2> dst{ { 4, 5 } };
 
-    const auto [src_bounds, dst_bounds] = zx::arrays::adjust_bounds(dst.bounds(), src.bounds(), { -1, 2 });
+    const auto [src_bounds, dst_bounds] = zx::mat::adjust_bounds(dst.bounds(), src.bounds(), { -1, 2 });
 
-    EXPECT_THAT(src_bounds[0], testing::Eq((zx::mat::interval_t<zx::arrays::extent_base_t>{ 1, 3 })));
-    EXPECT_THAT(src_bounds[1], testing::Eq((zx::mat::interval_t<zx::arrays::extent_base_t>{ 0, 3 })));
+    EXPECT_THAT(src_bounds[0], testing::Eq((zx::mat::interval_t<zx::mat::extent_base_t>{ 1, 3 })));
+    EXPECT_THAT(src_bounds[1], testing::Eq((zx::mat::interval_t<zx::mat::extent_base_t>{ 0, 3 })));
 
-    EXPECT_THAT(dst_bounds[0], testing::Eq((zx::mat::interval_t<zx::arrays::extent_base_t>{ 0, 2 })));
-    EXPECT_THAT(dst_bounds[1], testing::Eq((zx::mat::interval_t<zx::arrays::extent_base_t>{ 2, 5 })));
+    EXPECT_THAT(dst_bounds[0], testing::Eq((zx::mat::interval_t<zx::mat::extent_base_t>{ 0, 2 })));
+    EXPECT_THAT(dst_bounds[1], testing::Eq((zx::mat::interval_t<zx::mat::extent_base_t>{ 2, 5 })));
 }
