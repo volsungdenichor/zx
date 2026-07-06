@@ -24,7 +24,7 @@ inline bool is_space(char ch)
 }
 
 template <class K, class V>
-struct ordered_map
+struct ordered_map_t
 {
     using key_type = K;
     using mapped_type = V;
@@ -36,11 +36,11 @@ struct ordered_map
     using iterator = typename std::vector<value_type>::iterator;
     using const_iterator = typename std::vector<value_type>::const_iterator;
 
-    ordered_map() = default;
-    ordered_map(const ordered_map&) = default;
-    ordered_map(ordered_map&&) noexcept = default;
+    ordered_map_t() = default;
+    ordered_map_t(const ordered_map_t&) = default;
+    ordered_map_t(ordered_map_t&&) noexcept = default;
 
-    ordered_map(std::initializer_list<value_type> items)
+    ordered_map_t(std::initializer_list<value_type> items)
     {
         for (const auto& v : items)
         {
@@ -104,12 +104,15 @@ struct ordered_map
     bool contains(const key_type& key) const { return find(key) != end(); }
     size_type count(const key_type& key) const { return contains(key) ? 1 : 0; }
 
-    friend constexpr bool operator==(const ordered_map& lhs, const ordered_map& rhs) { return lhs.m_items == rhs.m_items; }
-    friend constexpr bool operator!=(const ordered_map& lhs, const ordered_map& rhs) { return !(lhs == rhs); }
-    friend constexpr bool operator<(const ordered_map& lhs, const ordered_map& rhs) { return lhs.m_items < rhs.m_items; }
-    friend constexpr bool operator>(const ordered_map& lhs, const ordered_map& rhs) { return rhs < lhs; }
-    friend constexpr bool operator<=(const ordered_map& lhs, const ordered_map& rhs) { return !(rhs < lhs); }
-    friend constexpr bool operator>=(const ordered_map& lhs, const ordered_map& rhs) { return !(lhs < rhs); }
+    friend constexpr bool operator==(const ordered_map_t& lhs, const ordered_map_t& rhs)
+    {
+        return lhs.m_items == rhs.m_items;
+    }
+    friend constexpr bool operator!=(const ordered_map_t& lhs, const ordered_map_t& rhs) { return !(lhs == rhs); }
+    friend constexpr bool operator<(const ordered_map_t& lhs, const ordered_map_t& rhs) { return lhs.m_items < rhs.m_items; }
+    friend constexpr bool operator>(const ordered_map_t& lhs, const ordered_map_t& rhs) { return rhs < lhs; }
+    friend constexpr bool operator<=(const ordered_map_t& lhs, const ordered_map_t& rhs) { return !(rhs < lhs); }
+    friend constexpr bool operator>=(const ordered_map_t& lhs, const ordered_map_t& rhs) { return !(lhs < rhs); }
 };
 
 template <class T>
@@ -154,12 +157,6 @@ struct unbox_fn
     }
 
     template <class T>
-    constexpr const T& operator()(const T& value) const noexcept
-    {
-        return value;
-    }
-
-    template <class T>
     constexpr T& operator()(T& value) const noexcept
     {
         return value;
@@ -197,9 +194,9 @@ struct list_t : public std::vector<node_t>
     friend std::ostream& operator<<(std::ostream& os, const list_t& item);
 };
 
-struct map_t : public ordered_map<string_t, node_t>
+struct map_t : public ordered_map_t<string_t, node_t>
 {
-    using base_t = ordered_map<string_t, node_t>;
+    using base_t = ordered_map_t<string_t, node_t>;
     using base_t::base_t;
 
     friend std::ostream& operator<<(std::ostream& os, const map_t& item);
