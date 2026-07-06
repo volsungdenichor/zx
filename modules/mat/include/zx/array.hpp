@@ -6,6 +6,7 @@
 #include <optional>
 #include <sstream>
 #include <tuple>
+#include <zx/format.hpp>
 #include <zx/iterator_interface.hpp>
 #include <zx/mat.hpp>
 
@@ -374,9 +375,7 @@ struct array_view_base_t
         const location_type adjusted_loc = m_shape.adjust_location(loc);
         if (!contains(bounds(), adjusted_loc))
         {
-            throw std::out_of_range{
-                (std::ostringstream() << "Location " << loc << " is out of bounds (" << extent() << ")").str()
-            };
+            throw std::out_of_range{ format("Location ", loc, " is out of bounds (", extent(), ")") };
         }
         return from_offset(m_shape.flat_offset(adjusted_loc));
     }
@@ -395,9 +394,7 @@ struct array_view_base_t
         const location_base_t adjusted_loc = m_shape.dim(d).adjust_location(n);
         if (!contains(m_shape.dim(d).bounds(), adjusted_loc))
         {
-            throw std::out_of_range{
-                (std::ostringstream() << "Index " << n << " is out of bounds (" << m_shape.dim(d).extent << ")").str()
-            };
+            throw std::out_of_range{ format("Index ", n, " is out of bounds (", m_shape.dim(d).extent, ")") };
         }
         const auto offset = adjusted_loc * m_shape.dim(d).stride;
         return array_view_base_t<T, D - 1>{ from_offset(offset), m_shape.erase(d) };
@@ -464,9 +461,7 @@ struct array_view_base_t<T, 1>
         const location_type adjusted_loc = m_shape.adjust_location(loc);
         if (!contains(bounds(), adjusted_loc))
         {
-            throw std::out_of_range{
-                (std::ostringstream() << "Location " << loc << " is out of bounds (" << extent() << ")").str()
-            };
+            throw std::out_of_range{ format("Location ", loc, " is out of bounds (", extent(), ")") };
         }
         return from_offset(m_shape.flat_offset(adjusted_loc));
     }
