@@ -32,30 +32,9 @@ std::ostream& operator<<(std::ostream& os, const spherical_shape_t<3, T>& item)
 }
 
 template <class T, class U, std::size_t D>
-constexpr auto operator+=(spherical_shape_t<D, T>& lhs, const vector_t<D, U>& rhs) -> spherical_shape_t<D, T>&
+constexpr auto translate(spherical_shape_t<D, T> lhs, const vector_t<D, U>& offset) -> spherical_shape_t<D, T>
 {
-    lhs.center += rhs;
-    return lhs;
-}
-
-template <class T, class U, std::size_t D>
-constexpr auto operator+(spherical_shape_t<D, T> lhs, const vector_t<D, U>& rhs) -> spherical_shape_t<D, T>
-{
-    lhs.center += rhs;
-    return lhs;
-}
-
-template <class T, class U, std::size_t D>
-constexpr auto operator-=(spherical_shape_t<D, T>& lhs, const vector_t<D, U>& rhs) -> spherical_shape_t<D, T>&
-{
-    lhs.center -= rhs;
-    return lhs;
-}
-
-template <class T, class U, std::size_t D>
-constexpr auto operator-(spherical_shape_t<D, T> lhs, const vector_t<D, U>& rhs) -> spherical_shape_t<D, T>
-{
-    lhs.center -= rhs;
+    lhs.center += offset;
     return lhs;
 }
 

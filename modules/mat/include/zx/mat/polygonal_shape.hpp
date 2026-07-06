@@ -141,45 +141,19 @@ std::ostream& operator<<(std::ostream& os, const polyline_t<D, T>& item)
     return os << ")";
 }
 
-template <std::size_t D, class Tag, class T, class U>
-constexpr auto operator+=(vertex_list_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& rhs) -> vertex_list_shape_t<D, Tag, T>&
-{
-    return transform([&](const vector_t<D, T>& v) { return v + rhs; }, lhs);
-}
-
 template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator+(const vertex_list_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& rhs)
+constexpr auto translate(const vertex_list_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& offset)
     -> vertex_list_shape_t<D, Tag, Res>
 {
-    return transform_into(vertex_list_shape_t<D, Tag, Res>{}, std::bind(std::plus<>{}, std::placeholders::_1, rhs), lhs);
+    return transform_into(vertex_list_shape_t<D, Tag, Res>{}, std::bind(std::plus<>{}, std::placeholders::_1, offset), lhs);
 }
 
-template <std::size_t D, class Tag, class T, class U>
-constexpr auto operator-=(vertex_list_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& rhs) -> vertex_list_shape_t<D, Tag, T>&
-{
-    return transform(std::bind(std::minus<>{}, std::placeholders::_1, rhs), lhs);
-}
-
-template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::minus<>, T, U>>
-constexpr auto operator-(const vertex_list_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& rhs)
-    -> vertex_list_shape_t<D, Tag, Res>
-{
-    return transform_into(vertex_list_shape_t<D, Tag, Res>{}, std::bind(std::minus<>{}, std::placeholders::_1, rhs), lhs);
-}
-
-template <std::size_t D, class Tag, class T, class U>
-constexpr auto operator*=(vertex_list_shape_t<D, Tag, T>& lhs, const matrix_t<D + 1, D + 1, U>& rhs)
-    -> vertex_list_shape_t<D, Tag, T>&
-{
-    return transform(std::bind(std::multiplies<>{}, std::placeholders::_1, rhs), lhs);
-}
-
-template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator*(const vertex_list_shape_t<D, Tag, T>& lhs, const matrix_t<D + 1, D + 1, U>& rhs)
+template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+constexpr auto transform(const vertex_list_shape_t<D, Tag, T>& lhs, const matrix_t<D + 1, D + 1, U>& transformation)
     -> vertex_list_shape_t<D, Tag, Res>
 {
     vertex_list_shape_t<D, Tag, Res> result(lhs.size());
-    return transform_into(std::move(result), std::bind(std::multiplies<>{}, std::placeholders::_1, rhs), lhs);
+    return transform_into(std::move(result), std::bind(std::multiplies<>{}, std::placeholders::_1, transformation), lhs);
 }
 
 }  // namespace mat

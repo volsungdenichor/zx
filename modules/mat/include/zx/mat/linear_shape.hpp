@@ -100,63 +100,6 @@ std::ostream& operator<<(std::ostream& os, const segment_t<D, T>& item)
     return os << "(segment " << item[0] << " " << item[1] << ")";
 }
 
-template <std::size_t D, class Tag, class T, class U>
-constexpr auto operator+=(linear_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& rhs) -> linear_shape_t<D, Tag, T>&
-{
-    return transform(bind_back(std::plus<>{}, rhs), lhs);
-}
-
-template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator+(const linear_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& rhs) -> linear_shape_t<D, Tag, Res>
-{
-    return transform_into(linear_shape_t<D, Tag, Res>{}, bind_back(std::plus<>{}, rhs), lhs);
-}
-
-template <std::size_t D, class Tag, class T, class U>
-constexpr auto operator-=(linear_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& rhs) -> linear_shape_t<D, Tag, T>&
-{
-    return transform(bind_back(std::minus<>{}, rhs), lhs);
-}
-
-template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::minus<>, T, U>>
-constexpr auto operator-(const linear_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& rhs) -> linear_shape_t<D, Tag, Res>
-{
-    return transform_into(linear_shape_t<D, Tag, Res>{}, bind_back(std::minus<>{}, rhs), lhs);
-}
-
-template <
-    std::size_t D,
-    class Tag,
-    class T,
-    std::size_t R,
-    std::size_t C,
-    class U,
-    enable_if_t<
-        R == D + 1,
-        C == D + 1,
-        std::is_same_v<T, std::invoke_result_t<std::multiplies<>, T, U>>> = 0>
-constexpr auto operator*=(linear_shape_t<D, Tag, T>& lhs, const matrix_t<R, C, U>& rhs) -> linear_shape_t<D, Tag, T>&
-{
-    lhs[0] = lhs[0] * rhs;
-    lhs[1] = lhs[1] * rhs;
-    return lhs;
-}
-
-template <
-    std::size_t D,
-    class Tag,
-    class T,
-    std::size_t R,
-    std::size_t C,
-    class U,
-    enable_if_t<R == D + 1, C == D + 1> = 0,
-    class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const linear_shape_t<D, Tag, T>& lhs, const matrix_t<R, C, U>& rhs)
-    -> linear_shape_t<D, Tag, Res>
-{
-    return linear_shape_t<D, Tag, Res>{ lhs[0] * rhs, lhs[1] * rhs };
-}
-
 template <std::size_t D, class T, class U>
 constexpr bool operator==(const segment_t<D, T>& lhs, const segment_t<D, U>& rhs)
 {
@@ -167,6 +110,19 @@ template <std::size_t D, class T, class U>
 constexpr bool operator!=(const segment_t<D, T>& lhs, const segment_t<D, U>& rhs)
 {
     return !(lhs == rhs);
+}
+
+template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
+constexpr auto translate(const linear_shape_t<D, Tag, T>& shape, const vector_t<D, U>& offset) -> linear_shape_t<D, Tag, Res>
+{
+    return linear_shape_t<D, Tag, Res>{ shape[0] + offset, shape[1] + offset };
+}
+
+template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+constexpr auto transform(const linear_shape_t<D, Tag, T>& shape, const matrix_t<D + 1, D + 1, U>& transformation)
+    -> linear_shape_t<D, Tag, Res>
+{
+    return linear_shape_t<D, Tag, Res>{ shape[0] * transformation, shape[1] * transformation };
 }
 
 }  // namespace mat

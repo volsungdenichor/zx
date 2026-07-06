@@ -19,28 +19,19 @@ TEST(box, parameterized_construction)
     EXPECT_THAT(box, (zx::mat::box_shape_t<2, int>{ zx::mat::interval_t<int>{ 1, 5 }, zx::mat::interval_t<int>{ 10, 20 } }));
 }
 
-TEST(box, addition)
+TEST(box, translation)
 {
-    zx::mat::box_shape_t<2, int> box{ zx::mat::interval_t<int>{ 1, 5 }, zx::mat::interval_t<int>{ 10, 20 } };
-    zx::mat::vector_t<2, int> vec{ 3, 14 };
+    EXPECT_THAT(
+        zx::mat::translate(
+            zx::mat::box_shape_t<2, int>{ zx::mat::interval_t<int>{ 1, 5 }, zx::mat::interval_t<int>{ 10, 20 } },
+            zx::mat::vector_t<2, int>{ 3, 14 }),
+        (zx::mat::box_shape_t<2, int>{ zx::mat::interval_t<int>{ 4, 8 }, zx::mat::interval_t<int>{ 24, 34 } }));
 
     EXPECT_THAT(
-        box + vec, (zx::mat::box_shape_t<2, int>{ zx::mat::interval_t<int>{ 4, 8 }, zx::mat::interval_t<int>{ 24, 34 } }));
-
-    box += vec;
-    EXPECT_THAT(box, (zx::mat::box_shape_t<2, int>{ zx::mat::interval_t<int>{ 4, 8 }, zx::mat::interval_t<int>{ 24, 34 } }));
-}
-
-TEST(box, subtraction)
-{
-    zx::mat::box_shape_t<2, int> box{ zx::mat::interval_t<int>{ 5, 10 }, zx::mat::interval_t<int>{ 20, 30 } };
-    zx::mat::vector_t<2, int> vec{ 2, 15 };
-
-    EXPECT_THAT(
-        box - vec, (zx::mat::box_shape_t<2, int>{ zx::mat::interval_t<int>{ 3, 8 }, zx::mat::interval_t<int>{ 5, 15 } }));
-
-    box -= vec;
-    EXPECT_THAT(box, (zx::mat::box_shape_t<2, int>{ zx::mat::interval_t<int>{ 3, 8 }, zx::mat::interval_t<int>{ 5, 15 } }));
+        zx::mat::translate(
+            zx::mat::box_shape_t<2, int>{ zx::mat::interval_t<int>{ 5, 10 }, zx::mat::interval_t<int>{ 20, 30 } },
+            zx::mat::vector_t<2, int>{ -2, -15 }),
+        (zx::mat::box_shape_t<2, int>{ zx::mat::interval_t<int>{ 3, 8 }, zx::mat::interval_t<int>{ 5, 15 } }));
 }
 
 TEST(box, equality)

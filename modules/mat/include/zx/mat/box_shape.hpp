@@ -171,27 +171,9 @@ struct is_shape<box_shape_t<D, T>> : public std::true_type
 };
 
 template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator+=(box_shape_t<D, T>& lhs, const vector_t<D, U>& rhs) -> box_shape_t<D, T>&
+constexpr auto translate(const box_shape_t<D, T>& lhs, const vector_t<D, U>& offset) -> box_shape_t<D, Res>
 {
-    return transform(std::plus<>{}, lhs, rhs);
-}
-
-template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto operator+(const box_shape_t<D, T>& lhs, const vector_t<D, U>& rhs) -> box_shape_t<D, Res>
-{
-    return transform_into(box_shape_t<D, Res>{}, std::plus<>{}, lhs, rhs);
-}
-
-template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::minus<>, T, U>>
-constexpr auto operator-=(box_shape_t<D, T>& lhs, const vector_t<D, U>& rhs) -> box_shape_t<D, T>&
-{
-    return transform(std::minus<>{}, lhs, rhs);
-}
-
-template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::minus<>, T, U>>
-constexpr auto operator-(const box_shape_t<D, T>& lhs, const vector_t<D, U>& rhs) -> box_shape_t<D, Res>
-{
-    return transform_into(box_shape_t<D, Res>{}, std::minus<>{}, lhs, rhs);
+    return transform_into(box_shape_t<D, Res>{}, std::plus<>{}, lhs, offset);
 }
 
 }  // namespace mat
