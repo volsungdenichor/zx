@@ -15,28 +15,6 @@
 
 void run(const std::vector<std::string_view>&)
 {
-    std::vector<std::pair<zx::string_t, zx::ansi::style_t>> list = {};
-
-    const auto options = zx::create<zx::ansi::app_options>(
-        [](zx::ansi::app_options& it)
-        {
-            it.use_alt_screen = true;
-            it.hide_cursor = false;
-            it.tick_ms = 100;
-            it.mouse.button = true;
-            it.mouse.drag = true;
-            it.mouse.motion = true;
-            it.mouse.sgr = true;
-        });
-
-    auto root = zx::ansi::widgets::hstack(
-        zx::ansi::widgets::vstack(
-            zx::ansi::widgets::label(zx::string_t{ "ALPHA" }), zx::ansi::widgets::label(zx::string_t{ "BETA" })),
-        zx::ansi::widgets::vstack(
-            zx::ansi::widgets::label(zx::string_t{ "GAMMA" }), zx::ansi::widgets::label(zx::string_t{ "DELTA" })));
-
-    zx::ansi::app_t app{ root, options };
-    app.run();
 }
 
 void handle_exception(std::exception_ptr ptr, int level = 0)

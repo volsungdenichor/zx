@@ -8,17 +8,6 @@ namespace ansi
 {
 namespace widgets
 {
-
-inline surface_t::slice_type to_slice(const surface_t::bounds_type& bounds)
-{
-    surface_t::slice_type result = {};
-    for (std::size_t d = 0; d < 2; ++d)
-    {
-        result[d] = { bounds[d][0], bounds[d][1] };
-    }
-    return result;
-}
-
 struct flex_t
 {
     int fixed = 0;
@@ -102,8 +91,8 @@ struct stack_fn
             for (std::size_t i = 0; i < m_children.size(); ++i)
             {
                 extent_t size = sizes[i];
-                m_last_child_bounds[i] = bounds_t::from_lower_size(loc, size);
-                m_children[i].child.render(view.slice(to_slice(m_last_child_bounds[i])));
+                m_last_child_bounds[i] = mat::box::from_lower_size(loc, size);
+                m_children[i].child.render(view.slice(mat::to_slice(m_last_child_bounds[i])));
                 loc[D] += size[D];
             }
         }

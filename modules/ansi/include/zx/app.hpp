@@ -113,7 +113,7 @@ public:
                         m_bus.publish_to(m_root.id(), *e);
                     }
 
-                    if (auto event = std::get_if<quit_event_t>(&*ev))
+                    if (std::holds_alternative<quit_event_t>(*ev))
                     {
                         detail::quit_flag().store(true);
                     }

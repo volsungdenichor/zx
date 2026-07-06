@@ -624,6 +624,27 @@ struct adjust_bounds_fn
 
 static constexpr inline auto adjust_bounds = adjust_bounds_fn{};
 
+struct to_slice_fn
+{
+    slice_base_t operator()(const interval_t<extent_base_t>& bounds) const
+    {
+        return slice_base_t{ lower(bounds), upper(bounds) };
+    }
+
+    template <std::size_t D>
+    slice_t<D> operator()(const bounds_t<D>& bounds) const
+    {
+        slice_t<D> result = {};
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(bounds[d]);
+        }
+        return result;
+    }
+};
+
+static constexpr inline auto to_slice = to_slice_fn{};
+
 struct copy_fn
 {
     template <class T, class U>
@@ -652,22 +673,6 @@ struct copy_fn
         {
             (*this)(dst[i], src[i]);
         }
-    }
-
-    static slice_base_t to_slice(const interval_t<extent_base_t>& bounds)
-    {
-        return slice_base_t{ lower(bounds), upper(bounds) };
-    }
-
-    template <std::size_t D>
-    static slice_t<D> to_slice(const bounds_t<D>& bounds)
-    {
-        slice_t<D> result = {};
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = to_slice(bounds[d]);
-        }
-        return result;
     }
 
     template <class T, class U, std::size_t D>

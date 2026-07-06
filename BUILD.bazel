@@ -47,6 +47,11 @@ alias(
     actual = "//modules/predicates:predicates",
 )
 
+alias(
+    name = "devlab",
+    actual = "//devlab:devlab",
+)
+
 cc_library(
     name = "zx",
     deps = [
