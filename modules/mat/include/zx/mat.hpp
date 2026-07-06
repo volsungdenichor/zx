@@ -184,6 +184,17 @@ struct size_fn
 
 static constexpr inline auto size = size_fn{};
 
+struct radius_fn
+{
+    template <class T, std::size_t D>
+    constexpr auto operator()(const spherical_shape_t<D, T>& item) const -> T
+    {
+        return item.radius;
+    }
+};
+
+static constexpr inline auto radius = radius_fn{};
+
 struct center_fn
 {
     template <class T>
@@ -671,6 +682,7 @@ using detail::orientation;
 using detail::orthocenter;
 using detail::perpendicular;
 using detail::projection;
+using detail::radius;
 using detail::rejection;
 using detail::size;
 using detail::unit;

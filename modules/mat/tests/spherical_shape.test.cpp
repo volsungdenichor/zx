@@ -18,14 +18,14 @@ TEST(circle, translate)
         zx::mat::translate(
             zx::mat::spherical_shape_t<2, double>{ { 1.0, 2.0 }, 3.0 }, zx::mat::vector_t<2, double>{ 10.0, 20.0 }),
         testing::AllOf(
-            testing::Field(&zx::mat::spherical_shape_t<2, double>::center, (zx::mat::vector_t<2, double>{ 11.0, 22.0 })),
-            testing::Field(&zx::mat::spherical_shape_t<2, double>::radius, 3.0)));
+            testing::ResultOf("center", zx::mat::center, (zx::mat::vector_t<2, double>{ 11.0, 22.0 })),
+            testing::ResultOf("radius", zx::mat::radius, 3.0)));
 
     EXPECT_THAT(
         zx::mat::translate(zx::mat::spherical_shape_t<2, int>{ { 10, 20 }, 7 }, zx::mat::vector_t<2, int>{ -1, -2 }),
         testing::AllOf(
-            testing::Field(&zx::mat::spherical_shape_t<2, int>::center, (zx::mat::vector_t<2, int>{ 9, 18 })),
-            testing::Field(&zx::mat::spherical_shape_t<2, int>::radius, 7)));
+            testing::ResultOf("center", zx::mat::center, (zx::mat::vector_t<2, int>{ 9, 18 })),
+            testing::ResultOf("radius", zx::mat::radius, 7)));
 }
 
 TEST(sphere, ostream)
