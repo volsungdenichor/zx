@@ -26,15 +26,6 @@ struct interval_t : public std::array<T, 2>
 
     constexpr interval_t() : interval_t(T{}, T{}) { }
 
-    static constexpr interval_t<T> from_lower_upper(T lower, T upper) { return interval_t<T>{ lower, upper }; }
-
-    static constexpr interval_t<T> from_lower_size(T lower, T size) { return interval_t<T>{ lower, lower + size }; }
-
-    static constexpr interval_t<T> from_center_size(T center, T size)
-    {
-        return interval_t<T>{ center - size / 2, center + size / 2 };
-    }
-
     constexpr T get(side_t s) const
     {
         switch (s)
@@ -114,36 +105,6 @@ struct box_shape_t : public md_base_t<D, interval_t<T>, box_shape_t>
     using base_t = md_base_t<D, interval_t<T>, box_shape_t>;
     using base_t::base_t;
 
-    static constexpr box_shape_t<D, T> from_lower_upper(const vector_t<D, T>& lower, const vector_t<D, T>& upper)
-    {
-        box_shape_t<D, T> result;
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = interval_t<T>::from_lower_upper(lower[d], upper[d]);
-        }
-        return result;
-    }
-
-    static constexpr box_shape_t<D, T> from_lower_size(const vector_t<D, T>& lower, const vector_t<D, T>& size)
-    {
-        box_shape_t<D, T> result;
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = interval_t<T>::from_lower_size(lower[d], size[d]);
-        }
-        return result;
-    }
-
-    static constexpr box_shape_t<D, T> from_center_size(const vector_t<D, T>& center, const vector_t<D, T>& size)
-    {
-        box_shape_t<D, T> result;
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = interval_t<T>::from_center_size(center[d], size[d]);
-        }
-        return result;
-    }
-
     constexpr vector_t<D, T> get(side_t side) const
     {
         return transform_into(
@@ -165,6 +126,63 @@ constexpr auto translate(const box_shape_t<D, T>& lhs, const vector_t<D, U>& off
 {
     return transform_into(box_shape_t<D, Res>{}, std::plus<>{}, lhs, offset);
 }
+
+struct interval
+{
+    template <class T>
+    static constexpr interval_t<T> from_lower_upper(T lower, T upper)
+    {
+        return interval_t<T>{ lower, upper };
+    }
+
+    template <class T>
+    static constexpr interval_t<T> from_lower_size(T lower, T size)
+    {
+        return interval_t<T>{ lower, lower + size };
+    }
+
+    template <class T>
+    static constexpr interval_t<T> from_center_size(T center, T size)
+    {
+        return from_lower_size(center - size / 2, size);
+    }
+};
+
+struct box
+{
+    template <std::size_t D, class T>
+    static constexpr box_shape_t<D, T> from_lower_upper(const vector_t<D, T>& lower, const vector_t<D, T>& upper)
+    {
+        box_shape_t<D, T> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = interval::from_lower_upper(lower[d], upper[d]);
+        }
+        return result;
+    }
+
+    template <std::size_t D, class T>
+    static constexpr box_shape_t<D, T> from_lower_size(const vector_t<D, T>& lower, const vector_t<D, T>& size)
+    {
+        box_shape_t<D, T> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = interval::from_lower_size(lower[d], size[d]);
+        }
+        return result;
+    }
+
+    template <std::size_t D, class T>
+    static constexpr box_shape_t<D, T> from_center_size(const vector_t<D, T>& center, const vector_t<D, T>& size)
+    {
+        box_shape_t<D, T> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = interval::from_center_size(center[d], size[d]);
+        }
+        return result;
+    }
+};
 
 }  // namespace mat
 }  // namespace zx

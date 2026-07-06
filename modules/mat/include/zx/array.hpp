@@ -671,10 +671,7 @@ struct copy_fn
     }
 
     template <class T, class U, std::size_t D>
-    void operator()(
-        array_view_base_t<T, D> dst,
-        array_view_base_t<U, D> src,
-        const typename array_view_base_t<T, D>::location_type& location) const
+    void operator()(array_view_base_t<T, D> dst, array_view_base_t<U, D> src, const location_t<D>& location) const
     {
         const auto [src_bounds, dst_bounds] = adjust_bounds(dst.bounds(), src.bounds(), location);
         (*this)(dst.slice(to_slice(dst_bounds)), src.slice(to_slice(src_bounds)));

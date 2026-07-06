@@ -12,7 +12,7 @@ zx_module_test(
     name = "mat_tests",
     module = ":mat",
     extra_copts = ["-iquote", "modules/mat/tests"],
-    defines = ["TEST_DATA_DIR=\"modules/mat/tests\""],
+    defines = ["TEST_DATA_DIR=\\\"modules/mat/tests\\\""],
     data = ["tests/test-24.bmp"],
     srcs = [
         "tests/matchers.hpp",
