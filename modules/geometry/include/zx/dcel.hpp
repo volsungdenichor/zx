@@ -12,9 +12,6 @@ namespace zx
 namespace geometry
 {
 
-template <class... Args>
-using generator_t = std::function<void(std::function<bool(Args...)>)>;
-
 namespace detail
 {
 
