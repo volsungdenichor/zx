@@ -113,8 +113,16 @@ constexpr auto translate(const linear_shape_t<D, Tag, T>& shape, const vector_t<
     return linear_shape_t<D, Tag, Res>{ shape[0] + offset, shape[1] + offset };
 }
 
-template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto transform(const linear_shape_t<D, Tag, T>& shape, const matrix_t<D + 1, D + 1, U>& transformation)
+template <
+    std::size_t D,
+    class Tag,
+    class T,
+    std::size_t R,
+    std::size_t C,
+    class U,
+    enable_if_t<(R == D + 1 && C == D + 1)> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+constexpr auto transform(const linear_shape_t<D, Tag, T>& shape, const matrix_t<R, C, U>& transformation)
     -> linear_shape_t<D, Tag, Res>
 {
     return linear_shape_t<D, Tag, Res>{ shape[0] * transformation, shape[1] * transformation };

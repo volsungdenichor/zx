@@ -49,9 +49,16 @@ constexpr auto translate(const polygonal_shape_t<D, T, N>& lhs, const vector_t<D
     return transform_into(polygonal_shape_t<D, Res, N>{}, std::bind(std::plus<>{}, std::placeholders::_1, rhs), lhs);
 }
 
-template <std::size_t D, std::size_t N, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto transform(const polygonal_shape_t<D, T, N>& lhs, const matrix_t<D + 1, D + 1, U>& rhs)
-    -> polygonal_shape_t<D, Res, N>
+template <
+    std::size_t D,
+    std::size_t N,
+    class T,
+    std::size_t R,
+    std::size_t C,
+    class U,
+    enable_if_t<(R == D + 1 && C == D + 1)> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+constexpr auto transform(const polygonal_shape_t<D, T, N>& lhs, const matrix_t<R, C, U>& rhs) -> polygonal_shape_t<D, Res, N>
 {
     return transform_into(polygonal_shape_t<D, Res, N>{}, bind_back(std::multiplies<>{}, rhs), lhs);
 }
@@ -111,8 +118,16 @@ constexpr auto translate(const vertex_list_shape_t<D, Tag, T>& lhs, const vector
     return transform_into(vertex_list_shape_t<D, Tag, Res>{}, std::bind(std::plus<>{}, std::placeholders::_1, offset), lhs);
 }
 
-template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto transform(const vertex_list_shape_t<D, Tag, T>& lhs, const matrix_t<D + 1, D + 1, U>& transformation)
+template <
+    std::size_t D,
+    class Tag,
+    class T,
+    std::size_t R,
+    std::size_t C,
+    class U,
+    enable_if_t<(R == D + 1 && C == D + 1)> = 0,
+    class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+constexpr auto transform(const vertex_list_shape_t<D, Tag, T>& lhs, const matrix_t<R, C, U>& transformation)
     -> vertex_list_shape_t<D, Tag, Res>
 {
     vertex_list_shape_t<D, Tag, Res> result(lhs.size());
