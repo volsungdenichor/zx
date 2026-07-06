@@ -13,11 +13,6 @@ alias(
 )
 
 alias(
-    name = "functional",
-    actual = "//modules/functional:functional",
-)
-
-alias(
     name = "sequence",
     actual = "//modules/sequence:sequence",
 )
@@ -57,7 +52,6 @@ cc_library(
     deps = [
         "//modules/ansi:ansi",
         "//modules/core:core",
-        "//modules/functional:functional",
         "//modules/geometry:geometry",
         "//modules/iterator:iterator",
         "//modules/mat:mat",
