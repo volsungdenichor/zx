@@ -9,12 +9,23 @@
 #include "zx/app.hpp"
 #include "zx/format.hpp"
 #include "zx/functional.hpp"
+#include "zx/image.hpp"
 #include "zx/maybe.hpp"
 #include "zx/string.hpp"
 #include "zx/widget.hpp"
 
 void run(const std::vector<std::string_view>&)
 {
+    const auto hippie = zx::mat::load_bitmap("/home/krzysiek/hippie.bmp");
+    const auto conan = zx::mat::load_bitmap("/home/krzysiek/conan.bmp");
+    std::cout << "hippie: " << hippie.extent() << std::endl;
+    std::cout << "conan: " << conan.extent() << std::endl;
+
+    auto out = hippie;
+
+    zx::mat::copy(out.mut_view(), conan.view(), { 0, 300, 0 });
+
+    zx::mat::save_bitmap(out, "/home/krzysiek/out.bmp");
 }
 
 void handle_exception(std::exception_ptr ptr, int level = 0)
