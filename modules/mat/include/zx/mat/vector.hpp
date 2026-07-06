@@ -118,26 +118,6 @@ struct md_base_t : public std::array<T, D>
     friend bool operator!=(const self_type& lhs, const self_type& rhs) { return !(lhs == rhs); }
 };
 
-template <class T>
-struct is_vector : public std::false_type
-{
-};
-
-template <class T>
-struct is_matrix : public std::false_type
-{
-};
-
-template <class T>
-struct is_shape : public std::false_type
-{
-};
-
-template <class T>
-struct is_scalar : public std::bool_constant<!is_vector<T>::value && !is_matrix<T>::value && !is_shape<T>::value>
-{
-};
-
 template <std::size_t D, class T>
 struct vector_t;
 
@@ -147,11 +127,6 @@ struct vector_t : public md_base_t<D, T, vector_t>
     using base_t = md_base_t<D, T, vector_t>;
 
     using base_t::base_t;
-};
-
-template <std::size_t D, class T>
-struct is_vector<vector_t<D, T>> : public std::true_type
-{
 };
 
 template <class T>
@@ -218,56 +193,31 @@ constexpr auto operator-(const vector_t<D, L>& lhs, const vector_t<D, R>& rhs) -
     return transform_into(vector_t<D, Res>{}, std::minus<>{}, lhs, rhs);
 }
 
-template <
-    std::size_t D,
-    class L,
-    class R,
-    enable_if_t<is_scalar<R>::value> = 0,
-    class Res = std::invoke_result_t<std::multiplies<>, L, R>>
+template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*=(vector_t<D, L>& lhs, R rhs) -> vector_t<D, L>&
 {
     return transform(bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
-template <
-    std::size_t D,
-    class L,
-    class R,
-    enable_if_t<is_scalar<R>::value> = 0,
-    class Res = std::invoke_result_t<std::multiplies<>, L, R>>
+template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*(const vector_t<D, L>& lhs, R rhs) -> vector_t<D, Res>
 {
     return transform_into(vector_t<D, Res>{}, bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
-template <
-    class L,
-    std::size_t D,
-    class R,
-    enable_if_t<is_scalar<L>::value> = 0,
-    class Res = std::invoke_result_t<std::multiplies<>, L, R>>
+template <class L, std::size_t D, class R, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*(L lhs, const vector_t<D, R>& rhs) -> vector_t<D, Res>
 {
     return rhs * lhs;
 }
 
-template <
-    std::size_t D,
-    class L,
-    class R,
-    enable_if_t<is_scalar<R>::value> = 0,
-    class Res = std::invoke_result_t<std::divides<>, L, R>>
+template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::divides<>, L, R>>
 constexpr auto operator/=(vector_t<D, L>& lhs, R rhs) -> vector_t<D, L>&
 {
     return transform(bind_back(std::divides<>{}, rhs), lhs);
 }
 
-template <
-    std::size_t D,
-    class L,
-    class R,
-    enable_if_t<is_scalar<R>::value> = 0,
-    class Res = std::invoke_result_t<std::divides<>, L, R>>
+template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::divides<>, L, R>>
 constexpr auto operator/(const vector_t<D, L>& lhs, R rhs) -> vector_t<D, Res>
 {
     return transform_into(vector_t<D, Res>{}, bind_back(std::divides<>{}, rhs), lhs);

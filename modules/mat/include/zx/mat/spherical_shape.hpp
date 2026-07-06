@@ -14,11 +14,6 @@ struct spherical_shape_t
     T radius;
 };
 
-template <std::size_t D, class T>
-struct is_shape<spherical_shape_t<D, T>> : public std::true_type
-{
-};
-
 template <class T>
 std::ostream& operator<<(std::ostream& os, const spherical_shape_t<2, T>& item)
 {
@@ -34,8 +29,7 @@ std::ostream& operator<<(std::ostream& os, const spherical_shape_t<3, T>& item)
 template <class T, class U, std::size_t D>
 constexpr auto translate(spherical_shape_t<D, T> lhs, const vector_t<D, U>& offset) -> spherical_shape_t<D, T>
 {
-    lhs.center += offset;
-    return lhs;
+    return spherical_shape_t<D, T>{ lhs.center + offset, lhs.radius };
 }
 
 }  // namespace mat

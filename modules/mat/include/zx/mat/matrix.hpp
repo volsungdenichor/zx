@@ -133,11 +133,6 @@ struct matrix_t
 };
 
 template <std::size_t R, std::size_t C, class T>
-struct is_matrix<matrix_t<R, C, T>> : public std::true_type
-{
-};
-
-template <std::size_t R, std::size_t C, class T>
 std::ostream& operator<<(std::ostream& os, const matrix_view_t<R, C, T>& item)
 {
     os << "[";
@@ -193,25 +188,13 @@ constexpr auto operator-=(matrix_t<R, C, T>& lhs, const matrix_t<R, C, U>& rhs) 
     return transform(std::minus<>{}, lhs, rhs);
 }
 
-template <
-    std::size_t R,
-    std::size_t C,
-    class T,
-    class U,
-    enable_if_t<is_scalar<U>::value> = 0,
-    class = std::invoke_result_t<std::multiplies<>, T, U>>
+template <std::size_t R, std::size_t C, class T, class U, class = std::invoke_result_t<std::multiplies<>, T, U>>
 constexpr auto operator*=(matrix_t<R, C, T>& lhs, U rhs) -> matrix_t<R, C, T>&
 {
     return transform(bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
-template <
-    std::size_t R,
-    std::size_t C,
-    class T,
-    class U,
-    enable_if_t<is_scalar<U>::value> = 0,
-    class = std::invoke_result_t<std::divides<>, T, U>>
+template <std::size_t R, std::size_t C, class T, class U, class = std::invoke_result_t<std::divides<>, T, U>>
 constexpr auto operator/=(matrix_t<R, C, T>& lhs, U rhs) -> matrix_t<R, C, T>&
 {
     return transform(bind_back(std::divides<>{}, rhs), lhs);
@@ -229,37 +212,19 @@ constexpr auto operator-(const matrix_t<R, C, T>& lhs, const matrix_t<R, C, U>& 
     return transform_into(matrix_t<R, C, Res>{}, std::minus<>{}, lhs, rhs);
 }
 
-template <
-    std::size_t R,
-    std::size_t C,
-    class T,
-    class U,
-    enable_if_t<is_scalar<U>::value> = 0,
-    class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+template <std::size_t R, std::size_t C, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
 constexpr auto operator*(const matrix_t<R, C, T>& lhs, U rhs) -> matrix_t<R, C, Res>
 {
     return transform_into(matrix_t<R, C, Res>{}, bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
-template <
-    std::size_t R,
-    std::size_t C,
-    class T,
-    class U,
-    enable_if_t<is_scalar<T>::value> = 0,
-    class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+template <std::size_t R, std::size_t C, class T, class U, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
 constexpr auto operator*(T lhs, const matrix_t<R, C, U>& rhs) -> matrix_t<R, C, Res>
 {
     return rhs * lhs;
 }
 
-template <
-    std::size_t R,
-    std::size_t C,
-    class T,
-    class U,
-    enable_if_t<is_scalar<U>::value> = 0,
-    class Res = std::invoke_result_t<std::divides<>, T, U>>
+template <std::size_t R, std::size_t C, class T, class U, class Res = std::invoke_result_t<std::divides<>, T, U>>
 constexpr auto operator/(const matrix_t<R, C, T>& lhs, U rhs) -> matrix_t<R, C, Res>
 {
     return transform_into(matrix_t<R, C, Res>{}, bind_back(std::divides<>{}, rhs), lhs);
