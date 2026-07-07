@@ -345,10 +345,13 @@ struct intersects_fn
     template <class T>
     constexpr auto operator()(const interval_t<T>& self, const interval_t<T>& other) const -> bool
     {
-        return inclusive_between(lower(self), lower(other), upper(other))     //
-               || inclusive_between(upper(self), lower(other), upper(other))  //
-               || inclusive_between(lower(other), lower(self), upper(self))   //
-               || inclusive_between(upper(other), lower(self), upper(self));
+        const auto lo_self = lower(self);
+        const auto up_self = upper(self);
+        const auto lo_other = lower(other);
+        const auto up_other = upper(other);
+
+        // Intervals are represented as [lo, up), so touching endpoints do not intersect.
+        return lo_self < up_self && lo_other < up_other && lo_self < up_other && lo_other < up_self;
     }
 
     template <std::size_t D, class T>
@@ -384,7 +387,7 @@ struct interpolate_fn
     template <class R, class T>
     constexpr auto operator()(R r, const interval_t<T>& item) const
     {
-        return lower(item) * r + upper(item) * (R(1) - r);
+        return lower(item) + r * size(item);
     }
 };
 
@@ -451,9 +454,9 @@ constexpr bool contains_param(segment_tag, T v)
 
 struct intersection_fn
 {
-    template <std::size_t D, class T, class Tag1, class Tag2, class E = T>
-    constexpr auto operator()(const linear_shape_t<D, Tag1, T>& lhs, const linear_shape_t<D, Tag2, T>& rhs, E epsilon = {})
-        const -> std::optional<vector_t<D, T>>
+    template <class T, class Tag1, class Tag2, class E = T>
+    constexpr auto operator()(const linear_shape_t<2, Tag1, T>& lhs, const linear_shape_t<2, Tag2, T>& rhs, E epsilon = {})
+        const -> std::optional<point_t<2, T>>
     {
         const auto par = detail::get_line_intersection_parameters(lhs[0], lhs[1], rhs[0], rhs[1], epsilon);
 
@@ -483,9 +486,9 @@ struct projection_fn
         return rhs * (dot(rhs, lhs) / norm(rhs));
     }
 
-    template <std::size_t D, class T, class Tag, class E = T>
-    constexpr auto operator()(const point_t<D, T>& point, const linear_shape_t<D, Tag, T>& shape, E epsilon = {}) const
-        -> std::optional<vector_t<D, T>>
+    template <class T, class Tag, class E = T>
+    constexpr auto operator()(const point_t<2, T>& point, const linear_shape_t<2, Tag, T>& shape, E epsilon = {}) const
+        -> std::optional<point_t<2, T>>
     {
         const auto p0 = shape[0];
         const auto p1 = shape[1];
