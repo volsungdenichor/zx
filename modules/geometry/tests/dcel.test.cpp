@@ -119,10 +119,10 @@ TEST(dcel, access)
     using D = zx::geometry::dcel_t<int>;
     D dcel = {};
 
-    dcel.m_locations.push_back(zx::mat::vector(648, 112));
-    dcel.m_locations.push_back(zx::mat::vector(385, 147));
-    dcel.m_locations.push_back(zx::mat::vector(459, 303));
-    dcel.m_locations.push_back(zx::mat::vector(656, 330));
+    dcel.m_locations.push_back(zx::mat::vector_t{ 648, 112 });
+    dcel.m_locations.push_back(zx::mat::vector_t{ 385, 147 });
+    dcel.m_locations.push_back(zx::mat::vector_t{ 459, 303 });
+    dcel.m_locations.push_back(zx::mat::vector_t{ 656, 330 });
 
     dcel.m_vertices.push_back({ 0, 0 });
     dcel.m_vertices.push_back({ 1, 2 });
@@ -160,25 +160,25 @@ TEST(dcel, access)
     const auto vertices = std::vector<testing::Matcher<D::vertex_t>>{
         testing::AllOf(
             id_is(0),
-            location_is(zx::mat::vector(648, 112)),
+            location_is(zx::mat::vector_t{ 648, 112 }),
             out_halfedges_are(testing::ElementsAre(id_is(0), id_is(7), id_is(5))),
             in_halfedges_are(testing::ElementsAre(id_is(1), id_is(6), id_is(4))),
             incident_faces_are(testing::ElementsAre(id_is(1), id_is(0)))),
         testing::AllOf(
             id_is(1),
-            location_is(zx::mat::vector(385, 147)),
+            location_is(zx::mat::vector_t{ 385, 147 }),
             out_halfedges_are(testing::ElementsAre(id_is(2), id_is(1))),
             in_halfedges_are(testing::ElementsAre(id_is(3), id_is(0))),
             incident_faces_are(testing::ElementsAre(id_is(0)))),
         testing::AllOf(
             id_is(2),
-            location_is(zx::mat::vector(459, 303)),
+            location_is(zx::mat::vector_t{ 459, 303 }),
             out_halfedges_are(testing::ElementsAre(id_is(4), id_is(8), id_is(3))),
             in_halfedges_are(testing::ElementsAre(id_is(5), id_is(9), id_is(2))),
             incident_faces_are(testing::ElementsAre(id_is(1), id_is(0)))),
         testing::AllOf(
             id_is(3),
-            location_is(zx::mat::vector(656, 330)),
+            location_is(zx::mat::vector_t{ 656, 330 }),
             out_halfedges_are(testing::ElementsAre(id_is(6), id_is(9))),
             in_halfedges_are(testing::ElementsAre(id_is(7), id_is(8))),
             incident_faces_are(testing::ElementsAre(id_is(1))))
@@ -191,14 +191,14 @@ TEST(dcel, access)
             halfedges_are(testing::ElementsAre(id_is(0), id_is(2), id_is(4))),
             vertices_are(testing::ElementsAre(id_is(0), id_is(1), id_is(2))),
             as_polygon_is(zx::mat::polygon_t<2, int>{
-                zx::mat::vector(648, 112), zx::mat::vector(385, 147), zx::mat::vector(459, 303) })),
+                zx::mat::vector_t{ 648, 112 }, zx::mat::vector_t{ 385, 147 }, zx::mat::vector_t{ 459, 303 } })),
         testing::AllOf(
             id_is(1),
             halfedge_is(id_is(6)),
             halfedges_are(testing::ElementsAre(id_is(6), id_is(5), id_is(8))),
             vertices_are(testing::ElementsAre(id_is(3), id_is(0), id_is(2))),
             as_polygon_is(zx::mat::polygon_t<2, int>{
-                zx::mat::vector(656, 330), zx::mat::vector(648, 112), zx::mat::vector(459, 303) }))
+                zx::mat::vector_t{ 656, 330 }, zx::mat::vector_t{ 648, 112 }, zx::mat::vector_t{ 459, 303 } }))
     };
 
     const auto halfedges = std::vector<testing::Matcher<D::halfedge_t>>{ testing::AllOf(

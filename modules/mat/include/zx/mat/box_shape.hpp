@@ -162,7 +162,7 @@ struct box
     }
 
     template <std::size_t D, class T>
-    static constexpr box_shape_t<D, T> from_lower_size(const point_t<D, T>& lower, const vector_t<D, T>& size)
+    static constexpr box_shape_t<D, T> from_lower_size(const point_t<D, T>& lower, const extent_t<D, T>& size)
     {
         box_shape_t<D, T> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -173,7 +173,7 @@ struct box
     }
 
     template <std::size_t D, class T>
-    static constexpr box_shape_t<D, T> from_center_size(const point_t<D, T>& center, const vector_t<D, T>& size)
+    static constexpr box_shape_t<D, T> from_center_size(const point_t<D, T>& center, const extent_t<D, T>& size)
     {
         box_shape_t<D, T> result;
         for (std::size_t d = 0; d < D; ++d)

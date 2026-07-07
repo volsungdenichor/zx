@@ -119,9 +119,6 @@ struct md_base_t : public std::array<T, D>
 };
 
 template <std::size_t D, class T>
-struct vector_t;
-
-template <std::size_t D, class T>
 struct vector_t : public md_base_t<D, T, vector_t>
 {
     using base_t = md_base_t<D, T, vector_t>;
@@ -132,34 +129,15 @@ struct vector_t : public md_base_t<D, T, vector_t>
 template <std::size_t D, class T>
 using point_t = vector_t<D, T>;
 
+template <std::size_t D, class T>
+using extent_t = vector_t<D, T>;
+
 template <class T>
 vector_t(T, T) -> vector_t<2, T>;
 
 template <class T>
 vector_t(T, T, T) -> vector_t<3, T>;
 
-namespace detail
-{
-
-struct vector_fn
-{
-    template <class T>
-    constexpr auto operator()(T x, T y) const -> vector_t<2, T>
-    {
-        return { x, y };
-    }
-
-    template <class T>
-    constexpr auto operator()(T x, T y, T z) const -> vector_t<3, T>
-    {
-        return { x, y, z };
-    }
-};
-
-}  // namespace detail
-
-static constexpr inline auto vector = detail::vector_fn{};
-static constexpr inline auto point = vector;
 
 template <std::size_t D, class T>
 constexpr auto operator+(const vector_t<D, T>& item) -> vector_t<D, T>

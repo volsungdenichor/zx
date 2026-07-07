@@ -133,13 +133,10 @@ struct dim_t
 };
 
 template <std::size_t D>
-using extent_t = vector_t<D, extent_base_t>;
-
-template <std::size_t D>
 using stride_t = vector_t<D, stride_base_t>;
 
 template <std::size_t D>
-using location_t = vector_t<D, location_base_t>;
+using location_t = point_t<D, location_base_t>;
 
 template <std::size_t D>
 using slice_t = vector_t<D, slice_base_t>;
@@ -186,7 +183,7 @@ struct iter_impl
 template <std::size_t D, class...>
 struct shape_t : md_base_t<D, dim_t, shape_t>
 {
-    using extent_type = extent_t<D>;
+    using extent_type = extent_t<D, extent_base_t>;
     using stride_type = stride_t<D>;
     using location_type = location_t<D>;
     using slice_type = slice_t<D>;

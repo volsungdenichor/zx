@@ -176,7 +176,7 @@ struct size_fn
     }
 
     template <std::size_t D, class T>
-    constexpr auto operator()(const box_shape_t<D, T>& item) const -> vector_t<D, T>
+    constexpr auto operator()(const box_shape_t<D, T>& item) const -> extent_t<D, T>
     {
         return upper(item) - lower(item);
     }
