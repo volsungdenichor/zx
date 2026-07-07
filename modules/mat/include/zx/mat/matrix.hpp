@@ -6,6 +6,7 @@
 #include <zx/iterator_range.hpp>
 #include <zx/mat/math.hpp>
 #include <zx/mat/vector.hpp>
+#include <zx/maybe.hpp>
 #include <zx/strided_iterator.hpp>
 
 namespace zx
@@ -417,13 +418,13 @@ struct invert_fn
     }
 
     template <std::size_t D, class T>
-    auto operator()(const matrix_t<D, D, T>& value) const -> std::optional<matrix_t<D, D, T>>
+    auto operator()(const matrix_t<D, D, T>& value) const -> maybe_t<matrix_t<D, D, T>>
     {
         const auto det = determinant(value);
 
         if (approx_zero(det))
         {
-            return {};
+            return none;
         }
 
         matrix_t<D, D, T> result{};

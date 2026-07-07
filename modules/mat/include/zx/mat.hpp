@@ -7,6 +7,7 @@
 #include <zx/mat/polygonal_shape.hpp>
 #include <zx/mat/spherical_shape.hpp>
 #include <zx/mat/vector.hpp>
+#include <zx/maybe.hpp>
 
 namespace zx
 {
@@ -438,7 +439,7 @@ namespace detail
 
 template <class T, class E>
 constexpr auto get_line_intersection_parameter(
-    const point_t<2, T>& a0, const point_t<2, T>& a1, const point_t<2, T>& p, E epsilon) -> std::optional<T>
+    const point_t<2, T>& a0, const point_t<2, T>& a1, const point_t<2, T>& p, E epsilon) -> maybe_t<T>
 {
     const auto dir = a1 - a0;
 
@@ -456,7 +457,7 @@ constexpr auto get_line_intersection_parameter(
 template <class T, class E>
 constexpr auto get_line_intersection_parameters(
     const point_t<2, T>& a0, const point_t<2, T>& a1, const point_t<2, T>& b0, const point_t<2, T>& b1, E epsilon)
-    -> std::optional<std::tuple<T, T>>
+    -> maybe_t<std::tuple<T, T>>
 {
     const auto dir_a = a1 - a0;
     const auto dir_b = b1 - b0;
@@ -495,7 +496,7 @@ constexpr bool contains_param(segment_tag, T v)
 struct intersection_fn
 {
     template <class T>
-    constexpr auto operator()(const interval_t<T>& lhs, const interval_t<T>& rhs) const -> std::optional<interval_t<T>>
+    constexpr auto operator()(const interval_t<T>& lhs, const interval_t<T>& rhs) const -> maybe_t<interval_t<T>>
     {
         const auto lo = std::max(lower(lhs), lower(rhs));
         const auto up = std::min(upper(lhs), upper(rhs));
@@ -509,7 +510,7 @@ struct intersection_fn
 
     template <class T, class... Tail>
     constexpr auto operator()(const interval_t<T>& head, const interval_t<T>& next, const Tail&... tail) const
-        -> std::optional<interval_t<T>>
+        -> maybe_t<interval_t<T>>
     {
         const auto partial = (*this)(head, next);
 
@@ -524,12 +525,11 @@ struct intersection_fn
                 return (*this)(*partial, tail...);
             }
         }
-        return std::nullopt;
+        return none;
     }
 
     template <std::size_t D, class T>
-    constexpr auto operator()(const box_shape_t<D, T>& lhs, const box_shape_t<D, T>& rhs) const
-        -> std::optional<box_shape_t<D, T>>
+    constexpr auto operator()(const box_shape_t<D, T>& lhs, const box_shape_t<D, T>& rhs) const -> maybe_t<box_shape_t<D, T>>
     {
         box_shape_t<D, T> result;
 
@@ -538,7 +538,7 @@ struct intersection_fn
             const auto interval = (*this)(lhs[d], rhs[d]);
             if (!interval)
             {
-                return {};
+                return none;
             }
 
             result[d] = *interval;
@@ -549,7 +549,7 @@ struct intersection_fn
 
     template <std::size_t D, class T, class... Tail>
     constexpr auto operator()(const box_shape_t<D, T>& head, const box_shape_t<D, T>& next, const Tail&... tail) const
-        -> std::optional<box_shape_t<D, T>>
+        -> maybe_t<box_shape_t<D, T>>
     {
         const auto partial = (*this)(head, next);
 
@@ -564,18 +564,18 @@ struct intersection_fn
                 return (*this)(*partial, tail...);
             }
         }
-        return std::nullopt;
+        return none;
     }
 
     template <class T, class Tag1, class Tag2, class E = T>
     constexpr auto operator()(const linear_shape_t<2, Tag1, T>& lhs, const linear_shape_t<2, Tag2, T>& rhs, E epsilon = {})
-        const -> std::optional<point_t<2, T>>
+        const -> maybe_t<point_t<2, T>>
     {
         const auto par = detail::get_line_intersection_parameters(lhs[0], lhs[1], rhs[0], rhs[1], epsilon);
 
         if (!par)
         {
-            return {};
+            return none;
         }
 
         const auto [a, b] = *par;
@@ -584,7 +584,7 @@ struct intersection_fn
         {
             return interpolate(a, lhs[0], lhs[1]);
         }
-        return {};
+        return none;
     }
 };
 
@@ -601,7 +601,7 @@ struct projection_fn
 
     template <class T, class Tag, class E = T>
     constexpr auto operator()(const point_t<2, T>& point, const linear_shape_t<2, Tag, T>& shape, E epsilon = {}) const
-        -> std::optional<point_t<2, T>>
+        -> maybe_t<point_t<2, T>>
     {
         const auto p0 = shape[0];
         const auto p1 = shape[1];
@@ -615,7 +615,7 @@ struct projection_fn
             return result;
         }
 
-        return {};
+        return none;
     }
 };
 
@@ -790,8 +790,7 @@ struct translate_fn
     constexpr auto operator()(const vertex_list_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& offset) const
         -> vertex_list_shape_t<D, Tag, Res>
     {
-        return map_into(
-            vertex_list_shape_t<D, Tag, Res>{}, bind_back(std::plus<>{}, offset), lhs);
+        return map_into(vertex_list_shape_t<D, Tag, Res>{}, bind_back(std::plus<>{}, offset), lhs);
     }
 
     template <class T, class U, std::size_t D>
