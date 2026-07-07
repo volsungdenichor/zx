@@ -198,6 +198,36 @@ TEST(array, array_2d_copy)
     EXPECT_THAT(b.m_data, testing::ElementsAreArray({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }));
 }
 
+TEST(array, array_construct_from_view_same_type)
+{
+    zx::mat::array_t<int, 2> src{ { 3, 4 } };
+    for (std::size_t i = 0; i < src.m_data.size(); ++i)
+    {
+        src.m_data[i] = static_cast<int>(i);
+    }
+
+    auto src_view = src.view().slice(
+        { zx::mat::slice_base_t{ 0, 3, 1 }, zx::mat::slice_base_t{ 0, 4, 2 } });
+    zx::mat::array_t<int, 2> dst{ src_view };
+
+    EXPECT_THAT(dst.extent(), testing::Eq(src_view.extent()));
+    EXPECT_THAT(dst.m_data, testing::ElementsAreArray({ 0, 2, 4, 6, 8, 10 }));
+}
+
+TEST(array, array_construct_from_view_convertible_type)
+{
+    zx::mat::array_t<int, 2> src{ { 2, 3 } };
+    for (std::size_t i = 0; i < src.m_data.size(); ++i)
+    {
+        src.m_data[i] = static_cast<int>(i + 1);
+    }
+
+    zx::mat::array_t<double, 2> dst{ src.view() };
+
+    EXPECT_THAT(dst.extent(), testing::Eq(src.extent()));
+    EXPECT_THAT(dst.m_data, testing::ElementsAreArray({ 1.0, 2.0, 3.0, 4.0, 5.0, 6.0 }));
+}
+
 TEST(array, array_2d_copy_with_positive_location)
 {
     zx::mat::array_t<int, 2> src{ { 3, 4 } };

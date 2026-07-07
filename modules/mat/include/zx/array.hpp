@@ -496,6 +496,29 @@ using array_view_t = array_view_base_t<const T, D>;
 template <class T, std::size_t D>
 using array_mut_view_t = array_view_base_t<T, D>;
 
+namespace detail
+{
+
+template <class T, class U, std::size_t D, enable_if_t<(D == 1)> = 0>
+void copy_from_view(array_mut_view_t<T, D> dst, array_view_t<U, D> src)
+{
+    for (extent_base_t i = 0; i < dst.extent(); ++i)
+    {
+        dst[i] = src[i];
+    }
+}
+
+template <class T, class U, std::size_t D, enable_if_t<(D > 1)> = 0>
+void copy_from_view(array_mut_view_t<T, D> dst, array_view_t<U, D> src)
+{
+    for (extent_base_t i = 0; i < dst.shape().dim(0).extent; ++i)
+    {
+        copy_from_view(dst[i], src[i]);
+    }
+}
+
+}  // namespace detail
+
 template <class T, std::size_t D>
 struct array_t
 {
@@ -535,6 +558,14 @@ struct array_t
         : m_shape{ shape_type::from_extent(extent_type{ static_cast<extent_base_t>(init.extent()) }, sizeof(T)) }
         , m_data(std::move(init))
     {
+    }
+
+    template <class U, enable_if_t<std::is_convertible_v<const U&, T>> = 0>
+    array_t(array_view_t<U, D> init)
+        : m_shape{ shape_type::from_extent(init.extent(), sizeof(T)) }
+        , m_data(static_cast<std::size_t>(m_shape.volume()))
+    {
+        detail::copy_from_view(mut_view(), init);
     }
 
     array_t(const array_t&) = default;
