@@ -340,6 +340,46 @@ struct contains_fn
 
 static constexpr inline auto contains = contains_fn{};
 
+struct unite_fn
+{
+    template <class T, class... Tail>
+    constexpr auto operator()(const interval_t<T>& head, const interval_t<T>& next, const Tail&... tail) const
+        -> interval_t<T>
+    {
+        if constexpr (sizeof...(tail) == 0)
+        {
+            return { std::min(lower(head), lower(next)), std::max(upper(head), upper(next)) };
+        }
+        else
+        {
+            return (*this)((*this)(head, next), tail...);
+        }
+    }
+
+    template <std::size_t D, class T, class... Tail>
+    constexpr auto operator()(const box_shape_t<D, T>& head, const box_shape_t<D, T>& next, const Tail&... tail) const
+        -> box_shape_t<D, T>
+    {
+        if constexpr (sizeof...(tail) == 0)
+        {
+            box_shape_t<D, T> result;
+
+            for (std::size_t d = 0; d < D; ++d)
+            {
+                result[d] = (*this)(head[d], next[d]);
+            }
+
+            return result;
+        }
+        else
+        {
+            return (*this)((*this)(head, next), tail...);
+        }
+    }
+};
+
+static constexpr inline auto unite = unite_fn{};
+
 struct intersects_fn
 {
     template <class T>
@@ -454,6 +494,79 @@ constexpr bool contains_param(segment_tag, T v)
 
 struct intersection_fn
 {
+    template <class T>
+    constexpr auto operator()(const interval_t<T>& lhs, const interval_t<T>& rhs) const -> std::optional<interval_t<T>>
+    {
+        const auto lo = std::max(lower(lhs), lower(rhs));
+        const auto up = std::min(upper(lhs), upper(rhs));
+
+        if (lo < up)
+        {
+            return interval_t<T>{ lo, up };
+        }
+        return {};
+    }
+
+    template <class T, class... Tail>
+    constexpr auto operator()(const interval_t<T>& head, const interval_t<T>& next, const Tail&... tail) const
+        -> std::optional<interval_t<T>>
+    {
+        const auto partial = (*this)(head, next);
+
+        if constexpr (sizeof...(tail) == 0)
+        {
+            return partial;
+        }
+        else
+        {
+            if (partial)
+            {
+                return (*this)(*partial, tail...);
+            }
+        }
+        return std::nullopt;
+    }
+
+    template <std::size_t D, class T>
+    constexpr auto operator()(const box_shape_t<D, T>& lhs, const box_shape_t<D, T>& rhs) const
+        -> std::optional<box_shape_t<D, T>>
+    {
+        box_shape_t<D, T> result;
+
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            const auto interval = (*this)(lhs[d], rhs[d]);
+            if (!interval)
+            {
+                return {};
+            }
+
+            result[d] = *interval;
+        }
+
+        return result;
+    }
+
+    template <std::size_t D, class T, class... Tail>
+    constexpr auto operator()(const box_shape_t<D, T>& head, const box_shape_t<D, T>& next, const Tail&... tail) const
+        -> std::optional<box_shape_t<D, T>>
+    {
+        const auto partial = (*this)(head, next);
+
+        if constexpr (sizeof...(tail) == 0)
+        {
+            return partial;
+        }
+        else
+        {
+            if (partial)
+            {
+                return (*this)(*partial, tail...);
+            }
+        }
+        return std::nullopt;
+    }
+
     template <class T, class Tag1, class Tag2, class E = T>
     constexpr auto operator()(const linear_shape_t<2, Tag1, T>& lhs, const linear_shape_t<2, Tag2, T>& rhs, E epsilon = {})
         const -> std::optional<point_t<2, T>>
@@ -689,6 +802,7 @@ using detail::radius;
 using detail::rejection;
 using detail::size;
 using detail::unit;
+using detail::unite;
 using detail::upper;
 
 }  // namespace mat
