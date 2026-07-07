@@ -12,6 +12,9 @@ namespace zx
 namespace mat
 {
 
+namespace detail
+{
+
 constexpr struct eq_fn
 {
     template <class... Its, std::size_t... Is>
@@ -43,7 +46,7 @@ constexpr struct inc_fn
 } inc = {};
 
 template <class Func, class Out, class... Ranges>
-constexpr Out transform_into(Out out, Func func, Ranges&&... ranges)
+constexpr Out map_into(Out out, Func func, Ranges&&... ranges)
 {
     auto begin = std::tuple{ std::begin(out), std::begin(ranges)... };
     const auto end = std::tuple{ std::end(out), std::end(ranges)... };
@@ -55,7 +58,7 @@ constexpr Out transform_into(Out out, Func func, Ranges&&... ranges)
 }
 
 template <class Func, class InOut, class... Ranges>
-constexpr InOut& transform(Func func, InOut& in_out, Ranges&&... ranges)
+constexpr InOut& map(Func func, InOut& in_out, Ranges&&... ranges)
 {
     auto begin = std::tuple{ std::begin(in_out), std::begin(ranges)... };
     const auto end = std::tuple{ std::end(in_out), std::end(ranges)... };
@@ -77,6 +80,8 @@ constexpr auto bind_back(Op op, Arg arg)
 {
     return std::bind(std::move(op), std::placeholders::_1, std::move(arg));
 }
+
+}  // namespace detail
 
 template <std::size_t D, class T, template <std::size_t, class...> class Self>
 struct md_base_t : public std::array<T, D>
@@ -138,7 +143,6 @@ vector_t(T, T) -> vector_t<2, T>;
 template <class T>
 vector_t(T, T, T) -> vector_t<3, T>;
 
-
 template <std::size_t D, class T>
 constexpr auto operator+(const vector_t<D, T>& item) -> vector_t<D, T>
 {
@@ -148,43 +152,43 @@ constexpr auto operator+(const vector_t<D, T>& item) -> vector_t<D, T>
 template <std::size_t D, class T>
 constexpr auto operator-(const vector_t<D, T>& item) -> vector_t<D, T>
 {
-    return transform_into(vector_t<D, T>{}, std::negate<>{}, item);
+    return detail::map_into(vector_t<D, T>{}, std::negate<>{}, item);
 }
 
 template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::plus<>, L, R>>
 constexpr auto operator+=(vector_t<D, L>& lhs, const vector_t<D, R>& rhs) -> vector_t<D, L>&
 {
-    return transform(std::plus<>{}, lhs, rhs);
+    return detail::map(std::plus<>{}, lhs, rhs);
 }
 
 template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::plus<>, L, R>>
 constexpr auto operator+(const vector_t<D, L>& lhs, const vector_t<D, R>& rhs) -> vector_t<D, Res>
 {
-    return transform_into(vector_t<D, Res>{}, std::plus<>{}, lhs, rhs);
+    return detail::map_into(vector_t<D, Res>{}, std::plus<>{}, lhs, rhs);
 }
 
 template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::minus<>, L, R>>
 constexpr auto operator-=(vector_t<D, L>& lhs, const vector_t<D, R>& rhs) -> vector_t<D, L>&
 {
-    return transform(std::minus<>{}, lhs, rhs);
+    return detail::map(std::minus<>{}, lhs, rhs);
 }
 
 template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::minus<>, L, R>>
 constexpr auto operator-(const vector_t<D, L>& lhs, const vector_t<D, R>& rhs) -> vector_t<D, Res>
 {
-    return transform_into(vector_t<D, Res>{}, std::minus<>{}, lhs, rhs);
+    return detail::map_into(vector_t<D, Res>{}, std::minus<>{}, lhs, rhs);
 }
 
 template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*=(vector_t<D, L>& lhs, R rhs) -> vector_t<D, L>&
 {
-    return transform(bind_back(std::multiplies<>{}, rhs), lhs);
+    return detail::map(detail::bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
 template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*(const vector_t<D, L>& lhs, R rhs) -> vector_t<D, Res>
 {
-    return transform_into(vector_t<D, Res>{}, bind_back(std::multiplies<>{}, rhs), lhs);
+    return detail::map_into(vector_t<D, Res>{}, detail::bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
 template <class L, std::size_t D, class R, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
@@ -196,13 +200,13 @@ constexpr auto operator*(L lhs, const vector_t<D, R>& rhs) -> vector_t<D, Res>
 template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::divides<>, L, R>>
 constexpr auto operator/=(vector_t<D, L>& lhs, R rhs) -> vector_t<D, L>&
 {
-    return transform(bind_back(std::divides<>{}, rhs), lhs);
+    return detail::map(detail::bind_back(std::divides<>{}, rhs), lhs);
 }
 
 template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::divides<>, L, R>>
 constexpr auto operator/(const vector_t<D, L>& lhs, R rhs) -> vector_t<D, Res>
 {
-    return transform_into(vector_t<D, Res>{}, bind_back(std::divides<>{}, rhs), lhs);
+    return detail::map_into(vector_t<D, Res>{}, detail::bind_back(std::divides<>{}, rhs), lhs);
 }
 
 template <std::size_t D, class L, class R, class = std::invoke_result_t<std::equal_to<>, L, R>>

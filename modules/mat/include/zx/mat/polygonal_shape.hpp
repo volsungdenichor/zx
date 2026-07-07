@@ -43,26 +43,6 @@ using triangle_t = polygonal_shape_t<D, T, 3>;
 template <std::size_t D, class T>
 using quad_t = polygonal_shape_t<D, T, 4>;
 
-template <std::size_t D, std::size_t N, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto translate(const polygonal_shape_t<D, T, N>& lhs, const vector_t<D, U>& rhs) -> polygonal_shape_t<D, Res, N>
-{
-    return transform_into(polygonal_shape_t<D, Res, N>{}, std::bind(std::plus<>{}, std::placeholders::_1, rhs), lhs);
-}
-
-template <
-    std::size_t D,
-    std::size_t N,
-    class T,
-    std::size_t R,
-    std::size_t C,
-    class U,
-    enable_if_t<(R == D + 1 && C == D + 1)> = 0,
-    class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto transform(const polygonal_shape_t<D, T, N>& lhs, const matrix_t<R, C, U>& rhs) -> polygonal_shape_t<D, Res, N>
-{
-    return transform_into(polygonal_shape_t<D, Res, N>{}, bind_back(std::multiplies<>{}, rhs), lhs);
-}
-
 namespace detail
 {
 
@@ -109,29 +89,6 @@ std::ostream& operator<<(std::ostream& os, const polyline_t<D, T>& item)
         os << " " << item[n];
     }
     return os << ")";
-}
-
-template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto translate(const vertex_list_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& offset)
-    -> vertex_list_shape_t<D, Tag, Res>
-{
-    return transform_into(vertex_list_shape_t<D, Tag, Res>{}, std::bind(std::plus<>{}, std::placeholders::_1, offset), lhs);
-}
-
-template <
-    std::size_t D,
-    class Tag,
-    class T,
-    std::size_t R,
-    std::size_t C,
-    class U,
-    enable_if_t<(R == D + 1 && C == D + 1)> = 0,
-    class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto transform(const vertex_list_shape_t<D, Tag, T>& lhs, const matrix_t<R, C, U>& transformation)
-    -> vertex_list_shape_t<D, Tag, Res>
-{
-    vertex_list_shape_t<D, Tag, Res> result(lhs.size());
-    return transform_into(std::move(result), std::bind(std::multiplies<>{}, std::placeholders::_1, transformation), lhs);
 }
 
 }  // namespace mat

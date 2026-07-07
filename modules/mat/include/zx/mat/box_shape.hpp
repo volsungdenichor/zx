@@ -107,25 +107,19 @@ struct box_shape_t : public md_base_t<D, interval_t<T>, box_shape_t>
 
     constexpr point_t<D, T> get(side_t side) const
     {
-        return transform_into(
+        return detail::map_into(
             point_t<D, T>{}, [&](const interval_t<T>& interval) -> T { return interval.get(side); }, *this);
     }
 
     constexpr point_t<D, T> get(const std::array<side_t, D>& sides) const
     {
-        return transform_into(
+        return detail::map_into(
             point_t<D, T>{},
             [&](const interval_t<T>& interval, side_t side) -> T { return interval.get(side); },
             *this,
             sides);
     }
 };
-
-template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::plus<>, T, U>>
-constexpr auto translate(const box_shape_t<D, T>& lhs, const vector_t<D, U>& offset) -> box_shape_t<D, Res>
-{
-    return transform_into(box_shape_t<D, Res>{}, std::plus<>{}, lhs, offset);
-}
 
 struct interval
 {

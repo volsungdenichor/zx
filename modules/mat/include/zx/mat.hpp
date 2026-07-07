@@ -771,6 +771,96 @@ struct circumcircle_fn
 
 static constexpr inline auto circumcircle = circumcircle_fn{};
 
+struct translate_fn
+{
+    template <class T, class U, std::size_t D, class Res = std::invoke_result_t<std::plus<>, T, U>>
+    constexpr auto operator()(const box_shape_t<D, T>& lhs, const vector_t<D, U>& offset) const -> box_shape_t<D, Res>
+    {
+        return map_into(box_shape_t<D, Res>{}, std::plus<>{}, lhs, offset);
+    }
+
+    template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
+    constexpr auto operator()(const linear_shape_t<D, Tag, T>& shape, const vector_t<D, U>& offset) const
+        -> linear_shape_t<D, Tag, Res>
+    {
+        return linear_shape_t<D, Tag, Res>{ shape[0] + offset, shape[1] + offset };
+    }
+
+    template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
+    constexpr auto operator()(const vertex_list_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& offset) const
+        -> vertex_list_shape_t<D, Tag, Res>
+    {
+        return map_into(
+            vertex_list_shape_t<D, Tag, Res>{}, bind_back(std::plus<>{}, offset), lhs);
+    }
+
+    template <class T, class U, std::size_t D>
+    constexpr auto operator()(spherical_shape_t<D, T> lhs, const vector_t<D, U>& offset) const -> spherical_shape_t<D, T>
+    {
+        return spherical_shape_t<D, T>{ lhs.center + offset, lhs.radius };
+    }
+
+    template <std::size_t D, std::size_t N, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
+    constexpr auto operator()(const polygonal_shape_t<D, T, N>& lhs, const vector_t<D, U>& rhs) const
+        -> polygonal_shape_t<D, Res, N>
+    {
+        return map_into(polygonal_shape_t<D, Res, N>{}, bind_back(std::plus<>{}, rhs), lhs);
+    }
+};
+
+static constexpr inline auto translate = translate_fn{};
+
+struct transform_fn
+{
+    template <
+        std::size_t D,
+        class Tag,
+        class T,
+        std::size_t R,
+        std::size_t C,
+        class U,
+        enable_if_t<(R == D + 1 && C == D + 1)> = 0,
+        class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+    constexpr auto operator()(const linear_shape_t<D, Tag, T>& shape, const matrix_t<R, C, U>& transformation) const
+        -> linear_shape_t<D, Tag, Res>
+    {
+        return linear_shape_t<D, Tag, Res>{ shape[0] * transformation, shape[1] * transformation };
+    }
+
+    template <
+        std::size_t D,
+        std::size_t N,
+        class T,
+        std::size_t R,
+        std::size_t C,
+        class U,
+        enable_if_t<(R == D + 1 && C == D + 1)> = 0,
+        class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+    constexpr auto operator()(const polygonal_shape_t<D, T, N>& lhs, const matrix_t<R, C, U>& rhs) const
+        -> polygonal_shape_t<D, Res, N>
+    {
+        return map_into(polygonal_shape_t<D, Res, N>{}, bind_back(std::multiplies<>{}, rhs), lhs);
+    }
+
+    template <
+        std::size_t D,
+        class Tag,
+        class T,
+        std::size_t R,
+        std::size_t C,
+        class U,
+        enable_if_t<(R == D + 1 && C == D + 1)> = 0,
+        class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+    constexpr auto operator()(const vertex_list_shape_t<D, Tag, T>& lhs, const matrix_t<R, C, U>& transformation) const
+        -> vertex_list_shape_t<D, Tag, Res>
+    {
+        vertex_list_shape_t<D, Tag, Res> result(lhs.size());
+        return map_into(std::move(result), bind_back(std::multiplies<>{}, transformation), lhs);
+    }
+};
+
+static constexpr inline auto transform = transform_fn{};
+
 }  // namespace detail
 
 using detail::altitude;
@@ -801,6 +891,8 @@ using detail::projection;
 using detail::radius;
 using detail::rejection;
 using detail::size;
+using detail::transform;
+using detail::translate;
 using detail::unit;
 using detail::unite;
 using detail::upper;

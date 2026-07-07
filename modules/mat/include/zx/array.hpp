@@ -211,15 +211,15 @@ struct shape_t : md_base_t<D, dim_t, shape_t>
         return result;
     }
 
-    extent_type extent() const { return transform_into(extent_type{}, &dim_t::extent, *this); }
+    extent_type extent() const { return detail::map_into(extent_type{}, &dim_t::extent, *this); }
 
-    stride_type stride() const { return transform_into(stride_type{}, &dim_t::stride, *this); }
+    stride_type stride() const { return detail::map_into(stride_type{}, &dim_t::stride, *this); }
 
-    bounds_type bounds() const { return transform_into(bounds_type{}, &dim_t::bounds, *this); }
+    bounds_type bounds() const { return detail::map_into(bounds_type{}, &dim_t::bounds, *this); }
 
     location_type adjust_location(const location_type& loc) const
     {
-        return transform_into(
+        return detail::map_into(
             location_type{},
             [&](const dim_t& dim, const location_base_t& l) -> location_base_t { return dim.adjust_location(l); },
             *this,
