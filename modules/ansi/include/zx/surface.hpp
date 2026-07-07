@@ -209,8 +209,8 @@ const inline box_style_t heavy_box_style = { code_point_t{ "━" }, code_point_t
 inline void draw_border(
     surface_mut_view_t surface, const bounds_t& bounds, const box_style_t& box_style = {}, const style_t& style = {})
 {
-    const auto top_left = bounds.get(mat::side_t::first);
-    const auto bottom_right = bounds.get(mat::side_t::last);
+    const auto top_left = bounds.get({ mat::side_t::first, mat::side_t::first });
+    const auto bottom_right = bounds.get({ mat::side_t::last, mat::side_t::last });
 
     for (std::ptrdiff_t x = top_left[1] + 1; x < bottom_right[1]; ++x)
     {

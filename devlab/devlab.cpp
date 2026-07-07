@@ -14,6 +14,7 @@
 #include "zx/string.hpp"
 #include "zx/widget.hpp"
 
+//  bazel run //:devlab && wslview ~/out.bmp
 void run(const std::vector<std::string_view>&)
 {
     const auto hippie = zx::mat::load_bitmap("/home/krzysiek/hippie.bmp");
@@ -23,7 +24,7 @@ void run(const std::vector<std::string_view>&)
 
     auto out = hippie;
 
-    zx::mat::copy(out.mut_view(), conan.view(), { 0, 300, 0 });
+    zx::mat::copy(out.mut_view(), zx::mat::flip_horizontal(conan.view()), { 400, 300, 0 });
 
     zx::mat::save_bitmap(out, "/home/krzysiek/out.bmp");
 }

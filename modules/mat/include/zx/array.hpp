@@ -95,6 +95,8 @@ struct dim_t
 
     flat_offset_t flat_offset(const location_base_t& loc) const { return loc * stride; }
 
+    dim_t flip() const { return { extent, -stride }; }
+
     std::pair<dim_t, location_base_t> slice(const slice_base_t& s) const
     {
         const auto clamp = [&](location_base_t value, location_base_t init) -> location_base_t

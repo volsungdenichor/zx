@@ -339,6 +339,20 @@ struct channel_fn
 
 struct rotate_fn
 {
+    template <class T>
+    auto operator()(array_view_base_t<T, 2> image, int degrees) const -> array_view_base_t<T, 2>
+    {
+        const auto [shape, offset] = new_shape_and_offset(image.shape(), normalize_quarter_turns(degrees));
+        return { image.from_offset(offset), shape };
+    }
+
+    template <class T>
+    auto operator()(array_view_base_t<T, 3> image, int degrees) const -> array_view_base_t<T, 3>
+    {
+        const auto [shape, offset] = new_shape_and_offset(image.shape(), normalize_quarter_turns(degrees));
+        return { image.from_offset(offset), shape };
+    }
+
     static int normalize_quarter_turns(int degrees)
     {
         if (degrees % 90 != 0)
@@ -350,80 +364,64 @@ struct rotate_fn
         return (turns % 4 + 4) % 4;
     }
 
-    template <class T>
-    auto operator()(array_view_base_t<T, 2> image, int degrees) const -> array_view_base_t<T, 2>
+    static auto new_shape_and_offset(const shape_t<2>& src, int turns) -> std::pair<shape_t<2>, flat_offset_t>
     {
-        const int turns = normalize_quarter_turns(degrees);
-
-        const auto& src_shape = image.shape();
-        const extent_base_t e0 = src_shape[0].extent;
-        const extent_base_t e1 = src_shape[1].extent;
-        const stride_base_t s0 = src_shape[0].stride;
-        const stride_base_t s1 = src_shape[1].stride;
-
-        if (e0 == 0 || e1 == 0 || turns == 0)
+        if (src[0].extent == 0 || src[1].extent == 0 || turns == 0)
         {
-            return image;
+            return { src, 0 };
         }
 
-        shape_t<2> out_shape = src_shape;
+        const auto bounds = src.bounds();
+        shape_t<2> out_shape = src;
         flat_offset_t base_offset = 0;
 
         if (turns == 1)
         {
-            out_shape = shape_t<2>{ dim_t{ e1, s1 }, dim_t{ e0, -s0 } };
-            base_offset = src_shape.flat_offset(location_t<2>{ e0 - 1, 0 });
+            out_shape = shape_t<2>{ src[1], src[0].flip() };
+            base_offset = src.flat_offset(bounds.get({ side_t::last, side_t::first }));
         }
         else if (turns == 2)
         {
-            out_shape = shape_t<2>{ dim_t{ e0, -s0 }, dim_t{ e1, -s1 } };
-            base_offset = src_shape.flat_offset(location_t<2>{ e0 - 1, e1 - 1 });
+            out_shape = shape_t<2>{ src[0].flip(), src[1].flip() };
+            base_offset = src.flat_offset(bounds.get({ side_t::last, side_t::last }));
         }
         else
         {
-            out_shape = shape_t<2>{ dim_t{ e1, -s1 }, dim_t{ e0, s0 } };
-            base_offset = src_shape.flat_offset(location_t<2>{ 0, e1 - 1 });
+            out_shape = shape_t<2>{ src[1].flip(), src[0] };
+            base_offset = src.flat_offset(bounds.get({ side_t::first, side_t::last }));
         }
 
-        return { image.from_offset(base_offset), out_shape };
+        return { out_shape, base_offset };
     }
 
-    template <class T>
-    auto operator()(array_view_base_t<T, 3> image, int degrees) const -> array_view_base_t<T, 3>
+    static auto new_shape_and_offset(const shape_t<3>& src, int turns) -> std::pair<shape_t<3>, flat_offset_t>
     {
-        const int turns = normalize_quarter_turns(degrees);
-
-        const auto& src_shape = image.shape();
-        const extent_base_t e0 = src_shape[0].extent;
-        const extent_base_t e1 = src_shape[1].extent;
-        const stride_base_t s0 = src_shape[0].stride;
-        const stride_base_t s1 = src_shape[1].stride;
-
-        if (e0 == 0 || e1 == 0 || turns == 0)
+        if (src[0].extent == 0 || src[1].extent == 0 || turns == 0)
         {
-            return image;
+            return { src, 0 };
         }
 
-        shape_t<3> out_shape = src_shape;
+        const auto bounds = src.bounds();
+        shape_t<3> out_shape = src;
         flat_offset_t base_offset = 0;
 
         if (turns == 1)
         {
-            out_shape = shape_t<3>{ dim_t{ e1, s1 }, dim_t{ e0, -s0 }, src_shape[2] };
-            base_offset = src_shape.flat_offset(location_t<2>{ e0 - 1, 0, 0 });
+            out_shape = shape_t<3>{ src[1], src[0].flip(), src[2] };
+            base_offset = src.flat_offset(bounds.get({ side_t::last, side_t::first, side_t::first }));
         }
         else if (turns == 2)
         {
-            out_shape = shape_t<3>{ dim_t{ e0, -s0 }, dim_t{ e1, -s1 }, src_shape[2] };
-            base_offset = src_shape.flat_offset(location_t<2>{ e0 - 1, e1 - 1, 0 });
+            out_shape = shape_t<3>{ src[0].flip(), src[1].flip(), src[2] };
+            base_offset = src.flat_offset(bounds.get({ side_t::last, side_t::last, side_t::first }));
         }
         else
         {
-            out_shape = shape_t<3>{ dim_t{ e1, -s1 }, dim_t{ e0, s0 }, src_shape[2] };
-            base_offset = src_shape.flat_offset(location_t<2>{ 0, e1 - 1, 0 });
+            out_shape = shape_t<3>{ src[1].flip(), src[0], src[2] };
+            base_offset = src.flat_offset(bounds.get({ side_t::first, side_t::last, side_t::first }));
         }
 
-        return { image.from_offset(base_offset), out_shape };
+        return { out_shape, base_offset };
     }
 };
 
@@ -435,39 +433,38 @@ struct flip_fn
     template <class T>
     auto operator()(array_view_base_t<T, 2> image) const -> array_view_base_t<T, 2>
     {
-        const auto& src_shape = image.shape();
-        const extent_base_t e = src_shape[D].extent;
-        const stride_base_t s = src_shape[D].stride;
-
-        if (e == 0)
-        {
-            return image;
-        }
-
-        shape_t<2> out_shape = src_shape;
-        out_shape[D] = dim_t{ e, -s };
-
-        const flat_offset_t base_offset = src_shape.flat_offset(location_t<2>{ D == 0 ? e - 1 : 0, D == 1 ? e - 1 : 0 });
-        return { image.from_offset(base_offset), out_shape };
+        const auto [shape, offset] = new_shape_and_offset(image.shape());
+        return { image.from_offset(offset), shape };
     }
 
     template <class T>
     auto operator()(array_view_base_t<T, 3> image) const -> array_view_base_t<T, 3>
     {
-        const auto& src_shape = image.shape();
-        const extent_base_t e = src_shape[D].extent;
-        const stride_base_t s = src_shape[D].stride;
+        const auto [shape, offset] = new_shape_and_offset(image.shape());
+        return { image.from_offset(offset), shape };
+    }
 
-        if (e == 0)
-        {
-            return image;
-        }
+    static auto new_shape_and_offset(const shape_t<2>& src) -> std::pair<shape_t<2>, flat_offset_t>
+    {
+        const auto bounds = src.bounds();
+        shape_t<2> out_shape = src;
+        out_shape[D] = src[D].flip();
 
-        shape_t<3> out_shape = src_shape;
-        out_shape[D] = dim_t{ e, -s };
+        const flat_offset_t base_offset = D == 0 ? src.flat_offset(bounds.get({ side_t::last, side_t::first }))
+                                                 : src.flat_offset(bounds.get({ side_t::first, side_t::last }));
+        return { out_shape, base_offset };
+    }
 
-        const flat_offset_t base_offset = src_shape.flat_offset(location_t<3>{ D == 0 ? e - 1 : 0, D == 1 ? e - 1 : 0, 0 });
-        return { image.from_offset(base_offset), out_shape };
+    static auto new_shape_and_offset(const shape_t<3>& src) -> std::pair<shape_t<3>, flat_offset_t>
+    {
+        const auto bounds = src.bounds();
+        shape_t<3> out_shape = src;
+        out_shape[D] = src[D].flip();
+
+        const flat_offset_t base_offset = D == 0
+                                              ? src.flat_offset(bounds.get({ side_t::last, side_t::first, side_t::first }))
+                                              : src.flat_offset(bounds.get({ side_t::first, side_t::last, side_t::first }));
+        return { out_shape, base_offset };
     }
 };
 
