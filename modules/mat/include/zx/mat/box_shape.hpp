@@ -105,16 +105,16 @@ struct box_shape_t : public md_base_t<D, interval_t<T>, box_shape_t>
     using base_t = md_base_t<D, interval_t<T>, box_shape_t>;
     using base_t::base_t;
 
-    constexpr vector_t<D, T> get(side_t side) const
+    constexpr point_t<D, T> get(side_t side) const
     {
         return transform_into(
-            vector_t<D, T>{}, [&](const interval_t<T>& interval) -> T { return interval.get(side); }, *this);
+            point_t<D, T>{}, [&](const interval_t<T>& interval) -> T { return interval.get(side); }, *this);
     }
 
-    constexpr vector_t<D, T> get(const std::array<side_t, D>& sides) const
+    constexpr point_t<D, T> get(const std::array<side_t, D>& sides) const
     {
         return transform_into(
-            vector_t<D, T>{},
+            point_t<D, T>{},
             [&](const interval_t<T>& interval, side_t side) -> T { return interval.get(side); },
             *this,
             sides);
@@ -151,7 +151,7 @@ struct interval
 struct box
 {
     template <std::size_t D, class T>
-    static constexpr box_shape_t<D, T> from_lower_upper(const vector_t<D, T>& lower, const vector_t<D, T>& upper)
+    static constexpr box_shape_t<D, T> from_lower_upper(const point_t<D, T>& lower, const point_t<D, T>& upper)
     {
         box_shape_t<D, T> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -162,7 +162,7 @@ struct box
     }
 
     template <std::size_t D, class T>
-    static constexpr box_shape_t<D, T> from_lower_size(const vector_t<D, T>& lower, const vector_t<D, T>& size)
+    static constexpr box_shape_t<D, T> from_lower_size(const point_t<D, T>& lower, const vector_t<D, T>& size)
     {
         box_shape_t<D, T> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -173,7 +173,7 @@ struct box
     }
 
     template <std::size_t D, class T>
-    static constexpr box_shape_t<D, T> from_center_size(const vector_t<D, T>& center, const vector_t<D, T>& size)
+    static constexpr box_shape_t<D, T> from_center_size(const point_t<D, T>& center, const vector_t<D, T>& size)
     {
         box_shape_t<D, T> result;
         for (std::size_t d = 0; d < D; ++d)

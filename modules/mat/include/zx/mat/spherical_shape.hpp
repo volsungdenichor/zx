@@ -10,7 +10,7 @@ namespace mat
 template <std::size_t D, class T>
 struct spherical_shape_t
 {
-    vector_t<D, T> center;
+    point_t<D, T> center;
     T radius;
 };
 

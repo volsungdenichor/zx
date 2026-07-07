@@ -129,6 +129,9 @@ struct vector_t : public md_base_t<D, T, vector_t>
     using base_t::base_t;
 };
 
+template <std::size_t D, class T>
+using point_t = vector_t<D, T>;
+
 template <class T>
 vector_t(T, T) -> vector_t<2, T>;
 
@@ -156,6 +159,7 @@ struct vector_fn
 }  // namespace detail
 
 static constexpr inline auto vector = detail::vector_fn{};
+static constexpr inline auto point = vector;
 
 template <std::size_t D, class T>
 constexpr auto operator+(const vector_t<D, T>& item) -> vector_t<D, T>

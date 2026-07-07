@@ -23,13 +23,13 @@ struct segment_tag
 }  // namespace detail
 
 template <std::size_t D, class Tag, class T>
-struct linear_shape_t : public std::array<vector_t<D, T>, 2>
+struct linear_shape_t : public std::array<point_t<D, T>, 2>
 {
-    using base_t = std::array<vector_t<D, T>, 2>;
+    using base_t = std::array<point_t<D, T>, 2>;
 
     using base_t::base_t;
 
-    linear_shape_t(vector_t<D, T> p0, vector_t<D, T> p1) : base_t{ { p0, p1 } } { }
+    linear_shape_t(point_t<D, T> p0, point_t<D, T> p1) : base_t{ { p0, p1 } } { }
 };
 
 template <std::size_t D, class T>
@@ -47,7 +47,7 @@ namespace detail
 struct line_fn
 {
     template <std::size_t D, class T>
-    auto operator()(vector_t<D, T> p0, vector_t<D, T> p1) const -> line_t<D, T>
+    auto operator()(point_t<D, T> p0, point_t<D, T> p1) const -> line_t<D, T>
     {
         return line_t<D, T>{ p0, p1 };
     }
@@ -56,7 +56,7 @@ struct line_fn
 struct segment_fn
 {
     template <std::size_t D, class T>
-    auto operator()(vector_t<D, T> p0, vector_t<D, T> p1) const -> segment_t<D, T>
+    auto operator()(point_t<D, T> p0, point_t<D, T> p1) const -> segment_t<D, T>
     {
         return segment_t<D, T>{ p0, p1 };
     }
@@ -65,7 +65,7 @@ struct segment_fn
 struct ray_fn
 {
     template <std::size_t D, class T>
-    auto operator()(vector_t<D, T> p0, vector_t<D, T> p1) const -> ray_t<D, T>
+    auto operator()(point_t<D, T> p0, point_t<D, T> p1) const -> ray_t<D, T>
     {
         return ray_t<D, T>{ p0, p1 };
     }

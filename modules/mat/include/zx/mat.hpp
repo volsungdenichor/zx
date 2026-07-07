@@ -137,7 +137,7 @@ static constexpr inline auto unit = unit_fn{};
 struct distance_fn
 {
     template <std::size_t D, class T, class U>
-    constexpr auto operator()(const vector_t<D, T>& lhs, const vector_t<D, U>& rhs) const -> decltype(length(rhs - lhs))
+    constexpr auto operator()(const point_t<D, T>& lhs, const point_t<D, U>& rhs) const -> decltype(length(rhs - lhs))
     {
         return length(rhs - lhs);
     }
@@ -155,7 +155,7 @@ struct get_fn
     }
 
     template <std::size_t D, class T>
-    constexpr auto operator()(const box_shape_t<D, T>& item) const -> vector_t<D, T>
+    constexpr auto operator()(const box_shape_t<D, T>& item) const -> point_t<D, T>
     {
         return item.get(S);
     }
@@ -204,19 +204,19 @@ struct center_fn
     }
 
     template <std::size_t D, class T>
-    constexpr auto operator()(const box_shape_t<D, T>& item) const -> vector_t<D, T>
+    constexpr auto operator()(const box_shape_t<D, T>& item) const -> point_t<D, T>
     {
         return item.get(side_t::middle);
     }
 
     template <std::size_t D, class T>
-    constexpr auto operator()(const segment_t<D, T>& item) const -> vector_t<D, T>
+    constexpr auto operator()(const segment_t<D, T>& item) const -> point_t<D, T>
     {
         return (item[0] + item[1]) / 2;
     }
 
     template <class T, std::size_t D>
-    constexpr auto operator()(const spherical_shape_t<D, T>& item) const -> vector_t<D, T>
+    constexpr auto operator()(const spherical_shape_t<D, T>& item) const -> point_t<D, T>
     {
         return item.center;
     }
@@ -260,13 +260,13 @@ static constexpr inline auto extend = extend_fn{};
 struct orientation_fn
 {
     template <class T, class U>
-    constexpr auto operator()(const vector_t<2, T>& point, const vector_t<2, U>& start, const vector_t<2, U>& end) const
+    constexpr auto operator()(const point_t<2, T>& point, const point_t<2, U>& start, const point_t<2, U>& end) const
     {
         return cross(end - start, point - start);
     }
 
     template <class T, class U, class Tag>
-    constexpr auto operator()(const vector_t<2, T>& point, const linear_shape_t<2, Tag, U>& shape) const
+    constexpr auto operator()(const point_t<2, T>& point, const linear_shape_t<2, Tag, U>& shape) const
     {
         return (*this)(point, shape[0], shape[1]);
     }
@@ -304,7 +304,7 @@ struct contains_fn
     }
 
     template <std::size_t D, class T>
-    constexpr auto operator()(const box_shape_t<D, T>& item, const vector_t<D, T>& other) const -> bool
+    constexpr auto operator()(const box_shape_t<D, T>& item, const point_t<D, T>& other) const -> bool
     {
         for (std::size_t d = 0; d < D; ++d)
         {
@@ -317,13 +317,13 @@ struct contains_fn
     }
 
     template <std::size_t D, class T, class U>
-    constexpr auto operator()(const spherical_shape_t<D, T>& item, const vector_t<D, U>& other) const -> bool
+    constexpr auto operator()(const spherical_shape_t<D, T>& item, const point_t<D, U>& other) const -> bool
     {
         return norm(other - center(item)) <= math::sqr(item.radius);
     }
 
     template <class T, class U>
-    constexpr bool operator()(const triangle_t<2, T>& item, const vector_t<2, U>& other) const
+    constexpr bool operator()(const triangle_t<2, T>& item, const point_t<2, U>& other) const
     {
         constexpr auto same_sign = [](int a, int b) { return (a <= 0 && b <= 0) || (a >= 0 && b >= 0); };
 
@@ -370,7 +370,7 @@ static constexpr inline auto intersects = intersects_fn{};
 struct interpolate_fn
 {
     template <std::size_t D, class R, class T>
-    constexpr auto operator()(R r, const vector_t<D, T>& lhs, const vector_t<D, T>& rhs) const -> vector_t<D, T>
+    constexpr auto operator()(R r, const point_t<D, T>& lhs, const point_t<D, T>& rhs) const -> point_t<D, T>
     {
         return lhs + r * (rhs - lhs);
     }
@@ -395,7 +395,7 @@ namespace detail
 
 template <class T, class E>
 constexpr auto get_line_intersection_parameter(
-    const vector_t<2, T>& a0, const vector_t<2, T>& a1, const vector_t<2, T>& p, E epsilon) -> std::optional<T>
+    const point_t<2, T>& a0, const point_t<2, T>& a1, const point_t<2, T>& p, E epsilon) -> std::optional<T>
 {
     const auto dir = a1 - a0;
 
@@ -412,7 +412,7 @@ constexpr auto get_line_intersection_parameter(
 
 template <class T, class E>
 constexpr auto get_line_intersection_parameters(
-    const vector_t<2, T>& a0, const vector_t<2, T>& a1, const vector_t<2, T>& b0, const vector_t<2, T>& b1, E epsilon)
+    const point_t<2, T>& a0, const point_t<2, T>& a1, const point_t<2, T>& b0, const point_t<2, T>& b1, E epsilon)
     -> std::optional<std::tuple<T, T>>
 {
     const auto dir_a = a1 - a0;
@@ -477,14 +477,14 @@ static constexpr inline auto intersection = intersection_fn{};
 struct projection_fn
 {
     template <class T, std::size_t D>
-    constexpr auto operator()(const vector_t<D, T>& lhs, const vector_t<D, T>& rhs) const
+    constexpr auto operator()(const point_t<D, T>& lhs, const vector_t<D, T>& rhs) const
         -> decltype(rhs * (dot(rhs, lhs) / norm(rhs)))
     {
         return rhs * (dot(rhs, lhs) / norm(rhs));
     }
 
     template <std::size_t D, class T, class Tag, class E = T>
-    constexpr auto operator()(const vector_t<D, T>& point, const linear_shape_t<D, Tag, T>& shape, E epsilon = {}) const
+    constexpr auto operator()(const point_t<D, T>& point, const linear_shape_t<D, Tag, T>& shape, E epsilon = {}) const
         -> std::optional<vector_t<D, T>>
     {
         const auto p0 = shape[0];
@@ -508,7 +508,7 @@ static constexpr inline auto projection = projection_fn{};
 struct rejection_fn
 {
     template <std::size_t D, class T>
-    constexpr auto operator()(const vector_t<D, T>& lhs, const vector_t<D, T>& rhs) const
+    constexpr auto operator()(const point_t<D, T>& lhs, const vector_t<D, T>& rhs) const
         -> decltype(lhs - projection(lhs, rhs))
     {
         return lhs - projection(lhs, rhs);
@@ -526,7 +526,7 @@ struct perpendicular_fn
     }
 
     template <class Tag, class T>
-    constexpr auto operator()(const linear_shape_t<2, Tag, T>& value, const vector_t<2, T>& origin) const
+    constexpr auto operator()(const linear_shape_t<2, Tag, T>& value, const point_t<2, T>& origin) const
         -> linear_shape_t<2, Tag, T>
     {
         return { origin, origin + (*this)(value[1] - value[0]) };
@@ -561,9 +561,9 @@ static constexpr inline auto altitude = altitude_fn{};
 struct centroid_fn
 {
     template <typename T>
-    constexpr auto operator()(const triangle_t<2, T>& value) const -> vector_t<2, T>
+    constexpr auto operator()(const triangle_t<2, T>& value) const -> point_t<2, T>
     {
-        return std::accumulate(std::begin(value), std::end(value), vector_t<2, T>{}) / 3;
+        return std::accumulate(std::begin(value), std::end(value), point_t<2, T>{}) / 3;
     }
 };
 
@@ -572,7 +572,7 @@ static constexpr inline auto centroid = centroid_fn{};
 struct orthocenter_fn
 {
     template <typename T>
-    constexpr auto operator()(const triangle_t<2, T>& value) const -> vector_t<2, T>
+    constexpr auto operator()(const triangle_t<2, T>& value) const -> point_t<2, T>
     {
         constexpr T epsilon = T(0.0001);
 
@@ -585,7 +585,7 @@ static constexpr inline auto orthocenter = orthocenter_fn{};
 struct circumcenter_fn
 {
     template <typename T>
-    constexpr auto operator()(const triangle_t<2, T>& value) const -> vector_t<2, T>
+    constexpr auto operator()(const triangle_t<2, T>& value) const -> point_t<2, T>
     {
         constexpr T epsilon = T(0.0001);
 
@@ -601,7 +601,7 @@ static constexpr inline auto circumcenter = circumcenter_fn{};
 struct incenter_fn
 {
     template <typename T>
-    constexpr auto operator()(const triangle_t<2, T>& value) const -> vector_t<2, T>
+    constexpr auto operator()(const triangle_t<2, T>& value) const -> point_t<2, T>
     {
         T perimeter = T(0);
         std::array<T, 3> sides = {};
@@ -611,7 +611,7 @@ struct incenter_fn
             perimeter += sides[i];
         }
 
-        vector_t<2, T> result = {};
+        point_t<2, T> result = {};
 
         for (std::size_t i = 0; i < 3; ++i)
         {
