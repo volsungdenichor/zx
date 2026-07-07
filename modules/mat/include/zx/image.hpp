@@ -337,12 +337,149 @@ struct channel_fn
     }
 };
 
+struct rotate_fn
+{
+    static int normalize_quarter_turns(int degrees)
+    {
+        if (degrees % 90 != 0)
+        {
+            throw std::invalid_argument{ "rotate: only multiples of 90 degrees are supported" };
+        }
+
+        const int turns = degrees / 90;
+        return (turns % 4 + 4) % 4;
+    }
+
+    template <class T>
+    auto operator()(array_view_base_t<T, 2> image, int degrees) const -> array_view_base_t<T, 2>
+    {
+        const int turns = normalize_quarter_turns(degrees);
+
+        const auto& src_shape = image.shape();
+        const extent_base_t e0 = src_shape[0].extent;
+        const extent_base_t e1 = src_shape[1].extent;
+        const stride_base_t s0 = src_shape[0].stride;
+        const stride_base_t s1 = src_shape[1].stride;
+
+        if (e0 == 0 || e1 == 0 || turns == 0)
+        {
+            return image;
+        }
+
+        shape_t<2> out_shape = src_shape;
+        flat_offset_t base_offset = 0;
+
+        if (turns == 1)
+        {
+            out_shape = shape_t<2>{ dim_t{ e1, s1 }, dim_t{ e0, -s0 } };
+            base_offset = src_shape.flat_offset(location_t<2>{ e0 - 1, 0 });
+        }
+        else if (turns == 2)
+        {
+            out_shape = shape_t<2>{ dim_t{ e0, -s0 }, dim_t{ e1, -s1 } };
+            base_offset = src_shape.flat_offset(location_t<2>{ e0 - 1, e1 - 1 });
+        }
+        else
+        {
+            out_shape = shape_t<2>{ dim_t{ e1, -s1 }, dim_t{ e0, s0 } };
+            base_offset = src_shape.flat_offset(location_t<2>{ 0, e1 - 1 });
+        }
+
+        return { image.from_offset(base_offset), out_shape };
+    }
+
+    template <class T>
+    auto operator()(array_view_base_t<T, 3> image, int degrees) const -> array_view_base_t<T, 3>
+    {
+        const int turns = normalize_quarter_turns(degrees);
+
+        const auto& src_shape = image.shape();
+        const extent_base_t e0 = src_shape[0].extent;
+        const extent_base_t e1 = src_shape[1].extent;
+        const stride_base_t s0 = src_shape[0].stride;
+        const stride_base_t s1 = src_shape[1].stride;
+
+        if (e0 == 0 || e1 == 0 || turns == 0)
+        {
+            return image;
+        }
+
+        shape_t<3> out_shape = src_shape;
+        flat_offset_t base_offset = 0;
+
+        if (turns == 1)
+        {
+            out_shape = shape_t<3>{ dim_t{ e1, s1 }, dim_t{ e0, -s0 }, src_shape[2] };
+            base_offset = src_shape.flat_offset(location_t<2>{ e0 - 1, 0, 0 });
+        }
+        else if (turns == 2)
+        {
+            out_shape = shape_t<3>{ dim_t{ e0, -s0 }, dim_t{ e1, -s1 }, src_shape[2] };
+            base_offset = src_shape.flat_offset(location_t<2>{ e0 - 1, e1 - 1, 0 });
+        }
+        else
+        {
+            out_shape = shape_t<3>{ dim_t{ e1, -s1 }, dim_t{ e0, s0 }, src_shape[2] };
+            base_offset = src_shape.flat_offset(location_t<2>{ 0, e1 - 1, 0 });
+        }
+
+        return { image.from_offset(base_offset), out_shape };
+    }
+};
+
+template <std::size_t D>
+struct flip_fn
+{
+    static_assert(D < 2, "flip: axis out of range");
+
+    template <class T>
+    auto operator()(array_view_base_t<T, 2> image) const -> array_view_base_t<T, 2>
+    {
+        const auto& src_shape = image.shape();
+        const extent_base_t e = src_shape[D].extent;
+        const stride_base_t s = src_shape[D].stride;
+
+        if (e == 0)
+        {
+            return image;
+        }
+
+        shape_t<2> out_shape = src_shape;
+        out_shape[D] = dim_t{ e, -s };
+
+        const flat_offset_t base_offset = src_shape.flat_offset(location_t<2>{ D == 0 ? e - 1 : 0, D == 1 ? e - 1 : 0 });
+        return { image.from_offset(base_offset), out_shape };
+    }
+
+    template <class T>
+    auto operator()(array_view_base_t<T, 3> image) const -> array_view_base_t<T, 3>
+    {
+        const auto& src_shape = image.shape();
+        const extent_base_t e = src_shape[D].extent;
+        const stride_base_t s = src_shape[D].stride;
+
+        if (e == 0)
+        {
+            return image;
+        }
+
+        shape_t<3> out_shape = src_shape;
+        out_shape[D] = dim_t{ e, -s };
+
+        const flat_offset_t base_offset = src_shape.flat_offset(location_t<3>{ D == 0 ? e - 1 : 0, D == 1 ? e - 1 : 0, 0 });
+        return { image.from_offset(base_offset), out_shape };
+    }
+};
+
 }  // namespace detail
 
 static constexpr inline auto load_bitmap = detail::load_bitmap_fn{};
 static constexpr inline auto save_bitmap = detail::save_bitmap_fn{};
 static constexpr inline auto at = detail::at_fn{};
 static constexpr inline auto channel = detail::channel_fn{};
+static constexpr inline auto rotate = detail::rotate_fn{};
+static constexpr inline auto flip_horizontal = detail::flip_fn<1>{};
+static constexpr inline auto flip_vertical = detail::flip_fn<0>{};
 
 }  // namespace mat
 
