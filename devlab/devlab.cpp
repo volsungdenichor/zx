@@ -1,7 +1,9 @@
+#include <chrono>
 #include <exception>
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 #include "zx/ansi/widgets/label.hpp"
@@ -14,17 +16,25 @@
 #include "zx/string.hpp"
 #include "zx/widget.hpp"
 
-//  bazel run //:devlab && wslview ~/out.bmp
+// bazel build -c opt //devlab:devlab && ./bazel-bin/devlab/devlab
 void run(const std::vector<std::string_view>&)
 {
-    const auto hippie = zx::mat::load_bitmap("/home/krzysiek/hippie.bmp");
-    const auto conan = zx::mat::load_bitmap("/home/krzysiek/conan.bmp");
-    std::cout << "hippie: " << hippie.extent() << std::endl;
-    std::cout << "conan: " << conan.extent() << std::endl;
+    const auto background = zx::mat::load_bitmap("/home/krzysiek/river.bmp");
+    const auto conan = zx::mat::load_bitmap("/home/krzysiek/conan_small.bmp");
 
-    auto out = hippie;
+    auto out = background;
 
-    zx::mat::copy(out.mut_view(), zx::mat::flip_horizontal(conan.view()), { 400, 300, 0 });
+    zx::mat::copy(out.mut_view(), conan.view(), { 0, 0, 0 });
+    zx::mat::copy(out.mut_view(), zx::mat::flip_horizontal(conan.view()), { 0, 200, 0 });
+    zx::mat::copy(out.mut_view(), zx::mat::flip_vertical(conan.view()), { 0, 400, 0 });
+
+    zx::mat::copy(out.mut_view(), zx::mat::rotate(conan.view(), 90), { 200, 0, 0 });
+    zx::mat::copy(out.mut_view(), zx::mat::rotate(conan.view(), 180), { 200, 200, 0 });
+    zx::mat::copy(out.mut_view(), zx::mat::rotate(conan.view(), 270), { 200, 400, 0 });
+
+    zx::mat::copy(out.mut_view(), zx::mat::rotate(conan.view(), -90), { 400, 0, 0 });
+    zx::mat::copy(out.mut_view(), zx::mat::rotate(conan.view(), -180), { 400, 200, 0 });
+    zx::mat::copy(out.mut_view(), zx::mat::rotate(conan.view(), -270), { 400, 400, 0 });
 
     zx::mat::save_bitmap(out, "/home/krzysiek/out.bmp");
 }

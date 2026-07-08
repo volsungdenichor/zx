@@ -372,26 +372,21 @@ struct rotate_fn
         }
 
         const auto bounds = src.bounds();
-        shape_t<2> out_shape = src;
-        flat_offset_t base_offset = 0;
+        switch (turns)
+        {
+            case 0: return { src, 0 };
+            case 1:
+                return std::pair{ shape_t<2>{ src[1], src[0].flip() },
+                                  src.flat_offset(bounds.get({ side_t::last, side_t::first })) };
 
-        if (turns == 1)
-        {
-            out_shape = shape_t<2>{ src[1], src[0].flip() };
-            base_offset = src.flat_offset(bounds.get({ side_t::last, side_t::first }));
+            case 2:
+                return std::pair{ shape_t<2>{ src[0].flip(), src[1].flip() },
+                                  src.flat_offset(bounds.get({ side_t::last, side_t::last })) };
+            case 3:
+                return std::pair{ shape_t<2>{ src[1].flip(), src[0] },
+                                  src.flat_offset(bounds.get({ side_t::first, side_t::last })) };
         }
-        else if (turns == 2)
-        {
-            out_shape = shape_t<2>{ src[0].flip(), src[1].flip() };
-            base_offset = src.flat_offset(bounds.get({ side_t::last, side_t::last }));
-        }
-        else
-        {
-            out_shape = shape_t<2>{ src[1].flip(), src[0] };
-            base_offset = src.flat_offset(bounds.get({ side_t::first, side_t::last }));
-        }
-
-        return { out_shape, base_offset };
+        return { src, 0 };
     }
 
     static auto new_shape_and_offset(const shape_t<3>& src, int turns) -> std::pair<shape_t<3>, flat_offset_t>
@@ -402,26 +397,21 @@ struct rotate_fn
         }
 
         const auto bounds = src.bounds();
-        shape_t<3> out_shape = src;
-        flat_offset_t base_offset = 0;
+        switch (turns)
+        {
+            case 0: return { src, 0 };
+            case 1:
+                return std::pair{ shape_t<3>{ src[1], src[0].flip(), src[2] },
+                                  src.flat_offset(bounds.get({ side_t::last, side_t::first, side_t::first })) };
 
-        if (turns == 1)
-        {
-            out_shape = shape_t<3>{ src[1], src[0].flip(), src[2] };
-            base_offset = src.flat_offset(bounds.get({ side_t::last, side_t::first, side_t::first }));
+            case 2:
+                return std::pair{ shape_t<3>{ src[0].flip(), src[1].flip(), src[2] },
+                                  src.flat_offset(bounds.get({ side_t::last, side_t::last, side_t::first })) };
+            case 3:
+                return std::pair{ shape_t<3>{ src[1].flip(), src[0], src[2] },
+                                  src.flat_offset(bounds.get({ side_t::first, side_t::last, side_t::first })) };
         }
-        else if (turns == 2)
-        {
-            out_shape = shape_t<3>{ src[0].flip(), src[1].flip(), src[2] };
-            base_offset = src.flat_offset(bounds.get({ side_t::last, side_t::last, side_t::first }));
-        }
-        else
-        {
-            out_shape = shape_t<3>{ src[1].flip(), src[0], src[2] };
-            base_offset = src.flat_offset(bounds.get({ side_t::first, side_t::last, side_t::first }));
-        }
-
-        return { out_shape, base_offset };
+        return { src, 0 };
     }
 };
 
