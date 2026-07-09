@@ -149,36 +149,25 @@ using bounds_t = box_shape_t<D, extent_base_t>;
 namespace detail
 {
 
-template <class T>
-struct iter_impl
+struct overwrite_fn
 {
-    constexpr iter_impl(T* inner = {}, std::ptrdiff_t stride = {}) : m_inner{ to_byte_ptr(inner) }, m_stride{ stride } { }
-
-    constexpr T& deref() const { return *reinterpret_cast<T*>(m_inner); }
-
-    constexpr void inc() { m_inner += m_stride; }
-
-    constexpr void dec() { m_inner -= m_stride; }
-
-    constexpr void advance(std::ptrdiff_t n) { m_inner += n * m_stride; }
-
-    constexpr bool is_equal(const iter_impl& other) const { return m_inner == other.m_inner; }
-
-    constexpr bool is_less(const iter_impl& other) const
+    template <class DstIt, class SrcIt>
+    void operator()(DstIt dst_it, const DstIt& dst_last, SrcIt src_it, const SrcIt& src_last) const
     {
-        assert(m_stride == other.m_stride);
-        return m_stride > 0 ? m_inner < other.m_inner : m_inner > other.m_inner;
+        for (; dst_it != dst_last && src_it != src_last; ++dst_it, ++src_it)
+        {
+            *dst_it = *src_it;
+        }
     }
 
-    constexpr std::ptrdiff_t distance_to(const iter_impl& other) const
+    template <class DstRange, class SrcRange>
+    void operator()(DstRange&& dst, SrcRange&& src) const
     {
-        assert(m_stride == other.m_stride);
-        return (other.m_inner - m_inner) / m_stride;
+        (*this)(std::begin(dst), std::end(dst), std::begin(src), std::end(src));
     }
-
-    byte_ptr m_inner;
-    std::ptrdiff_t m_stride;
 };
+
+static constexpr inline auto overwrite = overwrite_fn{};
 
 }  // namespace detail
 
@@ -332,6 +321,107 @@ struct shape_t<1>
     }
 };
 
+namespace detail
+{
+
+template <class T, std::size_t D>
+struct flat_iter_impl
+{
+    flat_iter_impl(T* data = {}, shape_t<D> shape = {}, volume_t index = 0)
+        : m_data{ to_byte_ptr(data) }
+        , m_shape{ std::move(shape) }
+        , m_index{ index }
+    {
+        volume_t pitch = 1;
+        for (std::size_t rd = 0; rd < D; ++rd)
+        {
+            const auto d = D - 1 - rd;
+            m_pitch[d] = pitch;
+            pitch *= m_shape.dim(d).extent;
+        }
+    }
+
+    T& deref() const
+    {
+        flat_offset_t offset = 0;
+        volume_t idx = m_index;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            const auto loc = static_cast<location_base_t>((idx / m_pitch[d]) % m_shape.dim(d).extent);
+            offset += m_shape.dim(d).flat_offset(loc);
+        }
+        return *to_ptr<T*>(m_data, offset);
+    }
+
+    void inc() { ++m_index; }
+
+    void dec() { --m_index; }
+
+    void advance(std::ptrdiff_t n) { m_index += n; }
+
+    bool is_equal(const flat_iter_impl& other) const { return m_data == other.m_data && m_index == other.m_index; }
+
+    bool is_less(const flat_iter_impl& other) const
+    {
+        assert(m_data == other.m_data);
+        return m_index < other.m_index;
+    }
+
+    std::ptrdiff_t distance_to(const flat_iter_impl& other) const
+    {
+        assert(m_data == other.m_data);
+        return other.m_index - m_index;
+    }
+
+    byte_ptr m_data;
+    shape_t<D> m_shape;
+    std::array<volume_t, D> m_pitch = {};
+    volume_t m_index;
+};
+
+template <class T>
+struct flat_iter_impl<T, 1>
+{
+    flat_iter_impl(T* data = {}, shape_t<1> shape = {}, volume_t index = 0)
+        : m_data{ to_byte_ptr(data) }
+        , m_shape{ std::move(shape) }
+        , m_index{ index }
+    {
+    }
+
+    T& deref() const
+    {
+        const auto loc = static_cast<location_base_t>(m_index);
+        return *to_ptr<T*>(m_data, m_shape.flat_offset(loc));
+    }
+
+    void inc() { ++m_index; }
+
+    void dec() { --m_index; }
+
+    void advance(std::ptrdiff_t n) { m_index += n; }
+
+    bool is_equal(const flat_iter_impl& other) const { return m_data == other.m_data && m_index == other.m_index; }
+
+    bool is_less(const flat_iter_impl& other) const
+    {
+        assert(m_data == other.m_data);
+        return m_index < other.m_index;
+    }
+
+    std::ptrdiff_t distance_to(const flat_iter_impl& other) const
+    {
+        assert(m_data == other.m_data);
+        return other.m_index - m_index;
+    }
+
+    byte_ptr m_data;
+    shape_t<1> m_shape;
+    volume_t m_index;
+};
+
+}  // namespace detail
+
 template <class T, std::size_t D>
 struct array_view_base_t
 {
@@ -340,7 +430,7 @@ struct array_view_base_t
     using pointer = T*;
     using reference = T&;
 
-    using iterator = void;
+    using iterator = iterator_interface<detail::flat_iter_impl<T, D>>;
 
     using location_type = typename shape_type::location_type;
     using extent_type = typename shape_type::extent_type;
@@ -366,6 +456,10 @@ struct array_view_base_t
     location_type start() const { return m_shape.start(); }
     volume_t volume() const { return m_shape.volume(); }
     bounds_type bounds() const { return m_shape.bounds(); }
+
+    iterator begin() const { return iterator{ from_offset(0), m_shape, 0 }; }
+
+    iterator end() const { return iterator{ from_offset(0), m_shape, volume() }; }
 
     pointer data() const { return from_offset(0); }
 
@@ -404,10 +498,13 @@ struct array_view_base_t
     template <class T_ = T, enable_if_t<!std::is_const_v<T_>> = 0>
     void fill(const value_type& value)
     {
-        for (extent_base_t i = 0; i < m_shape.dim(0).extent; ++i)
-        {
-            (*this)[i].fill(value);
-        }
+        std::fill(this->begin(), this->end(), value);
+    }
+
+    template <class T_ = T, class Range, enable_if_t<!std::is_const_v<T_>> = 0>
+    void assign(Range&& range)
+    {
+        detail::overwrite(this->begin(), this->end(), std::begin(range), std::end(range));
     }
 
     friend std::ostream& operator<<(std::ostream& os, const array_view_base_t& item) { return os << item.shape(); }
@@ -426,7 +523,7 @@ struct array_view_base_t<T, 1>
     using pointer = T*;
     using reference = T&;
 
-    using iterator = iterator_interface<detail::iter_impl<T>>;
+    using iterator = iterator_interface<detail::flat_iter_impl<T, 1>>;
 
     using location_type = typename shape_type::location_type;
     using extent_type = typename shape_type::extent_type;
@@ -453,6 +550,9 @@ struct array_view_base_t<T, 1>
     volume_t volume() const { return m_shape.volume(); }
     bounds_type bounds() const { return m_shape.bounds(); }
 
+    iterator begin() const { return iterator{ from_offset(0), m_shape, 0 }; }
+    iterator end() const { return iterator{ from_offset(0), m_shape, volume() }; }
+
     pointer data() const { return from_offset(0); }
 
     pointer get(location_type loc) const
@@ -473,13 +573,16 @@ struct array_view_base_t<T, 1>
         return array_view_base_t{ from_offset(new_start), new_shape };
     }
 
-    iterator begin() const { return iterator{ from_offset(0), m_shape.dim(0).stride }; }
-    iterator end() const { return begin() + volume(); }
-
     template <class T_ = T, enable_if_t<!std::is_const_v<T_>> = 0>
     void fill(const value_type& value)
     {
-        std::fill(begin(), end(), value);
+        std::fill(this->begin(), this->end(), value);
+    }
+
+    template <class T_ = T, class Range, enable_if_t<!std::is_const_v<T_>> = 0>
+    void assign(Range&& range)
+    {
+        detail::overwrite(this->begin(), this->end(), std::begin(range), std::end(range));
     }
 
     friend std::ostream& operator<<(std::ostream& os, const array_view_base_t& item) { return os << item.shape(); }
@@ -499,22 +602,15 @@ using array_mut_view_t = array_view_base_t<T, D>;
 namespace detail
 {
 
-template <class T, class U, std::size_t D, enable_if_t<(D == 1)> = 0>
+template <class T, class U, std::size_t D>
 void copy_from_view(array_mut_view_t<T, D> dst, array_view_t<U, D> src)
 {
-    for (extent_base_t i = 0; i < dst.extent(); ++i)
+    if (dst.extent() != src.extent())
     {
-        dst[i] = src[i];
+        throw std::invalid_argument{ "Source and destination sizes do not match" };
     }
-}
 
-template <class T, class U, std::size_t D, enable_if_t<(D > 1)> = 0>
-void copy_from_view(array_mut_view_t<T, D> dst, array_view_t<U, D> src)
-{
-    for (extent_base_t i = 0; i < dst.shape().dim(0).extent; ++i)
-    {
-        copy_from_view(dst[i], src[i]);
-    }
+    overwrite(dst, src);
 }
 
 }  // namespace detail

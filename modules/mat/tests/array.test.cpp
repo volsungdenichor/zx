@@ -198,6 +198,53 @@ TEST(array, array_2d_copy)
     EXPECT_THAT(b.m_data, testing::ElementsAreArray({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }));
 }
 
+TEST(array, array_3d_assign_from_range_is_flat)
+{
+    zx::mat::array_t<int, 3> rgb{ { 2, 2, 3 } };
+    rgb.mut_view().assign(std::vector<int>{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 });
+
+    EXPECT_THAT(rgb.m_data, testing::ElementsAreArray({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }));
+}
+
+TEST(array, array_2d_iteration_is_flat_row_major)
+{
+    zx::mat::array_t<int, 2> a{ { 2, 3 } };
+    a.m_data = { 0, 1, 2, 3, 4, 5 };
+
+    EXPECT_THAT(a, testing::ElementsAreArray({ 0, 1, 2, 3, 4, 5 }));
+    EXPECT_THAT(a.view(), testing::ElementsAreArray({ 0, 1, 2, 3, 4, 5 }));
+}
+
+TEST(array, array_3d_mutable_iteration_writes_flat_row_major)
+{
+    zx::mat::array_t<int, 3> a{ { 2, 2, 3 } };
+
+    int v = 0;
+    for (auto& item : a.mut_view())
+    {
+        item = v++;
+    }
+
+    EXPECT_THAT(a.m_data, testing::ElementsAreArray({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 }));
+}
+
+TEST(array, array_assign_from_long_range_is_clipped)
+{
+    zx::mat::array_t<int, 1> a{ 5 };
+    a.mut_view().assign(std::vector<int>{ 0, 1, 2, 3, 4, 5, 6 });
+
+    EXPECT_THAT(a.m_data, testing::ElementsAreArray({ 0, 1, 2, 3, 4 }));
+}
+
+TEST(array, array_assign_from_short_range_overwrites_prefix_only)
+{
+    zx::mat::array_t<int, 1> a{ 5 };
+    a.mut_view().fill(-1);
+    a.mut_view().assign(std::vector<int>{ 9, 8, 7 });
+
+    EXPECT_THAT(a.m_data, testing::ElementsAreArray({ 9, 8, 7, -1, -1 }));
+}
+
 TEST(array, array_construct_from_view_same_type)
 {
     zx::mat::array_t<int, 2> src{ { 3, 4 } };
