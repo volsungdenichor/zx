@@ -15,14 +15,14 @@
 #include "zx/maybe.hpp"
 #include "zx/string.hpp"
 #include "zx/widget.hpp"
-
-// bazel build -c opt //devlab:devlab && ./bazel-bin/devlab/devlab
 void run(const std::vector<std::string_view>&)
 {
     const auto background = zx::mat::load_bitmap("/home/krzysiek/river.bmp");
     const auto conan = zx::mat::load_bitmap("/home/krzysiek/conan_small.bmp");
 
     auto out = background;
+
+    zx::mat::at(out.mut_view(), { -1, -1 }, zx::mat::at(out.mut_view(), { -1, -1 }) * 3);
 
     zx::mat::copy(out.mut_view(), conan.view(), { 0, 0, 0 });
     zx::mat::copy(out.mut_view(), zx::mat::flip_horizontal(conan.view()), { 0, 200, 0 });
@@ -80,7 +80,11 @@ int main(int argc, char* argv[])
 {
     try
     {
+        const auto start = std::chrono::steady_clock::now();
         run(std::vector<std::string_view>(argv, argv + argc));
+        const auto end = std::chrono::steady_clock::now();
+        const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        std::cerr << "Execution time: " << duration << " ms" << std::endl;
         return 0;
     }
     catch (...)

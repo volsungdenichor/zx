@@ -2,7 +2,3 @@
 build/
 bin/
 Testing/
-
-# Bazel
-bazel-*
-MODULE.bazel.lock
