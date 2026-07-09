@@ -6,6 +6,7 @@
 #include <optional>
 #include <sstream>
 #include <tuple>
+#include <zx/algorithm.hpp>
 #include <zx/format.hpp>
 #include <zx/iterator_interface.hpp>
 #include <zx/mat.hpp>
@@ -145,31 +146,6 @@ using slice_t = vector_t<D, slice_base_t>;
 
 template <std::size_t D>
 using bounds_t = box_shape_t<D, extent_base_t>;
-
-namespace detail
-{
-
-struct overwrite_fn
-{
-    template <class DstIt, class SrcIt>
-    void operator()(DstIt dst_it, const DstIt& dst_last, SrcIt src_it, const SrcIt& src_last) const
-    {
-        for (; dst_it != dst_last && src_it != src_last; ++dst_it, ++src_it)
-        {
-            *dst_it = *src_it;
-        }
-    }
-
-    template <class DstRange, class SrcRange>
-    void operator()(DstRange&& dst, SrcRange&& src) const
-    {
-        (*this)(std::begin(dst), std::end(dst), std::begin(src), std::end(src));
-    }
-};
-
-static constexpr inline auto overwrite = overwrite_fn{};
-
-}  // namespace detail
 
 template <std::size_t D, class...>
 struct shape_t : md_base_t<D, dim_t, shape_t>
@@ -504,7 +480,7 @@ struct array_view_base_t
     template <class T_ = T, class Range, enable_if_t<!std::is_const_v<T_>> = 0>
     void assign(Range&& range)
     {
-        detail::overwrite(this->begin(), this->end(), std::begin(range), std::end(range));
+        overwrite(this->begin(), this->end(), std::begin(range), std::end(range));
     }
 
     friend std::ostream& operator<<(std::ostream& os, const array_view_base_t& item) { return os << item.shape(); }
@@ -582,7 +558,7 @@ struct array_view_base_t<T, 1>
     template <class T_ = T, class Range, enable_if_t<!std::is_const_v<T_>> = 0>
     void assign(Range&& range)
     {
-        detail::overwrite(this->begin(), this->end(), std::begin(range), std::end(range));
+        overwrite(this->begin(), this->end(), std::begin(range), std::end(range));
     }
 
     friend std::ostream& operator<<(std::ostream& os, const array_view_base_t& item) { return os << item.shape(); }
@@ -749,6 +725,41 @@ struct adjust_bounds_fn
 };
 
 static constexpr inline auto adjust_bounds = adjust_bounds_fn{};
+
+struct adjust_copy_bounds_fn
+{
+    auto operator()(const std::pair<interval_type, interval_type>& dst, const std::pair<interval_type, interval_type>& src)
+        const -> std::pair<interval_type, interval_type>
+    {
+        const auto clip_interval = [](const std::pair<interval_type, interval_type>& pair) -> interval_type
+        {
+            const auto [bounds, interval] = pair;
+            const auto lo = std::max(lower(bounds), lower(interval));
+            const auto up = std::clamp(upper(interval), lo, upper(bounds));
+            return { lo, up };
+        };
+
+        return adjust_bounds(clip_interval(dst), clip_interval(src), lower(dst.second) - lower(src.second));
+    }
+
+    template <std::size_t D>
+    auto operator()(const std::pair<bounds_t<D>, bounds_t<D>>& dst, const std::pair<bounds_t<D>, bounds_t<D>>& src) const
+        -> std::pair<bounds_t<D>, bounds_t<D>>
+    {
+        bounds_t<D> clipped_dst = {};
+        bounds_t<D> clipped_src = {};
+
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            std::tie(clipped_src[d], clipped_dst[d])
+                = (*this)(std::pair{ dst.first[d], dst.second[d] }, std::pair{ src.first[d], src.second[d] });
+        }
+
+        return { clipped_src, clipped_dst };
+    }
+};
+
+static constexpr inline auto adjust_copy_bounds = adjust_copy_bounds_fn{};
 
 struct to_slice_fn
 {

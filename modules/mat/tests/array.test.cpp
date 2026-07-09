@@ -45,8 +45,7 @@ TEST(array, array_1d)
     zx::mat::array_t<int, 1> a{ 10 };
     a[1] = 42;
     EXPECT_THAT(
-        a.shape(),
-        (zx::mat::shape_t<1>{ { zx::mat::dim_t{ 10, static_cast<zx::mat::stride_base_t>(sizeof(int)) } } }));
+        a.shape(), (zx::mat::shape_t<1>{ { zx::mat::dim_t{ 10, static_cast<zx::mat::stride_base_t>(sizeof(int)) } } }));
     EXPECT_THAT(a.extent(), 10);
     EXPECT_THAT(a.stride(), stride_of<int>(1));
     EXPECT_THAT(a.volume(), 10);
@@ -253,8 +252,7 @@ TEST(array, array_construct_from_view_same_type)
         src.m_data[i] = static_cast<int>(i);
     }
 
-    auto src_view = src.view().slice(
-        { zx::mat::slice_base_t{ 0, 3, 1 }, zx::mat::slice_base_t{ 0, 4, 2 } });
+    auto src_view = src.view().slice({ zx::mat::slice_base_t{ 0, 3, 1 }, zx::mat::slice_base_t{ 0, 4, 2 } });
     zx::mat::array_t<int, 2> dst{ src_view };
 
     EXPECT_THAT(dst.extent(), testing::Eq(src_view.extent()));
@@ -327,6 +325,31 @@ TEST(array, array_2d_copy_bounds_adjustment)
     zx::mat::array_t<int, 2> dst{ { 4, 5 } };
 
     const auto [src_bounds, dst_bounds] = zx::mat::adjust_bounds(dst.bounds(), src.bounds(), { -1, 2 });
+
+    EXPECT_THAT(src_bounds[0], testing::Eq((zx::mat::interval_t<zx::mat::extent_base_t>{ 1, 3 })));
+    EXPECT_THAT(src_bounds[1], testing::Eq((zx::mat::interval_t<zx::mat::extent_base_t>{ 0, 3 })));
+
+    EXPECT_THAT(dst_bounds[0], testing::Eq((zx::mat::interval_t<zx::mat::extent_base_t>{ 0, 2 })));
+    EXPECT_THAT(dst_bounds[1], testing::Eq((zx::mat::interval_t<zx::mat::extent_base_t>{ 2, 5 })));
+}
+
+TEST(array, array_2d_adjust_copy_bounds)
+{
+    zx::mat::array_t<int, 2> src{ { 3, 4 } };
+    zx::mat::array_t<int, 2> dst{ { 4, 5 } };
+
+    const zx::mat::bounds_t<2> src_box{ {
+        zx::mat::interval_t<zx::mat::extent_base_t>{ 0, 3 },
+        zx::mat::interval_t<zx::mat::extent_base_t>{ 0, 4 },
+    } };
+
+    const zx::mat::bounds_t<2> dst_box{ {
+        zx::mat::interval_t<zx::mat::extent_base_t>{ -1, 2 },
+        zx::mat::interval_t<zx::mat::extent_base_t>{ 2, 6 },
+    } };
+
+    const auto [src_bounds, dst_bounds]
+        = zx::mat::adjust_copy_bounds(std::pair{ dst.bounds(), dst_box }, std::pair{ src.bounds(), src_box });
 
     EXPECT_THAT(src_bounds[0], testing::Eq((zx::mat::interval_t<zx::mat::extent_base_t>{ 1, 3 })));
     EXPECT_THAT(src_bounds[1], testing::Eq((zx::mat::interval_t<zx::mat::extent_base_t>{ 0, 3 })));

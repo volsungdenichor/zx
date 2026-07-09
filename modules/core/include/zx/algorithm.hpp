@@ -8,6 +8,29 @@
 namespace zx
 {
 
+namespace detail
+{
+
+struct overwrite_fn
+{
+    template <class DstIt, class SrcIt>
+    void operator()(DstIt dst_it, const DstIt& dst_end, SrcIt src_it, const SrcIt& src_end) const
+    {
+        for (; dst_it != dst_end && src_it != src_end; ++dst_it, ++src_it)
+        {
+            *dst_it = *src_it;
+        }
+    }
+
+    template <class DstRange, class SrcRange>
+    void operator()(DstRange&& dst, SrcRange&& src) const
+    {
+        (*this)(std::begin(dst), std::end(dst), std::begin(src), std::end(src));
+    }
+};
+
+static constexpr inline auto overwrite = overwrite_fn{};
+
 struct fold_left_fn
 {
     template <
@@ -117,5 +140,13 @@ struct try_fold_left_first_fn
 };
 
 static constexpr inline auto try_fold_left_first = try_fold_left_first_fn{};
+
+}  // namespace detail
+
+using detail::fold_left;
+using detail::fold_left_first;
+using detail::overwrite;
+using detail::try_fold_left;
+using detail::try_fold_left_first;
 
 }  // namespace zx
