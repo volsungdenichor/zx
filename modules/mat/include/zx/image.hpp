@@ -2,13 +2,29 @@
 
 #include <cstdint>
 #include <fstream>
+#include <functional>
 #include <zx/array.hpp>
 #include <zx/colors.hpp>
+#include <zx/format.hpp>
 
 namespace zx
 {
 namespace mat
 {
+
+struct filepath_t
+{
+    std::string m_path;
+
+    explicit filepath_t(const std::string& path) : m_path(path) { }
+
+    const char* c_str() const { return m_path.c_str(); }
+
+    friend bool operator==(const filepath_t& lhs, const filepath_t& rhs) { return lhs.m_path == rhs.m_path; }
+    friend bool operator!=(const filepath_t& lhs, const filepath_t& rhs) { return !(lhs == rhs); }
+
+    friend std::ostream& operator<<(std::ostream& os, const filepath_t& item) { return os << item.m_path; }
+};
 
 using rgb_image_t = array_t<byte_t, 3>;
 using channel_t = array_t<byte_t, 2>;
@@ -187,12 +203,12 @@ struct load_bitmap_fn
         }
     }
 
-    auto operator()(const std::string& path) const -> rgb_image_t
+    auto operator()(const filepath_t& path) const -> rgb_image_t
     {
         std::ifstream fs(path.c_str(), std::ifstream::binary);
         if (!fs)
         {
-            throw std::runtime_error{ std::string("load_bitmap: can not load file '" + path + "'") };
+            throw std::runtime_error{ str("load_bitmap: can not load file '", path, "'") };
         }
         return (*this)(fs);
     }
@@ -294,7 +310,7 @@ struct save_bitmap_fn
         }
     }
 
-    void operator()(rgb_image_t::view_type image, const std::string& path) const
+    void operator()(rgb_image_t::view_type image, const filepath_t& path) const
     {
         std::ofstream fs(path.c_str(), std::ofstream::binary);
         (*this)(image, fs);
@@ -321,6 +337,8 @@ struct at_fn
         }
     }
 };
+
+static constexpr inline auto at = at_fn{};
 
 struct channel_fn
 {
@@ -458,15 +476,158 @@ struct flip_fn
     }
 };
 
+using color_filter_t = std::function<rgb_color_t(const rgb_color_t&)>;
+
+struct bresenham_line_fn
+{
+    void operator()(
+        const rgb_image_t::mut_view_type& image, const segment_t<2, location_base_t>& seg, const rgb_color_t& color) const
+    {
+        (*this)(image, seg, [&](const rgb_color_t&) { return color; });
+    }
+
+    void operator()(
+        const rgb_image_t::mut_view_type& image,
+        const segment_t<2, location_base_t>& seg,
+        const color_filter_t& color_filter) const
+    {
+        (*this)(
+            seg[0],
+            seg[1],
+            [&](const location_t<2>& loc)
+            {
+                if (contains(image.bounds(), { loc[0], loc[1], 0 }))
+                {
+                    at(image, loc, color_filter(at(image, loc)));
+                }
+            });
+    }
+
+    void operator()(
+        const location_t<2>& start, const location_t<2>& end, const std::function<void(const location_t<2>&)>& output) const
+    {
+        const auto direction = end - start;
+
+        vector_t<2, location_base_t> dist;
+        vector_t<2, location_base_t> dir;
+
+        std::transform(direction.begin(), direction.end(), dist.begin(), math::abs);
+        std::transform(direction.begin(), direction.end(), dir.begin(), math::sign);
+
+        bresenham_line_fn::bresenham(
+            start,
+            dir,
+            dist,
+            (dist[0] > dist[1] ? dist[0] : -dist[1]) / 2,
+            [&](const location_t<2>& loc)
+            {
+                output(loc);
+                return loc != end;
+            });
+    }
+
+    static void bresenham(
+        location_t<2> cur,
+        const vector_t<2, location_base_t>& dir,
+        const vector_t<2, location_base_t>& dist,
+        int err,
+        const std::function<bool(const location_t<2>&)>& output)
+    {
+        while (true)
+        {
+            if (!output(cur))
+            {
+                break;
+            }
+
+            auto e = err;
+
+            if (e > -dist[0])
+            {
+                err -= dist[1];
+                cur[0] += dir[0];
+            }
+
+            if (e < dist[1])
+            {
+                err += dist[0];
+                cur[1] += dir[1];
+            }
+        }
+    }
+};
+
+struct bresenham_circle_fn
+{
+    void operator()(
+        const rgb_image_t::mut_view_type& image,
+        const spherical_shape_t<2, location_base_t>& circle,
+        const rgb_color_t& color) const
+    {
+        (*this)(image, circle, [&](const rgb_color_t&) { return color; });
+    }
+
+    void operator()(
+        const rgb_image_t::mut_view_type& image,
+        const spherical_shape_t<2, location_base_t>& circle,
+        const color_filter_t& color_filter) const
+    {
+        (*this)(
+            circle.center,
+            circle.radius,
+            [&](const location_t<2>& loc)
+            {
+                if (contains(image.bounds(), { loc[0], loc[1], 0 }))
+                {
+                    at(image, loc, color_filter(at(image, loc)));
+                }
+            });
+    }
+
+    void operator()(const location_t<2>& center, int radius, const std::function<void(const location_t<2>&)>& output) const
+    {
+        mat::vector_t<2, location_base_t> cur{ radius, 0 };
+        int err = 0;
+
+        while (cur[0] >= cur[1])
+        {
+            output(point(center[0] + cur[0], center[1] + cur[1]));
+            output(point(center[0] + cur[1], center[1] + cur[0]));
+            output(point(center[0] - cur[1], center[1] + cur[0]));
+            output(point(center[0] - cur[0], center[1] + cur[1]));
+            output(point(center[0] - cur[0], center[1] - cur[1]));
+            output(point(center[0] - cur[1], center[1] - cur[0]));
+            output(point(center[0] + cur[1], center[1] - cur[0]));
+            output(point(center[0] + cur[0], center[1] - cur[1]));
+
+            if (err <= 0)
+            {
+                cur[1] += 1;
+                err += 2 * cur[1] + 1;
+            }
+
+            if (err > 0)
+            {
+                cur[0] -= 1;
+                err -= 2 * cur[0] + 1;
+            }
+        }
+    }
+};
+
 }  // namespace detail
+
+using detail::at;
 
 static constexpr inline auto load_bitmap = detail::load_bitmap_fn{};
 static constexpr inline auto save_bitmap = detail::save_bitmap_fn{};
-static constexpr inline auto at = detail::at_fn{};
 static constexpr inline auto channel = detail::channel_fn{};
 static constexpr inline auto rotate = detail::rotate_fn{};
 static constexpr inline auto flip_horizontal = detail::flip_fn<1>{};
 static constexpr inline auto flip_vertical = detail::flip_fn<0>{};
+
+static constexpr inline auto draw_line = detail::bresenham_line_fn{};
+static constexpr inline auto draw_circle = detail::bresenham_circle_fn{};
 
 }  // namespace mat
 
