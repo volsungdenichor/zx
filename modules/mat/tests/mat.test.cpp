@@ -67,9 +67,7 @@ TEST(mat, interval_intersection_of_many)
     const zx::mat::interval_t<int> b{ 2, 9 };
     const zx::mat::interval_t<int> c{ 3, 8 };
 
-    EXPECT_THAT(
-        zx::mat::intersection(a, b, c),
-        testing::Optional(testing::Eq((zx::mat::interval_t<int>{ 3, 8 }))));
+    EXPECT_THAT(zx::mat::intersection(a, b, c), testing::Optional(testing::Eq((zx::mat::interval_t<int>{ 3, 8 }))));
 }
 
 TEST(mat, interval_intersection_of_many_returns_nullopt_when_empty)
@@ -100,8 +98,8 @@ TEST(mat, box_intersection_of_many)
 
     EXPECT_THAT(
         zx::mat::intersection(a, b, c),
-        testing::Optional(
-            testing::Eq((zx::mat::box_shape_t<2, int>{ zx::mat::interval_t<int>{ 4, 7 }, zx::mat::interval_t<int>{ 3, 6 } }))));
+        testing::Optional(testing::Eq(
+            (zx::mat::box_shape_t<2, int>{ zx::mat::interval_t<int>{ 4, 7 }, zx::mat::interval_t<int>{ 3, 6 } }))));
 }
 
 TEST(mat, box_intersection_of_many_returns_nullopt_when_empty)
@@ -111,4 +109,56 @@ TEST(mat, box_intersection_of_many_returns_nullopt_when_empty)
     const zx::mat::box_shape_t<2, int> c{ zx::mat::interval_t<int>{ 4, 9 }, zx::mat::interval_t<int>{ 1, 2 } };
 
     EXPECT_THAT(zx::mat::intersection(a, b, c), testing::Eq(std::nullopt));
+}
+
+TEST(mat, segments)
+{
+    EXPECT_THAT(
+        zx::mat::segments(zx::mat::quad_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 },
+                                                   zx::mat::point_t<2, int>{ 1, 0 },
+                                                   zx::mat::point_t<2, int>{ 1, 1 },
+                                                   zx::mat::point_t<2, int>{ 0, 1 } }),
+        testing::ElementsAre(
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 1, 0 } },
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 0 }, zx::mat::point_t<2, int>{ 1, 1 } },
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 1 }, zx::mat::point_t<2, int>{ 0, 1 } },
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 1 }, zx::mat::point_t<2, int>{ 0, 0 } }));
+
+    EXPECT_THAT(
+        zx::mat::segments(zx::mat::triangle_t<2, int>{
+            zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 1, 0 }, zx::mat::point_t<2, int>{ 1, 1 } }),
+        testing::ElementsAre(
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 1, 0 } },
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 0 }, zx::mat::point_t<2, int>{ 1, 1 } },
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 1 }, zx::mat::point_t<2, int>{ 0, 0 } }));
+
+    EXPECT_THAT(
+        zx::mat::segments(zx::mat::polygon_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 },
+                                                      zx::mat::point_t<2, int>{ 1, 0 },
+                                                      zx::mat::point_t<2, int>{ 1, 1 },
+                                                      zx::mat::point_t<2, int>{ 0, 1 } }),
+        testing::ElementsAre(
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 1, 0 } },
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 0 }, zx::mat::point_t<2, int>{ 1, 1 } },
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 1 }, zx::mat::point_t<2, int>{ 0, 1 } },
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 1 }, zx::mat::point_t<2, int>{ 0, 0 } }));
+
+    EXPECT_THAT(
+        zx::mat::segments(zx::mat::polyline_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 },
+                                                       zx::mat::point_t<2, int>{ 1, 0 },
+                                                       zx::mat::point_t<2, int>{ 1, 1 },
+                                                       zx::mat::point_t<2, int>{ 0, 1 } }),
+        testing::ElementsAre(
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 1, 0 } },
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 0 }, zx::mat::point_t<2, int>{ 1, 1 } },
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 1 }, zx::mat::point_t<2, int>{ 0, 1 } }));
+
+    EXPECT_THAT(
+        zx::mat::segments(
+            zx::mat::box::from_lower_upper(zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 2, 2 })),
+        testing::ElementsAre(
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 1, 0 } },
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 0 }, zx::mat::point_t<2, int>{ 1, 1 } },
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 1 }, zx::mat::point_t<2, int>{ 0, 1 } },
+            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 1 }, zx::mat::point_t<2, int>{ 0, 0 } }));
 }

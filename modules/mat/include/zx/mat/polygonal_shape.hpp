@@ -43,53 +43,47 @@ using triangle_t = polygonal_shape_t<D, T, 3>;
 template <std::size_t D, class T>
 using quad_t = polygonal_shape_t<D, T, 4>;
 
-namespace detail
-{
-
-struct polygon_tag
-{
-};
-struct polyline_tag
-{
-};
-
-}  // namespace detail
-
-template <std::size_t D, class Tag, class T>
-struct vertex_list_shape_t : public std::vector<point_t<D, T>>
+template <std::size_t D, class T>
+struct polygon_t : public std::vector<point_t<D, T>>
 {
     using base_t = std::vector<point_t<D, T>>;
 
     using base_t::base_t;
+
+    template <std::size_t N>
+    polygon_t(const polygonal_shape_t<D, T, N>& polygonal_shape)
+        : base_t(std::begin(polygonal_shape), std::end(polygonal_shape))
+    {
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const polygon_t& item)
+    {
+        os << "(polygon";
+        for (std::size_t n = 0; n < item.size(); ++n)
+        {
+            os << " " << item[n];
+        }
+        return os << ")";
+    }
 };
 
 template <std::size_t D, class T>
-using polygon_t = vertex_list_shape_t<D, detail::polygon_tag, T>;
-
-template <std::size_t D, class T>
-using polyline_t = vertex_list_shape_t<D, detail::polyline_tag, T>;
-
-template <std::size_t D, class T>
-std::ostream& operator<<(std::ostream& os, const polygon_t<D, T>& item)
+struct polyline_t : public std::vector<point_t<D, T>>
 {
-    os << "(polygon";
-    for (std::size_t n = 0; n < item.size(); ++n)
-    {
-        os << " " << item[n];
-    }
-    return os << ")";
-}
+    using base_t = std::vector<point_t<D, T>>;
 
-template <std::size_t D, class T>
-std::ostream& operator<<(std::ostream& os, const polyline_t<D, T>& item)
-{
-    os << "(polyline";
-    for (std::size_t n = 0; n < item.size(); ++n)
+    using base_t::base_t;
+
+    friend std::ostream& operator<<(std::ostream& os, const polyline_t& item)
     {
-        os << " " << item[n];
+        os << "(polyline";
+        for (std::size_t n = 0; n < item.size(); ++n)
+        {
+            os << " " << item[n];
+        }
+        return os << ")";
     }
-    return os << ")";
-}
+};
 
 }  // namespace mat
 

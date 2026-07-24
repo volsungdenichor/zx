@@ -44,38 +44,21 @@ using segment_t = linear_shape_t<D, detail::segment_tag, T>;
 namespace detail
 {
 
-struct line_fn
+template <class Tag>
+struct linear_shape_fn
 {
     template <std::size_t D, class T>
-    auto operator()(point_t<D, T> p0, point_t<D, T> p1) const -> line_t<D, T>
+    auto operator()(point_t<D, T> p0, point_t<D, T> p1) const -> linear_shape_t<D, Tag, T>
     {
-        return line_t<D, T>{ p0, p1 };
-    }
-};
-
-struct segment_fn
-{
-    template <std::size_t D, class T>
-    auto operator()(point_t<D, T> p0, point_t<D, T> p1) const -> segment_t<D, T>
-    {
-        return segment_t<D, T>{ p0, p1 };
-    }
-};
-
-struct ray_fn
-{
-    template <std::size_t D, class T>
-    auto operator()(point_t<D, T> p0, point_t<D, T> p1) const -> ray_t<D, T>
-    {
-        return ray_t<D, T>{ p0, p1 };
+        return linear_shape_t<D, Tag, T>{ p0, p1 };
     }
 };
 
 }  // namespace detail
 
-static constexpr inline auto line = detail::line_fn{};
-static constexpr inline auto segment = detail::segment_fn{};
-static constexpr inline auto ray = detail::ray_fn{};
+static constexpr inline auto line = detail::linear_shape_fn<detail::line_tag>{};
+static constexpr inline auto segment = detail::linear_shape_fn<detail::segment_tag>{};
+static constexpr inline auto ray = detail::linear_shape_fn<detail::ray_tag>{};
 
 template <std::size_t D, class T>
 std::ostream& operator<<(std::ostream& os, const line_t<D, T>& item)

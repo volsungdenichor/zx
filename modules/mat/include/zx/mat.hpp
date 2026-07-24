@@ -8,6 +8,7 @@
 #include <zx/mat/spherical_shape.hpp>
 #include <zx/mat/vector.hpp>
 #include <zx/maybe.hpp>
+#include <zx/sequence.hpp>
 
 namespace zx
 {
@@ -744,12 +745,12 @@ static constexpr inline auto incenter = incenter_fn{};
 struct incircle_fn
 {
     template <class T>
-    constexpr auto operator()(const triangle_t<2, T>& triangle_t) const -> spherical_shape_t<2, T>
+    constexpr auto operator()(const triangle_t<2, T>& triangle) const -> spherical_shape_t<2, T>
     {
         constexpr T epsilon = T(0.1);
 
-        const auto c = incenter(triangle_t);
-        const auto r = distance(c, *projection(c, segment_t<2, T>{ triangle_t[0], triangle_t[1] }, epsilon));
+        const auto c = incenter(triangle);
+        const auto r = distance(c, *projection(c, segment_t<2, T>{ triangle[0], triangle[1] }, epsilon));
 
         return spherical_shape_t<2, T>{ c, static_cast<T>(r) };
     }
@@ -760,10 +761,10 @@ static constexpr inline auto incircle = incircle_fn{};
 struct circumcircle_fn
 {
     template <class T>
-    constexpr auto operator()(const triangle_t<2, T>& triangle_t) const -> spherical_shape_t<2, T>
+    constexpr auto operator()(const triangle_t<2, T>& triangle) const -> spherical_shape_t<2, T>
     {
-        const auto c = circumcenter(triangle_t);
-        const auto r = distance(c, triangle_t[0]);
+        const auto c = circumcenter(triangle);
+        const auto r = distance(c, triangle[0]);
 
         return spherical_shape_t<2, T>{ c, static_cast<T>(r) };
     }
@@ -786,13 +787,6 @@ struct translate_fn
         return linear_shape_t<D, Tag, Res>{ shape[0] + offset, shape[1] + offset };
     }
 
-    template <std::size_t D, class Tag, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
-    constexpr auto operator()(const vertex_list_shape_t<D, Tag, T>& lhs, const vector_t<D, U>& offset) const
-        -> vertex_list_shape_t<D, Tag, Res>
-    {
-        return map_into(vertex_list_shape_t<D, Tag, Res>{}, bind_back(std::plus<>{}, offset), lhs);
-    }
-
     template <class T, class U, std::size_t D>
     constexpr auto operator()(spherical_shape_t<D, T> lhs, const vector_t<D, U>& offset) const -> spherical_shape_t<D, T>
     {
@@ -804,6 +798,18 @@ struct translate_fn
         -> polygonal_shape_t<D, Res, N>
     {
         return map_into(polygonal_shape_t<D, Res, N>{}, bind_back(std::plus<>{}, rhs), lhs);
+    }
+
+    template <std::size_t D, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
+    constexpr auto operator()(const polygon_t<D, T>& lhs, const vector_t<D, U>& rhs) const -> polygon_t<D, T>
+    {
+        return map_into(polygon_t<D, T>{}, bind_back(std::plus<>{}, rhs), lhs);
+    }
+
+    template <std::size_t D, class T, class U, class Res = std::invoke_result_t<std::plus<>, T, U>>
+    constexpr auto operator()(const polyline_t<D, T>& lhs, const vector_t<D, U>& rhs) const -> polyline_t<D, T>
+    {
+        return map_into(polyline_t<D, T>{}, bind_back(std::plus<>{}, rhs), lhs);
     }
 };
 
@@ -843,22 +849,99 @@ struct transform_fn
 
     template <
         std::size_t D,
-        class Tag,
         class T,
         std::size_t R,
         std::size_t C,
         class U,
         enable_if_t<(R == D + 1 && C == D + 1)> = 0,
         class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-    constexpr auto operator()(const vertex_list_shape_t<D, Tag, T>& lhs, const matrix_t<R, C, U>& transformation) const
-        -> vertex_list_shape_t<D, Tag, Res>
+    constexpr auto operator()(const polygon_t<D, T>& lhs, const matrix_t<R, C, U>& transformation) const -> polygon_t<D, Res>
     {
-        vertex_list_shape_t<D, Tag, Res> result(lhs.size());
+        polygon_t<D, Res> result(lhs.size());
+        return map_into(std::move(result), bind_back(std::multiplies<>{}, transformation), lhs);
+    }
+
+    template <
+        std::size_t D,
+        class T,
+        std::size_t R,
+        std::size_t C,
+        class U,
+        enable_if_t<(R == D + 1 && C == D + 1)> = 0,
+        class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+    constexpr auto operator()(const polyline_t<D, T>& lhs, const matrix_t<R, C, U>& transformation) const
+        -> polyline_t<D, Res>
+    {
+        polyline_t<D, Res> result(lhs.size());
         return map_into(std::move(result), bind_back(std::multiplies<>{}, transformation), lhs);
     }
 };
 
 static constexpr inline auto transform = transform_fn{};
+
+struct segments_fn
+{
+    template <class T, std::size_t D, std::size_t N>
+    constexpr auto operator()(const polygonal_shape_t<D, T, N>& value) const -> sequence_t<segment_t<D, T>>
+    {
+        return seq::range(value.size())
+            .transform(
+                [&](std::size_t i) {
+                    return segment_t<D, T>{ value[i], value[(i + 1) % value.size()] };
+                });
+    }
+
+    template <class T, std::size_t D>
+    constexpr auto operator()(const polygon_t<D, T>& value) const -> sequence_t<segment_t<D, T>>
+    {
+        return seq::range(value.size())
+            .transform(
+                [&](std::size_t i) {
+                    return segment_t<D, T>{ value[i], value[(i + 1) % value.size()] };
+                });
+    }
+
+    template <class T, std::size_t D>
+    constexpr auto operator()(const polyline_t<D, T>& value) const -> sequence_t<segment_t<D, T>>
+    {
+        if (value.size() < 2)
+        {
+            return {};
+        }
+        return seq::range(static_cast<std::size_t>(value.size() - 1))
+            .transform(
+                [&](std::size_t i) {
+                    return segment_t<D, T>{ value[i], value[i + 1] };
+                });
+    }
+
+    template <class T>
+    constexpr auto operator()(const box_shape_t<2, T>& value) const -> sequence_t<segment_t<2, T>>
+    {
+        return seq::range(4).transform(
+            [&](std::size_t i)
+            {
+                switch (i)
+                {
+                    case 0:
+                        return segment_t<2, T>{ value.get({ side_t::first, side_t::first }),
+                                                value.get({ side_t::last, side_t::first }) };
+                    case 1:
+                        return segment_t<2, T>{ value.get({ side_t::last, side_t::first }),
+                                                value.get({ side_t::last, side_t::last }) };
+                    case 2:
+                        return segment_t<2, T>{ value.get({ side_t::last, side_t::last }),
+                                                value.get({ side_t::first, side_t::last }) };
+                    case 3:
+                        return segment_t<2, T>{ value.get({ side_t::first, side_t::last }),
+                                                value.get({ side_t::first, side_t::first }) };
+                };
+                throw std::logic_error{ "Invalid segment index for box_shape_t<2, T>" };
+            });
+    }
+};
+
+static constexpr inline auto segments = segments_fn{};
 
 }  // namespace detail
 
@@ -889,6 +972,7 @@ using detail::perpendicular;
 using detail::projection;
 using detail::radius;
 using detail::rejection;
+using detail::segments;
 using detail::size;
 using detail::transform;
 using detail::translate;

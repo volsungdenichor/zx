@@ -17,7 +17,7 @@ set(ZX_MODULE_DEPENDENCIES "
         [core []]
         [iterator [core]]
         [sequence [core iterator]]
-        [mat [core iterator]]
+        [mat [core iterator sequence]]
         [ansi [core mat sequence]]
         [geometry [mat sequence]]
         [nested_text [core iterator]]
