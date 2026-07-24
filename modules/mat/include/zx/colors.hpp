@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <ostream>
 #include <vector>
+#include <zx/function_ref.hpp>
 
 namespace zx
 {
@@ -120,7 +121,7 @@ struct lookup_table_t
         }
     }
 
-    static lookup_table_t create(std::function<float(float)> func)
+    static lookup_table_t create(function_ref<float(float)> func)
     {
         std::vector<float> result(256);
 

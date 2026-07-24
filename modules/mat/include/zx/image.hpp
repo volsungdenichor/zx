@@ -2,10 +2,10 @@
 
 #include <cstdint>
 #include <fstream>
-#include <functional>
 #include <zx/array.hpp>
 #include <zx/colors.hpp>
 #include <zx/format.hpp>
+#include <zx/function_ref.hpp>
 
 namespace zx
 {
@@ -317,7 +317,7 @@ struct save_bitmap_fn
     }
 };
 
-using color_filter_t = std::function<rgb_color_t(const rgb_color_t&)>;
+using color_filter_t = function_ref<rgb_color_t(const rgb_color_t&)>;
 
 struct at_fn
 {
@@ -526,7 +526,7 @@ struct bresenham_line_fn
     }
 
     void operator()(
-        const location_t<2>& start, const location_t<2>& end, const std::function<void(const location_t<2>&)>& output) const
+        const location_t<2>& start, const location_t<2>& end, function_ref<void(const location_t<2>&)> output) const
     {
         const auto direction = end - start;
 
@@ -553,7 +553,7 @@ struct bresenham_line_fn
         const vector_t<2, location_base_t>& dir,
         const vector_t<2, location_base_t>& dist,
         int err,
-        const std::function<bool(const location_t<2>&)>& output)
+        function_ref<bool(const location_t<2>&)> output)
     {
         while (true)
         {
@@ -606,7 +606,7 @@ struct bresenham_circle_fn
             });
     }
 
-    void operator()(const location_t<2>& center, int radius, const std::function<void(const location_t<2>&)>& output) const
+    void operator()(const location_t<2>& center, int radius, function_ref<void(const location_t<2>&)> output) const
     {
         mat::vector_t<2, location_base_t> cur{ radius, 0 };
         int err = 0;
