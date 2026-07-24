@@ -317,6 +317,8 @@ struct save_bitmap_fn
     }
 };
 
+using color_filter_t = std::function<rgb_color_t(const rgb_color_t&)>;
+
 struct at_fn
 {
     rgb_color_t operator()(const rgb_image_t::view_type& image, const location_t<2>& loc) const
@@ -339,6 +341,28 @@ struct at_fn
 };
 
 static constexpr inline auto at = at_fn{};
+
+struct modify
+{
+    void operator()(const rgb_image_t::mut_view_type& image, const location_t<2>& loc, const color_filter_t& filter) const
+    {
+        at(image, loc, filter(at(image, loc)));
+    }
+
+    void operator()(const rgb_image_t::mut_view_type& image, const color_filter_t& filter) const
+    {
+        const extent_base_t h = image.shape()[0].extent;
+        const extent_base_t w = image.shape()[1].extent;
+
+        for (location_base_t y = 0; y < h; ++y)
+        {
+            for (location_base_t x = 0; x < w; ++x)
+            {
+                (*this)(image, location_t<2>{ y, x }, filter);
+            }
+        }
+    }
+};
 
 struct channel_fn
 {
@@ -475,8 +499,6 @@ struct flip_fn
         return { out_shape, base_offset };
     }
 };
-
-using color_filter_t = std::function<rgb_color_t(const rgb_color_t&)>;
 
 struct bresenham_line_fn
 {
@@ -618,6 +640,7 @@ struct bresenham_circle_fn
 }  // namespace detail
 
 using detail::at;
+static constexpr inline auto modify = detail::modify{};
 
 static constexpr inline auto load_bitmap = detail::load_bitmap_fn{};
 static constexpr inline auto save_bitmap = detail::save_bitmap_fn{};

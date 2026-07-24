@@ -17,7 +17,7 @@ constexpr auto WhenSerialized = [](auto&& matcher)
         std::forward<decltype(matcher)>(matcher));
 };
 
-constexpr auto WhenLineSplit = [](auto&& matcher)
+constexpr auto WhenSplitByLines = [](auto&& matcher)
 {
     return testing::ResultOf(
         "line-split",
@@ -198,7 +198,7 @@ TEST(nested_text, tree_pretty_print)
                 },
             },
         } })),
-        WhenLineSplit(testing::ElementsAre(
+        WhenSplitByLines(testing::ElementsAre(
             "[",
             "  World",
             "  [",
@@ -221,23 +221,13 @@ TEST(nested_text, path_based_access)
         ]
     )");
 
+    EXPECT_THAT(data.get(zx::nested_text::list_t{ "0", "name" }), testing::Optional(zx::nested_text::string_t{ "Alice" }));
+    EXPECT_THAT(data.get(zx::nested_text::list_t{ "0", "age" }), testing::Optional(zx::nested_text::string_t{ "30" }));
+    EXPECT_THAT(data.get(zx::nested_text::list_t{ "1", "name" }), testing::Optional(zx::nested_text::string_t{ "Bob" }));
+    EXPECT_THAT(data.get(zx::nested_text::list_t{ "1", "age" }), testing::Optional(zx::nested_text::string_t{ "25" }));
     EXPECT_THAT(
-        data.get(zx::nested_text::list_t{ "0",  "name" }),
-        testing::Optional(zx::nested_text::string_t{ "Alice" }));
-    EXPECT_THAT(
-        data.get(zx::nested_text::list_t{ "0", "age" }),
-        testing::Optional(zx::nested_text::string_t{ "30" }));
-    EXPECT_THAT(
-        data.get(zx::nested_text::list_t{ "1", "name" }),
-        testing::Optional(zx::nested_text::string_t{ "Bob" }));
-    EXPECT_THAT(
-        data.get(zx::nested_text::list_t{ "1", "age" }),
-        testing::Optional(zx::nested_text::string_t{ "25" }));
-    EXPECT_THAT(
-        data.get(zx::nested_text::parse(R"([1 age])").as_list()),
-        testing::Optional(zx::nested_text::string_t{ "25" }));
+        data.get(zx::nested_text::parse(R"([1 age])").as_list()), testing::Optional(zx::nested_text::string_t{ "25" }));
 
     EXPECT_THAT(data.get(zx::nested_text::list_t{ "2", "name" }), testing::Eq(std::nullopt));
-    EXPECT_THAT(
-        data.get(zx::nested_text::list_t{ "0", "nonexistent" }), testing::Eq(std::nullopt));
+    EXPECT_THAT(data.get(zx::nested_text::list_t{ "0", "nonexistent" }), testing::Eq(std::nullopt));
 }
