@@ -143,6 +143,30 @@ vector_t(T, T) -> vector_t<2, T>;
 template <class T>
 vector_t(T, T, T) -> vector_t<3, T>;
 
+namespace detail
+{
+
+struct vector_fn
+{
+    template <class T>
+    constexpr auto operator()(T x, T y) const -> vector_t<2, T>
+    {
+        return vector_t<2, T>{ x, y };
+    }
+
+    template <class T>
+    constexpr auto operator()(T x, T y, T z) const -> vector_t<3, T>
+    {
+        return vector_t<3, T>{ x, y, z };
+    }
+};
+
+}  // namespace detail
+
+static constexpr inline auto vector = detail::vector_fn{};
+static constexpr inline auto point = detail::vector_fn{};
+static constexpr inline auto extent = detail::vector_fn{};
+
 template <std::size_t D, class T>
 constexpr auto operator+(const vector_t<D, T>& item) -> vector_t<D, T>
 {

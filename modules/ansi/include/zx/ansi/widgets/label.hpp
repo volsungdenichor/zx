@@ -24,9 +24,9 @@ namespace detail
 
 inline extent_t measure_multiline_text(const string_t& content)
 {
-    std::ptrdiff_t cols = 0;
-    std::ptrdiff_t current_cols = 0;
-    std::ptrdiff_t rows = 1;
+    mat::extent_base_t cols = 0;
+    mat::extent_base_t current_cols = 0;
+    mat::extent_base_t rows = 1;
 
     for (const auto& cp : content)
     {
@@ -54,37 +54,35 @@ void render_multiline_text(const string_t& content, const extent_t& size, PutCel
         return;
     }
 
-    std::ptrdiff_t row = 0;
-    std::ptrdiff_t col = 0;
+    location_t loc{ 0, 0 };
 
     for (const auto& cp : content)
     {
-        if (row >= size[0])
-
+        if (loc[0] >= size[0])
         {
             break;
         }
 
         if (cp.m_data == U'\n')
         {
-            ++row;
-            col = 0;
+            ++loc[0];
+            loc[1] = 0;
             continue;
         }
 
-        if (col >= size[1])
+        if (loc[1] >= size[1])
         {
-            ++row;
-            col = 0;
+            ++loc[0];
+            loc[1] = 0;
         }
 
-        if (row >= size[0])
+        if (loc[0] >= size[0])
         {
             break;
         }
 
-        put_cell(location_t{ row, col }, cp);
-        ++col;
+        put_cell(loc, cp);
+        ++loc[1];
     }
 }
 

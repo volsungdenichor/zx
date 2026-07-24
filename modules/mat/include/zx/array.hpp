@@ -19,7 +19,7 @@ namespace mat
 
 using byte_ptr = std::uint8_t*;
 
-using location_base_t = std::ptrdiff_t;
+using location_base_t = int;
 using extent_base_t = location_base_t;
 using stride_base_t = location_base_t;
 using interval_type = interval_t<extent_base_t>;
@@ -203,7 +203,7 @@ struct shape_t : md_base_t<D, dim_t, shape_t>
         return result;
     }
 
-    static shape_t from_extent(const extent_type& extent, extent_base_t element_size)
+    static shape_t from_extent(const extent_type& e, extent_base_t element_size)
     {
         shape_t result;
         stride_base_t stride = element_size;
@@ -211,7 +211,7 @@ struct shape_t : md_base_t<D, dim_t, shape_t>
         {
             const auto d = static_cast<std::size_t>(_d);
             auto& dim = result[d];
-            dim.extent = extent[d];
+            dim.extent = e[d];
             dim.stride = stride;
             stride *= dim.extent;
         }
@@ -285,9 +285,9 @@ struct shape_t<1>
 
     flat_offset_t flat_offset(const location_type& loc) const { return m_dims[0].flat_offset(loc); }
 
-    static shape_t from_extent(const extent_type& extent, extent_base_t element_size)
+    static shape_t from_extent(const extent_type& e, extent_base_t element_size)
     {
-        return shape_t{ dim_t{ extent, element_size } };
+        return shape_t{ dim_t{ e, element_size } };
     }
 
     std::pair<shape_t, location_type> slice(const slice_type& s) const
@@ -619,8 +619,8 @@ struct array_t
     using reference = typename mut_view_type::reference;
     using iterator = typename mut_view_type::iterator;
 
-    array_t(const extent_type extent, const T& init = {})
-        : m_shape{ shape_type::from_extent(extent, sizeof(T)) }
+    array_t(const extent_type e, const T& init = {})
+        : m_shape{ shape_type::from_extent(e, sizeof(T)) }
         , m_data(static_cast<std::size_t>(m_shape.volume()), init)
     {
     }

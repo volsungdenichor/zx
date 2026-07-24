@@ -114,7 +114,7 @@ public:
 
     bool should_retry_wait(int wait_result) const override { return wait_result < 0 && errno == EINTR; }
 
-    mat::vector_t<2, std::ptrdiff_t> get_terminal_size() const override
+    extent_t get_terminal_size() const override
     {
         struct winsize ws = {};
 

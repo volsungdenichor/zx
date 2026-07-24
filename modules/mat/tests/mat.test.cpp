@@ -6,22 +6,19 @@
 
 TEST(mat, dot_product)
 {
-    zx::mat::vector_t<3, double> v1{ 1.0, 2.0, 3.0 };
-    zx::mat::vector_t<3, double> v2{ 4.0, 5.0, 6.0 };
+    const auto v1 = zx::mat::vector(1.0, 2.0, 3.0);
+    const auto v2 = zx::mat::vector(4.0, 5.0, 6.0);
 
     EXPECT_THAT(zx::mat::dot(v1, v2), ApproxEqual(32.0));
 }
 
 TEST(mat, altitude)
 {
-    zx::mat::triangle_t<2, double> t{ zx::mat::vector_t<2, double>{ 0.0, 0.0 },
-                                      zx::mat::vector_t<2, double>{ 4.0, 0.0 },
-                                      zx::mat::vector_t<2, double>{ 0.0, 4.0 } };
+    const auto t = zx::mat::triangle(zx::mat::vector(0.0, 0.0), zx::mat::vector(4.0, 0.0), zx::mat::vector(0.0, 4.0));
 
     EXPECT_THAT(
         zx::mat::altitude(t, 0),
-        ApproxEqual(zx::mat::segment_t<2, double>{ zx::mat::vector_t<2, double>{ 0.0, 0.0 },
-                                                   zx::mat::vector_t<2, double>{ 2.0, 2.0 } }));
+        ApproxEqual(zx::mat::segment_t<2, double>{ zx::mat::vector(0.0, 0.0), zx::mat::vector(2.0, 2.0) }));
 }
 
 TEST(mat, interval_intersection_overlapping_intervals)
@@ -114,51 +111,43 @@ TEST(mat, box_intersection_of_many_returns_nullopt_when_empty)
 TEST(mat, segments)
 {
     EXPECT_THAT(
-        zx::mat::segments(zx::mat::quad_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 },
-                                                   zx::mat::point_t<2, int>{ 1, 0 },
-                                                   zx::mat::point_t<2, int>{ 1, 1 },
-                                                   zx::mat::point_t<2, int>{ 0, 1 } }),
+        zx::mat::segments(
+            zx::mat::quad(zx::mat::point(0, 0), zx::mat::point(1, 0), zx::mat::point(1, 1), zx::mat::point(0, 1))),
         testing::ElementsAre(
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 1, 0 } },
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 0 }, zx::mat::point_t<2, int>{ 1, 1 } },
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 1 }, zx::mat::point_t<2, int>{ 0, 1 } },
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 1 }, zx::mat::point_t<2, int>{ 0, 0 } }));
+            zx::mat::segment(zx::mat::point(0, 0), zx::mat::point(1, 0)),
+            zx::mat::segment(zx::mat::point(1, 0), zx::mat::point(1, 1)),
+            zx::mat::segment(zx::mat::point(1, 1), zx::mat::point(0, 1)),
+            zx::mat::segment(zx::mat::point(0, 1), zx::mat::point(0, 0))));
 
     EXPECT_THAT(
-        zx::mat::segments(zx::mat::triangle_t<2, int>{
-            zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 1, 0 }, zx::mat::point_t<2, int>{ 1, 1 } }),
+        zx::mat::segments(zx::mat::triangle(zx::mat::point(0, 0), zx::mat::point(1, 0), zx::mat::point(1, 1))),
         testing::ElementsAre(
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 1, 0 } },
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 0 }, zx::mat::point_t<2, int>{ 1, 1 } },
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 1 }, zx::mat::point_t<2, int>{ 0, 0 } }));
-
-    EXPECT_THAT(
-        zx::mat::segments(zx::mat::polygon_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 },
-                                                      zx::mat::point_t<2, int>{ 1, 0 },
-                                                      zx::mat::point_t<2, int>{ 1, 1 },
-                                                      zx::mat::point_t<2, int>{ 0, 1 } }),
-        testing::ElementsAre(
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 1, 0 } },
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 0 }, zx::mat::point_t<2, int>{ 1, 1 } },
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 1 }, zx::mat::point_t<2, int>{ 0, 1 } },
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 1 }, zx::mat::point_t<2, int>{ 0, 0 } }));
-
-    EXPECT_THAT(
-        zx::mat::segments(zx::mat::polyline_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 },
-                                                       zx::mat::point_t<2, int>{ 1, 0 },
-                                                       zx::mat::point_t<2, int>{ 1, 1 },
-                                                       zx::mat::point_t<2, int>{ 0, 1 } }),
-        testing::ElementsAre(
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 1, 0 } },
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 0 }, zx::mat::point_t<2, int>{ 1, 1 } },
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 1 }, zx::mat::point_t<2, int>{ 0, 1 } }));
+            zx::mat::segment(zx::mat::point(0, 0), zx::mat::point(1, 0)),
+            zx::mat::segment(zx::mat::point(1, 0), zx::mat::point(1, 1)),
+            zx::mat::segment(zx::mat::point(1, 1), zx::mat::point(0, 0))));
 
     EXPECT_THAT(
         zx::mat::segments(
-            zx::mat::box::from_lower_upper(zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 2, 2 })),
+            zx::mat::polygon(zx::mat::point(0, 0), zx::mat::point(1, 0), zx::mat::point(1, 1), zx::mat::point(0, 1))),
         testing::ElementsAre(
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 0 }, zx::mat::point_t<2, int>{ 1, 0 } },
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 0 }, zx::mat::point_t<2, int>{ 1, 1 } },
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 1, 1 }, zx::mat::point_t<2, int>{ 0, 1 } },
-            zx::mat::segment_t<2, int>{ zx::mat::point_t<2, int>{ 0, 1 }, zx::mat::point_t<2, int>{ 0, 0 } }));
+            zx::mat::segment(zx::mat::point(0, 0), zx::mat::point(1, 0)),
+            zx::mat::segment(zx::mat::point(1, 0), zx::mat::point(1, 1)),
+            zx::mat::segment(zx::mat::point(1, 1), zx::mat::point(0, 1)),
+            zx::mat::segment(zx::mat::point(0, 1), zx::mat::point(0, 0))));
+
+    EXPECT_THAT(
+        zx::mat::segments(
+            zx::mat::polyline(zx::mat::point(0, 0), zx::mat::point(1, 0), zx::mat::point(1, 1), zx::mat::point(0, 1))),
+        testing::ElementsAre(
+            zx::mat::segment(zx::mat::point(0, 0), zx::mat::point(1, 0)),
+            zx::mat::segment(zx::mat::point(1, 0), zx::mat::point(1, 1)),
+            zx::mat::segment(zx::mat::point(1, 1), zx::mat::point(0, 1))));
+
+    EXPECT_THAT(
+        zx::mat::segments(zx::mat::box::from_lower_upper(zx::mat::point(0, 0), zx::mat::point(2, 2))),
+        testing::ElementsAre(
+            zx::mat::segment(zx::mat::point(0, 0), zx::mat::point(1, 0)),
+            zx::mat::segment(zx::mat::point(1, 0), zx::mat::point(1, 1)),
+            zx::mat::segment(zx::mat::point(1, 1), zx::mat::point(0, 1)),
+            zx::mat::segment(zx::mat::point(0, 1), zx::mat::point(0, 0))));
 }

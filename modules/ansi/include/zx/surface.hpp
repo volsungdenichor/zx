@@ -212,13 +212,13 @@ inline void draw_border(
     const auto top_left = bounds.get({ mat::side_t::first, mat::side_t::first });
     const auto bottom_right = bounds.get({ mat::side_t::last, mat::side_t::last });
 
-    for (std::ptrdiff_t x = top_left[1] + 1; x < bottom_right[1]; ++x)
+    for (mat::location_base_t x = top_left[1] + 1; x < bottom_right[1]; ++x)
     {
         surface[{ top_left[0], x }] = cell_t{ box_style.horizontal, style };
         surface[{ bottom_right[0], x }] = cell_t{ box_style.horizontal, style };
     }
 
-    for (std::ptrdiff_t y = top_left[0] + 1; y < bottom_right[0]; ++y)
+    for (mat::location_base_t y = top_left[0] + 1; y < bottom_right[0]; ++y)
     {
         surface[{ y, top_left[1] }] = cell_t{ box_style.vertical, style };
         surface[{ y, bottom_right[1] }] = cell_t{ box_style.vertical, style };

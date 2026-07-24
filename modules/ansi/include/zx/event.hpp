@@ -178,7 +178,7 @@ struct key_event_t
 
 struct resize_event_t
 {
-    mat::vector_t<2, std::ptrdiff_t> new_size;
+    extent_t new_size;
 
     friend std::ostream& operator<<(std::ostream& os, const resize_event_t& item)
     {

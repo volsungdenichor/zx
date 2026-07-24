@@ -788,7 +788,8 @@ struct translate_fn
     }
 
     template <class T, class U, std::size_t D>
-    constexpr auto operator()(spherical_shape_t<D, T> lhs, const vector_t<D, U>& offset) const -> spherical_shape_t<D, T>
+    constexpr auto operator()(const spherical_shape_t<D, T>& lhs, const vector_t<D, U>& offset) const
+        -> spherical_shape_t<D, T>
     {
         return spherical_shape_t<D, T>{ lhs.center + offset, lhs.radius };
     }
@@ -874,6 +875,22 @@ struct transform_fn
     {
         polyline_t<D, Res> result(lhs.size());
         return map_into(std::move(result), bind_back(std::multiplies<>{}, transformation), lhs);
+    }
+
+    template <
+        std::size_t D,
+        class T,
+        std::size_t R,
+        std::size_t C,
+        class U,
+        enable_if_t<(R == D + 1 && C == D + 1)> = 0,
+        class Res = std::invoke_result_t<std::multiplies<>, T, U>>
+    constexpr auto operator()(const box_shape_t<D, T>& lhs, const matrix_t<R, C, U>& transformation) const -> quad_t<D, Res>
+    {
+        return quad_t<D, Res>{ lhs.get({ side_t::first, side_t::first }) * transformation,
+                               lhs.get({ side_t::last, side_t::first }) * transformation,
+                               lhs.get({ side_t::last, side_t::last }) * transformation,
+                               lhs.get({ side_t::first, side_t::last }) * transformation };
     }
 };
 
