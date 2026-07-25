@@ -6,6 +6,7 @@
 #include <zx/colors.hpp>
 #include <zx/format.hpp>
 #include <zx/function_ref.hpp>
+#include <zx/raster.hpp>
 
 namespace zx
 {
@@ -667,6 +668,37 @@ struct draw_rectangle_fn
     }
 };
 
+struct draw_raster_fn
+{
+    void operator()(const rgb_image_t::mut_view_type& image, const raster_t& raster, const rgb_color_t& color) const
+    {
+        (*this)(image, raster, inject_t{ color });
+    }
+
+    void operator()(const rgb_image_t::mut_view_type& image, const raster_t& raster, color_filter_t color_filter) const
+    {
+        const auto do_draw = draw_pixel_t{ image, color_filter };
+        for (const auto& shape : raster)
+        {
+            (*this)(shape, do_draw);
+        }
+    }
+
+    void operator()(const raster_t::shape_t& shape, const draw_pixel_t& do_draw) const
+    {
+        for (const auto& [y, spans] : shape)
+        {
+            for (const auto& span : spans)
+            {
+                for (location_base_t x = span[0]; x < span[1]; ++x)
+                {
+                    do_draw(location_t<2>{ y, x });
+                }
+            }
+        }
+    }
+};
+
 }  // namespace detail
 
 using detail::at;
@@ -682,6 +714,7 @@ static constexpr inline auto flip_vertical = detail::flip_fn<0>{};
 static constexpr inline auto draw_line = detail::bresenham_line_fn{};
 static constexpr inline auto draw_circle = detail::bresenham_circle_fn{};
 static constexpr inline auto draw_rectangle = detail::draw_rectangle_fn{};
+static constexpr inline auto draw_raster = detail::draw_raster_fn{};
 
 }  // namespace mat
 
