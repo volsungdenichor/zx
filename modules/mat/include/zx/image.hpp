@@ -317,6 +317,20 @@ struct save_bitmap_fn
     }
 };
 
+template <class T>
+struct inject_t
+{
+    T m_value;
+
+    constexpr inject_t(T value) : m_value{ std::move(value) } { }
+
+    template <class... Args>
+    constexpr const T& operator()(Args&&...) const
+    {
+        return m_value;
+    }
+};
+
 using color_filter_t = function_ref<rgb_color_t(const rgb_color_t&)>;
 
 struct at_fn
@@ -344,12 +358,12 @@ static constexpr inline auto at = at_fn{};
 
 struct modify
 {
-    void operator()(const rgb_image_t::mut_view_type& image, const location_t<2>& loc, const color_filter_t& filter) const
+    void operator()(const rgb_image_t::mut_view_type& image, const location_t<2>& loc, color_filter_t filter) const
     {
         at(image, loc, filter(at(image, loc)));
     }
 
-    void operator()(const rgb_image_t::mut_view_type& image, const color_filter_t& filter) const
+    void operator()(const rgb_image_t::mut_view_type& image, color_filter_t filter) const
     {
         const extent_base_t h = image.shape()[0].extent;
         const extent_base_t w = image.shape()[1].extent;
@@ -519,7 +533,7 @@ struct bresenham_line_fn
     void operator()(
         const rgb_image_t::mut_view_type& image, const segment_t<2, location_base_t>& seg, const rgb_color_t& color) const
     {
-        (*this)(image, seg, [&](const rgb_color_t&) { return color; });
+        (*this)(image, seg, inject_t{ color });
     }
 
     void operator()(
@@ -591,13 +605,13 @@ struct bresenham_circle_fn
         const spherical_shape_t<2, location_base_t>& circle,
         const rgb_color_t& color) const
     {
-        (*this)(image, circle, [&](const rgb_color_t&) { return color; });
+        (*this)(image, circle, inject_t{ color });
     }
 
     void operator()(
         const rgb_image_t::mut_view_type& image,
         const spherical_shape_t<2, location_base_t>& circle,
-        const color_filter_t& color_filter) const
+        color_filter_t color_filter) const
     {
         (*this)(circle.center, circle.radius, draw_pixel_t{ image, color_filter });
     }
@@ -633,6 +647,26 @@ struct bresenham_circle_fn
     }
 };
 
+struct draw_rectangle_fn
+{
+    void operator()(
+        const rgb_image_t::mut_view_type& image, const box_shape_t<2, location_base_t>& rect, const rgb_color_t& color) const
+    {
+        (*this)(image, rect, inject_t{ color });
+    }
+
+    void operator()(
+        const rgb_image_t::mut_view_type& image,
+        const box_shape_t<2, location_base_t>& rect,
+        color_filter_t color_filter) const
+    {
+        for (const auto seg : segments(rect))
+        {
+            bresenham_line_fn{}(image, seg, color_filter);
+        }
+    }
+};
+
 }  // namespace detail
 
 using detail::at;
@@ -647,6 +681,7 @@ static constexpr inline auto flip_vertical = detail::flip_fn<0>{};
 
 static constexpr inline auto draw_line = detail::bresenham_line_fn{};
 static constexpr inline auto draw_circle = detail::bresenham_circle_fn{};
+static constexpr inline auto draw_rectangle = detail::draw_rectangle_fn{};
 
 }  // namespace mat
 

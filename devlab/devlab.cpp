@@ -16,6 +16,33 @@
 #include "zx/string.hpp"
 #include "zx/widget.hpp"
 
+struct sepia
+{
+    zx::mat::rgb_color_float_t operator()(const zx::mat::rgb_color_float_t& color) const
+    {
+        static const std::array<std::array<float, 3>, 3> coeffs
+            = { { { 0.393F, 0.769F, 0.189F }, { 0.349F, 0.686F, 0.168F }, { 0.272F, 0.534F, 0.131F } } };
+
+        zx::mat::rgb_color_float_t result;
+        for (std::size_t i = 0; i < 3; ++i)
+        {
+            result[i] = std::inner_product(coeffs[i].begin(), coeffs[i].end(), color.begin(), 0.F);
+        }
+        return result;
+    }
+};
+
+struct gray
+{
+    zx::mat::rgb_color_float_t operator()(const zx::mat::rgb_color_float_t& color) const
+    {
+        static const std::array<float, 3> coeffs = { 0.299F, 0.587F, 0.114F };
+
+        const float gray_value = std::inner_product(coeffs.begin(), coeffs.end(), color.begin(), 0.F);
+        return zx::mat::rgb_color_float_t{ gray_value, gray_value, gray_value };
+    }
+};
+
 void run(const std::vector<std::string_view>&)
 {
     using namespace zx;
@@ -24,7 +51,8 @@ void run(const std::vector<std::string_view>&)
 
     auto out = background;
 
-    mat::modify(out, mat::lookup_table::contrast(1.F) * mat::lookup_table::brightness(20.F));
+    // mat::modify(out, mat::lookup_table::contrast(1.F) * mat::lookup_table::brightness(20.F));
+    mat::modify(out, sepia{});
 
     mat::copy(out.mut_view(), conan.view(), { 0, 0, 0 });
     mat::copy(out.mut_view(), mat::flip_horizontal(conan.view()), { 0, 200, 0 });
@@ -42,10 +70,10 @@ void run(const std::vector<std::string_view>&)
 
     mat::draw_circle(out, mat::circle(mat::point(300, 300), 100), mat::rgb_color_t{ 255, 0, 255 });
 
+    mat::draw_rectangle(out, { out.bounds()[0], out.bounds()[1] }, mat::rgb_color_t{ 0, 255, 0 });
+
     mat::modify(
-        out,
-        mat::point(-1, 0),
-        [](const mat::rgb_color_base_t<float>& color) -> mat::rgb_color_base_t<float> { return color * 10; });
+        out, mat::point(-1, 0), [](const mat::rgb_color_float_t& color) -> mat::rgb_color_float_t { return color * 10; });
 
     mat::save_bitmap(out, mat::filepath_t{ "/home/krzysiek/out.bmp" });
 }

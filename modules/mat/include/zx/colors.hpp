@@ -108,6 +108,7 @@ struct rgb_color_base_t<byte_t> : std::array<byte_t, 3>
 };
 
 using rgb_color_t = rgb_color_base_t<byte_t>;
+using rgb_color_float_t = rgb_color_base_t<float>;
 
 struct lookup_table_t
 {
@@ -135,9 +136,9 @@ struct lookup_table_t
 
     float operator()(byte_t value) const { return m_table[value]; }
 
-    rgb_color_base_t<float> operator()(const rgb_color_t& color) const
+    rgb_color_float_t operator()(const rgb_color_t& color) const
     {
-        return rgb_color_base_t<float>{ (*this)(color[0]), (*this)(color[1]), (*this)(color[2]) };
+        return rgb_color_float_t{ (*this)(color[0]), (*this)(color[1]), (*this)(color[2]) };
     }
 
     friend lookup_table_t operator*(const lookup_table_t& lhs, const lookup_table_t& rhs)
