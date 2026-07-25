@@ -24,7 +24,7 @@ void run(const std::vector<std::string_view>&)
 
     auto out = background;
 
-    mat::modify(out, mat::lookup_table::contrast(1.F) * mat::lookup_table::brightness(20.F) * mat::lookup_table::negative());
+    mat::modify(out, mat::lookup_table::contrast(1.F) * mat::lookup_table::brightness(20.F));
 
     mat::copy(out.mut_view(), conan.view(), { 0, 0, 0 });
     mat::copy(out.mut_view(), mat::flip_horizontal(conan.view()), { 0, 200, 0 });

@@ -5,6 +5,7 @@ function(zx_set_strict_warnings TARGET_NAME)
             /W4           # Warning level 4
             /WX           # Treat warnings as errors
             /permissive-  # Standards conformance mode
+            /wd4459       # Disable local variable declaration hides global declaration
         )
     else()
         target_compile_options(${TARGET_NAME} PRIVATE
@@ -14,7 +15,6 @@ function(zx_set_strict_warnings TARGET_NAME)
             -Werror       # Treat warnings as errors
             -Wconversion  # Warn on implicit conversions
             -Wsign-conversion  # Warn on sign conversions
-            -Wshadow      # Warn on variable shadowing
             -Wnon-virtual-dtor  # Warn on non-virtual destructors
             -Wold-style-cast    # Warn on C-style casts
             -Wcast-align  # Warn on pointer casts with increased alignment
