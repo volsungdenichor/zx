@@ -500,6 +500,20 @@ struct flip_fn
     }
 };
 
+struct draw_pixel_t
+{
+    rgb_image_t::mut_view_type m_image;
+    color_filter_t m_color_filter;
+
+    void operator()(const location_t<2>& loc) const
+    {
+        if (contains(m_image.bounds(), { loc[0], loc[1], 0 }))
+        {
+            at(m_image, loc, m_color_filter(at(m_image, loc)));
+        }
+    }
+};
+
 struct bresenham_line_fn
 {
     void operator()(
@@ -513,16 +527,7 @@ struct bresenham_line_fn
         const segment_t<2, location_base_t>& seg,
         const color_filter_t& color_filter) const
     {
-        (*this)(
-            seg[0],
-            seg[1],
-            [&](const location_t<2>& loc)
-            {
-                if (contains(image.bounds(), { loc[0], loc[1], 0 }))
-                {
-                    at(image, loc, color_filter(at(image, loc)));
-                }
-            });
+        (*this)(seg[0], seg[1], draw_pixel_t{ image, color_filter });
     }
 
     void operator()(
@@ -594,16 +599,7 @@ struct bresenham_circle_fn
         const spherical_shape_t<2, location_base_t>& circle,
         const color_filter_t& color_filter) const
     {
-        (*this)(
-            circle.center,
-            circle.radius,
-            [&](const location_t<2>& loc)
-            {
-                if (contains(image.bounds(), { loc[0], loc[1], 0 }))
-                {
-                    at(image, loc, color_filter(at(image, loc)));
-                }
-            });
+        (*this)(circle.center, circle.radius, draw_pixel_t{ image, color_filter });
     }
 
     void operator()(const location_t<2>& center, int radius, function_ref<void(const location_t<2>&)> output) const
