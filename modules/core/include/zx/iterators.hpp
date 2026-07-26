@@ -22,7 +22,7 @@ struct numeric_iterator_impl
 
     constexpr void dec() { --m_value; }
 
-    constexpr void advance(std::ptrdiff_t n) { m_value += n; }
+    constexpr void advance(std::ptrdiff_t n) { m_value += static_cast<T>(n); }
 
     constexpr bool is_equal(const numeric_iterator_impl& other) const { return m_value == other.m_value; }
 
