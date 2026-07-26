@@ -44,7 +44,22 @@ struct gray
     }
 };
 
-zx::mat::raster_t rasterize(const zx::mat::spherical_shape_t<2, zx::mat::location_base_t>& shape)
+zx::mat::raster_t rasterize(const zx::mat::rectangle_t<zx::mat::location_base_t>& shape)
+{
+    zx::mat::raster_t::shape_t raster_shape;
+
+    for (zx::mat::location_base_t y = shape[0].get(zx::mat::side_t::lower); y < shape[0].get(zx::mat::side_t::upper); ++y)
+    {
+        raster_shape.emplace(
+            y,
+            std::vector<zx::mat::interval_type>{
+                { shape[1].get(zx::mat::side_t::lower), shape[1].get(zx::mat::side_t::upper) } });
+    }
+
+    return zx::mat::raster_t{ { raster_shape } };
+}
+
+zx::mat::raster_t rasterize(const zx::mat::circle_t<zx::mat::location_base_t>& shape)
 {
     zx::mat::raster_t::shape_t raster_shape;
     const auto center = shape.center;
@@ -68,10 +83,10 @@ zx::mat::raster_t rasterize(const zx::mat::spherical_shape_t<2, zx::mat::locatio
 
     while (cur[0] >= cur[1])
     {
-        output_row(center[1] + cur[1], { center[0] - cur[0], center[0] + cur[0] + 1 });
-        output_row(center[1] - cur[1], { center[0] - cur[0], center[0] + cur[0] + 1 });
-        output_row(center[1] + cur[0], { center[0] - cur[1], center[0] + cur[1] + 1 });
-        output_row(center[1] - cur[0], { center[0] - cur[1], center[0] + cur[1] + 1 });
+        output_row(center[0] + cur[1], { center[1] - cur[0], center[1] + cur[0] + 1 });
+        output_row(center[0] - cur[1], { center[1] - cur[0], center[1] + cur[0] + 1 });
+        output_row(center[0] + cur[0], { center[1] - cur[1], center[1] + cur[1] + 1 });
+        output_row(center[0] - cur[0], { center[1] - cur[1], center[1] + cur[1] + 1 });
 
         if (err <= 0)
         {
@@ -85,6 +100,47 @@ zx::mat::raster_t rasterize(const zx::mat::spherical_shape_t<2, zx::mat::locatio
             err -= 2 * cur[0] + 1;
         }
     }
+    return zx::mat::raster_t{ { raster_shape } };
+}
+
+zx::mat::raster_t rasterize(
+    const zx::mat::rectangle_t<zx::mat::location_base_t>& area,
+    zx::function_ref<bool(const zx::mat::location_t<2>&)> predicate)
+{
+    zx::mat::raster_t::shape_t raster_shape;
+
+    const auto output_interval
+        = [&](zx::mat::location_base_t y, zx::mat::interval_type interval) { raster_shape[y].push_back(interval); };
+
+    for (zx::mat::location_base_t y = area[0].get(zx::mat::side_t::lower); y < area[0].get(zx::mat::side_t::upper); ++y)
+    {
+        bool in_interval = false;
+        zx::mat::location_base_t interval_start = 0;
+
+        for (zx::mat::location_base_t x = area[1].get(zx::mat::side_t::lower); x < area[1].get(zx::mat::side_t::upper); ++x)
+        {
+            const zx::mat::location_t<2> loc{ y, x };
+            if (predicate(loc))
+            {
+                if (!in_interval)
+                {
+                    interval_start = x;
+                    in_interval = true;
+                }
+            }
+            else if (in_interval)
+            {
+                output_interval(y, { interval_start, x });
+                in_interval = false;
+            }
+        }
+
+        if (in_interval)
+        {
+            output_interval(y, { interval_start, area[1].get(zx::mat::side_t::upper) });
+        }
+    }
+
     return zx::mat::raster_t{ { raster_shape } };
 }
 
@@ -122,13 +178,17 @@ void run(const std::vector<std::string_view>&)
     //     out, mat::point(-1, 0), [](const mat::rgb_color_float_t& color) -> mat::rgb_color_float_t { return color * 10; });
 
     const auto outer = rasterize({ mat::point(300, 300), 100 });
-    const auto inner = rasterize({ mat::point(450, 300), 100 });
-    const auto shape = outer + inner;
+    const auto inner = rasterize({ mat::point(300, 450), 100 });
+    const auto rect = rasterize(mat::box::from_center_extent(mat::point(300, 500), mat::extent(100, 200)));
 
-    std::cout << shape.size() << std::endl;
+    const auto stripes = rasterize(
+        mat::box::from_center_extent(mat::point(300, 300), mat::extent(220, 220)),
+        [&](const mat::location_t<2>& loc) { return loc[1] % 5 == 0; });
 
-    mat::draw_raster(out.mut_view(), mat::raster_t::outline(shape, 5), zx::mat::rgb_color_t{ 255, 255, 0 });
-    // mat::draw_raster(out.mut_view(), shape, zx::mat::rgb_color_t{ 255, 0, 0 });
+    // mat::draw_raster(out.mut_view(), outer, zx::mat::rgb_color_t{ 255, 255, 0 });
+    // mat::draw_raster(out.mut_view(), inner, zx::mat::rgb_color_t{ 255, 0, 255 });
+    // mat::draw_raster(out.mut_view(), rect, zx::mat::rgb_color_t{ 255, 255, 255 });
+    mat::draw_raster(out.mut_view(), outer - stripes, zx::mat::rgb_color_t{ 0, 0, 32 });
 
     mat::save_bitmap(out, mat::filepath_t{ "/home/krzysiek/out.bmp" });
 }

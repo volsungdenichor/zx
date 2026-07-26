@@ -130,15 +130,15 @@ struct interval
     }
 
     template <class T>
-    static constexpr interval_t<T> from_lower_size(T lower, T size)
+    static constexpr interval_t<T> from_lower_extent(T lower, T extent)
     {
-        return interval_t<T>{ lower, lower + size };
+        return interval_t<T>{ lower, lower + extent };
     }
 
     template <class T>
-    static constexpr interval_t<T> from_center_size(T center, T size)
+    static constexpr interval_t<T> from_center_extent(T center, T extent)
     {
-        return from_lower_size(center - size / 2, size);
+        return from_lower_extent(center - extent / 2, extent);
     }
 };
 
@@ -156,23 +156,23 @@ struct box
     }
 
     template <std::size_t D, class T>
-    static constexpr box_shape_t<D, T> from_lower_size(const point_t<D, T>& lower, const extent_t<D, T>& size)
+    static constexpr box_shape_t<D, T> from_lower_extent(const point_t<D, T>& lower, const extent_t<D, T>& extent)
     {
         box_shape_t<D, T> result;
         for (std::size_t d = 0; d < D; ++d)
         {
-            result[d] = interval::from_lower_size(lower[d], size[d]);
+            result[d] = interval::from_lower_extent(lower[d], extent[d]);
         }
         return result;
     }
 
     template <std::size_t D, class T>
-    static constexpr box_shape_t<D, T> from_center_size(const point_t<D, T>& center, const extent_t<D, T>& size)
+    static constexpr box_shape_t<D, T> from_center_extent(const point_t<D, T>& center, const extent_t<D, T>& extent)
     {
         box_shape_t<D, T> result;
         for (std::size_t d = 0; d < D; ++d)
         {
-            result[d] = interval::from_center_size(center[d], size[d]);
+            result[d] = interval::from_center_extent(center[d], extent[d]);
         }
         return result;
     }

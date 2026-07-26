@@ -91,7 +91,7 @@ struct stack_fn
             for (std::size_t i = 0; i < m_children.size(); ++i)
             {
                 extent_t size = sizes[i];
-                m_last_child_bounds[i] = mat::box::from_lower_size(loc, size);
+                m_last_child_bounds[i] = mat::box::from_lower_extent(loc, size);
                 m_children[i].child.render(view.slice(mat::to_slice(m_last_child_bounds[i])));
                 loc[D] += size[D];
             }
