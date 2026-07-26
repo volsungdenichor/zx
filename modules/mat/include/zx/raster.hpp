@@ -70,7 +70,7 @@ private:
             std::sort(
                 v.begin(),
                 v.end(),
-                [](const interval_type& a, const interval_type& b) { return a[0] < b[0] || a[0] == b[0] && a[1] < b[1]; });
+                [](const interval_type& a, const interval_type& b) { return (a[0] < b[0]) || (a[0] == b[0] && a[1] < b[1]); });
             std::vector<interval_type> merged = { v[0] };
             for (std::size_t i = 1; i < v.size(); ++i)
             {
