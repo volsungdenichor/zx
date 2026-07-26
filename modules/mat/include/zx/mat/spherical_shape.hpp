@@ -26,13 +26,19 @@ std::ostream& operator<<(std::ostream& os, const spherical_shape_t<3, T>& item)
     return os << "(sphere " << item.center << " " << item.radius << ")";
 }
 
+template <class T>
+using circle_t = spherical_shape_t<2, T>;
+
+template <class T>
+using sphere_t = spherical_shape_t<3, T>;
+
 namespace detail
 {
 
 struct circle_fn
 {
     template <class T>
-    constexpr auto operator()(const point_t<2, T>& center, T radius) const -> spherical_shape_t<2, T>
+    constexpr auto operator()(const point_t<2, T>& center, T radius) const -> circle_t<T>
     {
         return { center, radius };
     }
@@ -41,7 +47,7 @@ struct circle_fn
 struct sphere_fn
 {
     template <class T>
-    constexpr auto operator()(const point_t<3, T>& center, T radius) const -> spherical_shape_t<3, T>
+    constexpr auto operator()(const point_t<3, T>& center, T radius) const -> sphere_t<T>
     {
         return { center, radius };
     }

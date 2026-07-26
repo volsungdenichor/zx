@@ -745,14 +745,14 @@ static constexpr inline auto incenter = incenter_fn{};
 struct incircle_fn
 {
     template <class T>
-    constexpr auto operator()(const triangle_t<2, T>& triangle) const -> spherical_shape_t<2, T>
+    constexpr auto operator()(const triangle_t<2, T>& triangle) const -> circle_t<T>
     {
         constexpr T epsilon = T(0.1);
 
         const auto c = incenter(triangle);
         const auto r = distance(c, *projection(c, segment_t<2, T>{ triangle[0], triangle[1] }, epsilon));
 
-        return spherical_shape_t<2, T>{ c, static_cast<T>(r) };
+        return circle_t<T>{ c, static_cast<T>(r) };
     }
 };
 
@@ -761,12 +761,12 @@ static constexpr inline auto incircle = incircle_fn{};
 struct circumcircle_fn
 {
     template <class T>
-    constexpr auto operator()(const triangle_t<2, T>& triangle) const -> spherical_shape_t<2, T>
+    constexpr auto operator()(const triangle_t<2, T>& triangle) const -> circle_t<T>
     {
         const auto c = circumcenter(triangle);
         const auto r = distance(c, triangle[0]);
 
-        return spherical_shape_t<2, T>{ c, static_cast<T>(r) };
+        return circle_t<T>{ c, static_cast<T>(r) };
     }
 };
 

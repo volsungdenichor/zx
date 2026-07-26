@@ -57,6 +57,11 @@ struct raster_t
     static raster_t outline(const raster_t& raster, location_base_t radius) { return dilate(raster, radius) - raster; }
 
 private:
+    static bool cmp(const interval_type& lhs, const interval_type& rhs)
+    {
+        return (lhs[0] < rhs[0]) || (lhs[0] == rhs[0] && lhs[1] < rhs[1]);
+    }
+
     static shape_t normalize(const shape_t& shape)
     {
         shape_t result;
@@ -67,10 +72,7 @@ private:
                 continue;
             }
             std::vector<interval_type> v = span;
-            std::sort(
-                v.begin(),
-                v.end(),
-                [](const interval_type& a, const interval_type& b) { return (a[0] < b[0]) || (a[0] == b[0] && a[1] < b[1]); });
+            std::sort(v.begin(), v.end(), &cmp);
             std::vector<interval_type> merged = { v[0] };
             for (std::size_t i = 1; i < v.size(); ++i)
             {

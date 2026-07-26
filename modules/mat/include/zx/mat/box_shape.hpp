@@ -178,5 +178,11 @@ struct box
     }
 };
 
+template <class T>
+using rectangle_t = box_shape_t<2, T>;
+
+template <class T>
+using cube_t = box_shape_t<3, T>;
+
 }  // namespace mat
 }  // namespace zx

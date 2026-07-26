@@ -603,7 +603,7 @@ struct bresenham_circle_fn
 {
     void operator()(
         const rgb_image_t::mut_view_type& image,
-        const spherical_shape_t<2, location_base_t>& circle,
+        const circle_t<location_base_t>& circle,
         const rgb_color_t& color) const
     {
         (*this)(image, circle, inject_t{ color });
@@ -611,7 +611,7 @@ struct bresenham_circle_fn
 
     void operator()(
         const rgb_image_t::mut_view_type& image,
-        const spherical_shape_t<2, location_base_t>& circle,
+        const circle_t<location_base_t>& circle,
         color_filter_t color_filter) const
     {
         (*this)(circle.center, circle.radius, draw_pixel_t{ image, color_filter });
@@ -651,14 +651,14 @@ struct bresenham_circle_fn
 struct draw_rectangle_fn
 {
     void operator()(
-        const rgb_image_t::mut_view_type& image, const box_shape_t<2, location_base_t>& rect, const rgb_color_t& color) const
+        const rgb_image_t::mut_view_type& image, const rectangle_t<location_base_t>& rect, const rgb_color_t& color) const
     {
         (*this)(image, rect, inject_t{ color });
     }
 
     void operator()(
         const rgb_image_t::mut_view_type& image,
-        const box_shape_t<2, location_base_t>& rect,
+        const rectangle_t<location_base_t>& rect,
         color_filter_t color_filter) const
     {
         for (const auto seg : segments(rect))
