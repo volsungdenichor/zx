@@ -935,7 +935,7 @@ struct percentile_kernel_t
                 return acc;
             });
 
-        const auto index = m_values.size() * m_rank / 100;
+        const auto index = static_cast<std::size_t>(m_values.size() * m_rank / 100);
         std::nth_element(m_values.begin(), m_values.begin() + index, m_values.end());
         return m_values[index];
     }

@@ -218,7 +218,7 @@ inline auto blend(float alpha)
 
 inline auto normal()
 {
-    return [](const rgb_color_t& dst, const rgb_color_t& src) { return src; };
+    return [](const rgb_color_t&, const rgb_color_t& src) { return src; };
 }
 
 inline auto lighter()
