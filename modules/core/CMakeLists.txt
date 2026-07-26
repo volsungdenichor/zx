@@ -8,6 +8,7 @@ zx_add_module(
     tests/format.test.cpp
     tests/iterator_range.test.cpp
     tests/maybe.test.cpp
+    tests/range.test.cpp
     tests/result.test.cpp
     tests/type_name.test.cpp
     tests/functions.test.cpp

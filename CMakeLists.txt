@@ -15,12 +15,11 @@ set(ZX_MODULES_DIR "modules")
 set(ZX_MODULE_DEPENDENCIES "
     [
         [core []]
-        [iterator [core]]
-        [sequence [core iterator]]
-        [mat [core iterator sequence]]
+        [sequence [core]]
+        [mat [core sequence]]
         [ansi [core mat sequence]]
         [geometry [mat sequence]]
-        [nested_text [core iterator]]
+        [nested_text [core]]
         [yield [core]]
         [predicates [core nested_text]]
     ]

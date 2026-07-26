@@ -4,10 +4,10 @@
 #include <numeric>
 #include <optional>
 #include <zx/iterator_range.hpp>
+#include <zx/iterators.hpp>
 #include <zx/mat/math.hpp>
 #include <zx/mat/vector.hpp>
 #include <zx/maybe.hpp>
-#include <zx/strided_iterator.hpp>
 
 namespace zx
 {

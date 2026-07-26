@@ -11,7 +11,6 @@ All modules are header-only (INTERFACE targets) and can be used individually or 
 | Module | Description |
 |---|---|
 | [core](modules/core/README.md) | Result/optional types, Unicode strings, formatting, type traits |
-| [iterator](modules/iterator/README.md) | Policy-based iterator construction, strided iterator |
 | [functional](modules/functional/README.md) | Composable pipelines, `function_ref`, `let`, `do_all` |
 | [sequence](modules/sequence/README.md) | Lazy pull-based sequences with rich adapters |
 | [yield](modules/yield/README.md) | Push-based generators, transducers, and reductors |

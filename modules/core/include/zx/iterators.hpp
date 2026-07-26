@@ -8,6 +8,29 @@ namespace zx
 
 namespace detail
 {
+template <class T>
+struct numeric_iterator_impl
+{
+    T m_value;
+
+    numeric_iterator_impl() = default;
+    numeric_iterator_impl(T value) : m_value{ value } { }
+
+    constexpr T deref() const { return m_value; }
+
+    constexpr void inc() { ++m_value; }
+
+    constexpr void dec() { --m_value; }
+
+    constexpr void advance(std::ptrdiff_t n) { m_value += n; }
+
+    constexpr bool is_equal(const numeric_iterator_impl& other) const { return m_value == other.m_value; }
+
+    constexpr bool is_less(const numeric_iterator_impl& other) const { return m_value < other.m_value; }
+
+    constexpr std::ptrdiff_t distance_to(const numeric_iterator_impl& other) const { return other.m_value - m_value; }
+};
+
 template <class Iter, std::ptrdiff_t N>
 struct strided_iterator_impl
 {
@@ -71,6 +94,9 @@ struct strided_iterator_impl<Iter, 0>
 };
 
 }  // namespace detail
+
+template <class T>
+using numeric_iterator = zx::iterator_interface<detail::numeric_iterator_impl<T>>;
 
 template <class Iter, std::ptrdiff_t N = 0>
 using strided_iterator = zx::iterator_interface<detail::strided_iterator_impl<Iter, N>>;
