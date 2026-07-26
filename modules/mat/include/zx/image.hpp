@@ -982,7 +982,6 @@ struct mask
             mask.shape(),
             [&](const location_t<2>& loc)
             {
-                const auto loc_float = vector_t<2, float>{ static_cast<float>(loc[0]), static_cast<float>(loc[1]) };
                 const auto delta = loc - center;
                 const float normalized_distance_squared
                     = (delta[0] * delta[0]) / (radius[0] * radius[0]) + (delta[1] * delta[1]) / (radius[1] * radius[1]);
