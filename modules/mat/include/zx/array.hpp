@@ -633,7 +633,7 @@ struct array_t
     }
 
     template <class U, enable_if_t<std::is_convertible_v<const U&, T>> = 0>
-    array_t(array_view_t<U, D> init)
+    array_t(array_view_t<U, D, Tag> init)
         : m_shape{ shape_type::from_extent(init.extent(), sizeof(T)) }
         , m_data(static_cast<std::size_t>(m_shape.volume()))
     {

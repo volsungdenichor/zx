@@ -204,7 +204,7 @@ struct lookup_table
     static lookup_table_t gamma(float value) { return levels_adjustment({ 0.F, 255.F }, { 0.F, 255.F }, value); }
 };
 
-namespace color_filters
+namespace filters
 {
 
 inline auto blend(float alpha)
@@ -327,7 +327,7 @@ inline auto solid(const rgb_color_t& new_color, float alpha = 1.F)
     return [=](const rgb_color_t& color) { return blend(alpha)(color, new_color); };
 }
 
-}  // namespace color_filters
+}  // namespace filters
 
 }  // namespace mat
 }  // namespace zx

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <fstream>
 #include <zx/array.hpp>
@@ -37,6 +38,8 @@ struct rgb_image_tag_t
 
 using rgb_image_t = array_t<byte_t, 3, detail::rgb_image_tag_t>;
 using channel_t = array_t<byte_t, 2, detail::rgb_image_tag_t>;
+
+using mask_t = zx::mat::array_t<float, 2>;
 
 namespace detail
 {
@@ -366,7 +369,7 @@ struct at_fn
 
 static constexpr inline auto at = at_fn{};
 
-struct modify
+struct modify_fn
 {
     void operator()(const rgb_image_t::mut_view_type& image, const location_t<2>& loc, color_filter_t filter) const
     {
@@ -388,6 +391,17 @@ struct modify
     }
 };
 
+struct with_fn
+{
+    template <class... Funcs>
+    rgb_image_t operator()(const rgb_image_t::view_type& image, Funcs&&... funcs) const
+    {
+        rgb_image_t result = image;
+        (std::invoke(std::forward<Funcs>(funcs), result.mut_view()), ...);
+        return result;
+    }
+};
+
 struct channel_fn
 {
     static shape_t<2> get_channel_shape(const rgb_image_t::shape_type& shape) { return shape.erase(2); }
@@ -401,6 +415,19 @@ struct channel_fn
     {
         return channel_t::mut_view_type{ image.data() + channel_index, get_channel_shape(image.shape()) };
     }
+};
+
+static constexpr inline auto channel = channel_fn{};
+
+struct bounds_fn
+{
+    bounds_t<2> operator()(const rgb_image_t::view_type& image) const
+    {
+        const auto bounds = image.bounds();
+        return bounds_t<2>{ bounds[0], bounds[1] };
+    }
+
+    bounds_t<2> operator()(const channel_t::view_type& image) const { return image.bounds(); }
 };
 
 struct rotate_fn
@@ -735,14 +762,197 @@ struct paste_fn
     }
 };
 
+struct convolve_fn
+{
+    template <class Kernel>
+    void operator()(channel_t::mut_view_type dst, const channel_t::view_type& src, const Kernel& kernel) const
+    {
+        const auto kernel_size = kernel.extent();
+
+        dst = dst.slice(
+            channel_t::slice_type{ slice_base_t{ 0, src.shape()[0].extent - kernel_size[0] + 1, std::nullopt },
+                                   slice_base_t{ 0, src.shape()[1].extent - kernel_size[1] + 1, std::nullopt } });
+
+        const extent_base_t h = dst.shape()[0].extent;
+        const extent_base_t w = dst.shape()[1].extent;
+
+        for (location_base_t y = 0; y < h; ++y)
+        {
+            for (location_base_t x = 0; x < w; ++x)
+            {
+                const auto loc = location_t<2>{ y, x };
+                const auto region
+                    = src.slice(channel_t::slice_type{ slice_base_t{ loc[0], loc[0] + kernel_size[0], std::nullopt },
+                                                       slice_base_t{ loc[1], loc[1] + kernel_size[1], std::nullopt } });
+
+                dst[loc] = true_color_t::from_float(kernel(region));
+            }
+        }
+    }
+
+    template <class Kernel>
+    void operator()(const rgb_image_t::mut_view_type& dst, const rgb_image_t::view_type& src, const Kernel& kernel) const
+    {
+        for (std::size_t z = 0; z < 3; ++z)
+        {
+            (*this)(channel(dst, z), channel(src, z), kernel);
+        }
+    }
+};
+
+template <class T, class Func>
+T accumulate(const mask_t::view_type& mask, const channel_t::view_type& region, T init, Func&& func)
+{
+    const auto h = region.shape()[0].extent;
+    const auto w = region.shape()[1].extent;
+
+    for (location_base_t y = 0; y < h; ++y)
+    {
+        for (location_base_t x = 0; x < w; ++x)
+        {
+            const auto loc = channel_t::location_type{ y, x };
+            if (contains(mask.bounds(), loc) && contains(region.bounds(), loc))
+            {
+                init = func(std::move(init), mask[loc], region[loc]);
+            }
+        }
+    }
+
+    return init;
+}
+
+struct dilation_kernel_t
+{
+    mask_t m_mask;
+
+    channel_t::extent_type extent() const { return m_mask.extent(); }
+
+    float operator()(const channel_t::view_type& region) const
+    {
+        return accumulate(
+            m_mask,
+            region,
+            0.F,
+            [](float acc, float mask_value, byte_t region_value)
+            { return std::max<float>(acc, mask_value * region_value); });
+    }
+};
+
+struct erosion_kernel_t
+{
+    mask_t m_mask;
+
+    channel_t::extent_type extent() const { return m_mask.extent(); }
+
+    float operator()(const channel_t::view_type& region) const
+    {
+        return accumulate(
+                   m_mask,
+                   region,
+                   std::optional<float>{},
+                   [](std::optional<float> acc, float mask_value, byte_t region_value)
+                   {
+                       if (mask_value <= 0.F)
+                       {
+                           return acc;
+                       }
+
+                       const float value = mask_value * static_cast<float>(region_value);
+                       if (!acc || value < *acc)
+                       {
+                           acc = value;
+                       }
+
+                       return acc;
+                   })
+            .value_or(0.F);
+    }
+};
+
+template <std::size_t N>
+struct apply_kernel_t;
+
+struct kernel_accumulator_t
+{
+    float operator()(float acc, float coeff, byte_t value) const { return acc + coeff * static_cast<float>(value); }
+};
+
+template <>
+struct apply_kernel_t<1>
+{
+    mask_t m_mask;
+
+    apply_kernel_t(mask_t mask) : m_mask{ std::move(mask) } { }
+
+    channel_t::extent_type extent() const { return m_mask.extent(); }
+
+    float operator()(const channel_t::view_type& region) const
+    {
+        return accumulate(m_mask, region, 0.F, kernel_accumulator_t{});
+    }
+};
+
+template <>
+struct apply_kernel_t<2>
+{
+    std::array<mask_t, 2> m_masks;
+
+    channel_t::extent_type extent() const { return m_masks[0].extent(); }
+
+    float operator()(const channel_t::view_type& region) const
+    {
+        const auto gx = accumulate(m_masks[0], region, 0.F, kernel_accumulator_t{});
+        const auto gy = accumulate(m_masks[1], region, 0.F, kernel_accumulator_t{});
+
+        return length(vector_t<2, float>{ gx, gy });
+    }
+};
+
+struct percentile_kernel_t
+{
+    int m_rank;
+    mask_t m_mask;
+    mutable std::vector<float> m_values;
+
+    percentile_kernel_t(int rank, mask_t mask) : m_rank(rank), m_mask(std::move(mask)), m_values{}
+    {
+        m_values.reserve(static_cast<std::size_t>(m_mask.volume()));
+    }
+
+    channel_t::extent_type extent() const { return m_mask.extent(); }
+
+    float operator()(const channel_t::view_type& region) const
+    {
+        m_values.clear();
+
+        accumulate(
+            m_mask,
+            region,
+            std::back_inserter(m_values),
+            [](auto acc, float mask_value, byte_t region_value)
+            {
+                *acc++ = mask_value * static_cast<float>(region_value);
+                return acc;
+            });
+
+        const auto index = m_values.size() * m_rank / 100;
+        std::nth_element(m_values.begin(), m_values.begin() + index, m_values.end());
+        return m_values[index];
+    }
+};
+
 }  // namespace detail
 
 using detail::at;
-static constexpr inline auto modify = detail::modify{};
+using detail::channel;
+
+static constexpr inline auto modify = detail::modify_fn{};
+static constexpr inline auto with = detail::with_fn{};
 
 static constexpr inline auto load_bitmap = detail::load_bitmap_fn{};
 static constexpr inline auto save_bitmap = detail::save_bitmap_fn{};
-static constexpr inline auto channel = detail::channel_fn{};
+
+static constexpr inline auto bounds = detail::bounds_fn{};
 static constexpr inline auto rotate = detail::rotate_fn{};
 static constexpr inline auto flip_horizontal = detail::flip_fn<1>{};
 static constexpr inline auto flip_vertical = detail::flip_fn<0>{};
@@ -752,6 +962,155 @@ static constexpr inline auto draw_circle = detail::bresenham_circle_fn{};
 static constexpr inline auto draw_rectangle = detail::draw_rectangle_fn{};
 static constexpr inline auto draw_raster = detail::draw_raster_fn{};
 static constexpr inline auto paste = detail::paste_fn{};
+static constexpr inline auto convolve = detail::convolve_fn{};
+
+struct mask
+{
+    static mask_t rect(extent_t<2, extent_base_t> size)
+    {
+        mask_t mask{ size };
+        for (location_base_t y = 0; y < size[0]; ++y)
+        {
+            for (location_base_t x = 0; x < size[1]; ++x)
+            {
+                mask[{ y, x }] = 1.F;
+            }
+        }
+
+        return mask;
+    }
+
+    static mask_t square(extent_base_t size) { return rect(extent_t<2, extent_base_t>{ size, size }); }
+
+    static mask_t ellipse(extent_t<2, extent_base_t> size)
+    {
+        mask_t mask{ size };
+        const auto center = size / 2.F;
+        const auto radius = vector_t<2, float>{
+            (center[0] > 0.F) ? center[0] : 1.F,
+            (center[1] > 0.F) ? center[1] : 1.F,
+        };
+
+        for (location_base_t y = 0; y < size[0]; ++y)
+        {
+            for (location_base_t x = 0; x < size[1]; ++x)
+            {
+                const auto loc = vector_t<2, float>{ static_cast<float>(y), static_cast<float>(x) };
+                const auto delta = loc - center;
+                const float normalized_distance_squared
+                    = (delta[0] * delta[0]) / (radius[0] * radius[0]) + (delta[1] * delta[1]) / (radius[1] * radius[1]);
+                mask[{ y, x }] = (normalized_distance_squared <= 1.F) ? 1.F : 0.F;
+            }
+        }
+
+        return mask;
+    }
+
+    static mask_t circle(extent_base_t size) { return ellipse(extent_t<2, extent_base_t>{ size, size }); }
+};
+
+struct kernel
+{
+    static auto sharpen() -> detail::apply_kernel_t<1>
+    {
+        return create_mask<3>({ 0.F, -1.F, 0.F, -1.F, 5.F, -1.F, 0.F, -1.F, 0.F });
+    }
+
+    static auto blur() -> detail::apply_kernel_t<1>
+    {
+        return create_mask<3>(
+            { 1.F / 16.F, 2.F / 16.F, 1.F / 16.F, 2.F / 16.F, 4.F / 16.F, 2.F / 16.F, 1.F / 16.F, 2.F / 16.F, 1.F / 16.F });
+    }
+
+    static auto emboss() -> detail::apply_kernel_t<1>
+    {
+        return create_mask<3>({ -2.F, -1.F, 0.F, -1.F, 1.F, 1.F, 0.F, 1.F, 2.F });
+    }
+
+    static auto edge_detect() -> detail::apply_kernel_t<1>
+    {
+        return create_mask<3>({ -1.F, -1.F, -1.F, -1.F, 8.F, -1.F, -1.F, -1.F, -1.F });
+    }
+
+    static auto gaussian(float sigma, location_base_t size) -> detail::apply_kernel_t<1>
+    {
+        mask_t mask{ { size, size } };
+        const float mean = static_cast<float>(size - 1) / 2.F;
+        const float sigma2 = 2.F * sigma * sigma;
+
+        for (location_base_t y = 0; y < size; ++y)
+        {
+            for (location_base_t x = 0; x < size; ++x)
+            {
+                const float dx = static_cast<float>(x) - mean;
+                const float dy = static_cast<float>(y) - mean;
+                const float value = std::exp(-(dx * dx + dy * dy) / sigma2);
+                mask[{ y, x }] = value;
+            }
+        }
+        return normalize(mask);
+    }
+
+    static auto sobel() -> detail::apply_kernel_t<2>
+    {
+        static const auto gx_mask = create_mask<3>({ -1.F, 0.F, 1.F, -2.F, 0.F, 2.F, -1.F, 0.F, 1.F });
+        static const auto gy_mask = create_mask<3>({ -1.F, -2.F, -1.F, 0.F, 0.F, 0.F, 1.F, 2.F, 1.F });
+        return { gx_mask, gy_mask };
+    }
+
+    static auto cross() -> detail::apply_kernel_t<2>
+    {
+        static const auto gx_mask = create_mask<3>({ 0.F, 0.F, 0.F, -1.F, 0.F, 1.F, 0.F, 0.F, 0.F });
+        static const auto gy_mask = create_mask<3>({ 0.F, -1.F, 0.F, 0.F, 0.F, 0.F, 0.F, 1.F, 0.F });
+        return { gx_mask, gy_mask };
+    }
+
+    static auto prewitt() -> detail::apply_kernel_t<2>
+    {
+        static const auto gx_mask = create_mask<3>({ -1.F, 0.F, 1.F, -1.F, 0.F, 1.F, -1.F, 0.F, 1.F });
+        static const auto gy_mask = create_mask<3>({ -1.F, -1.F, -1.F, 0.F, 0.F, 0.F, 1.F, 1.F, 1.F });
+        return { gx_mask, gy_mask };
+    }
+
+    static auto percentile(int rank, mask_t mask) -> detail::percentile_kernel_t { return { rank, std::move(mask) }; }
+
+    static auto median(mask_t mask) -> detail::percentile_kernel_t { return { 50, std::move(mask) }; }
+
+    static auto dilate(mask_t mask) -> detail::dilation_kernel_t { return { std::move(mask) }; }
+    static auto erode(mask_t mask) -> detail::erosion_kernel_t { return { std::move(mask) }; }
+
+private:
+    static mask_t normalize(mask_t kernel)
+    {
+        const float sum = std::accumulate(kernel.begin(), kernel.end(), 0.F);
+        if (sum != 0.F)
+        {
+            std::transform(kernel.begin(), kernel.end(), kernel.begin(), [=](float value) { return value / sum; });
+        }
+        return kernel;
+    }
+
+    template <extent_base_t N>
+    static mask_t create_mask(std::initializer_list<float> values)
+    {
+        if (values.size() != (N * N))
+        {
+            throw std::invalid_argument{ "NxN mask must have exactly N*N values" };
+        }
+
+        mask_t mask{ { N, N } };
+        auto it = values.begin();
+        for (location_base_t y = 0; y < N; ++y)
+        {
+            for (location_base_t x = 0; x < N; ++x)
+            {
+                mask[{ y, x }] = *it++;
+            }
+        }
+
+        return mask;
+    }
+};
 
 }  // namespace mat
 
