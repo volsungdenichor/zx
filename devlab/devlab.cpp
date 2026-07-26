@@ -156,26 +156,17 @@ void run(const std::vector<std::string_view>&)
     // mat::modify(out, mat::lookup_table::contrast(1.F) * mat::lookup_table::brightness(20.F));
     mat::modify(out, sepia{});
 
-    // mat::copy(out.mut_view(), conan.view(), { 0, 0, 0 });
-    // mat::copy(out.mut_view(), mat::flip_horizontal(conan.view()), { 0, 200, 0 });
-    // mat::copy(out.mut_view(), mat::flip_vertical(conan.view()), { 0, 400, 0 });
+    mat::copy(out.mut_view(), conan.view(), { 0, 0, 0 });
+    mat::copy(out.mut_view(), mat::flip_horizontal(conan.view()), { 0, 200, 0 });
+    mat::copy(out.mut_view(), mat::flip_vertical(conan.view()), { 0, 400, 0 });
 
-    // mat::copy(out.mut_view(), mat::rotate(conan.view(), 90), { 200, 0, 0 });
-    // mat::copy(out.mut_view(), mat::rotate(conan.view(), 180), { 200, 200, 0 });
-    // mat::copy(out.mut_view(), mat::rotate(conan.view(), 270), { 200, 400, 0 });
+    mat::copy(out.mut_view(), mat::rotate(conan.view(), 90), { 200, 0, 0 });
+    mat::copy(out.mut_view(), mat::rotate(conan.view(), 180), { 200, 200, 0 });
+    mat::copy(out.mut_view(), mat::rotate(conan.view(), 270), { 200, 400, 0 });
 
-    // mat::copy(out.mut_view(), mat::rotate(conan.view(), -90), { 400, 0, 0 });
-    // mat::copy(out.mut_view(), mat::rotate(conan.view(), -180), { 400, 200, 0 });
-    // mat::copy(out.mut_view(), mat::rotate(conan.view(), -270), { 400, 400, 0 });
-
-    // mat::draw_line(out, mat::segment(mat::point(200, -10), mat::point(300, 200)), mat::rgb_color_t{ 255, 255, 0 });
-
-    // mat::draw_circle(out, mat::circle(mat::point(300, 300), 100), mat::rgb_color_t{ 255, 0, 255 });
-
-    // mat::draw_rectangle(out, { out.bounds()[0], out.bounds()[1] }, mat::rgb_color_t{ 0, 255, 0 });
-
-    // mat::modify(
-    //     out, mat::point(-1, 0), [](const mat::rgb_color_float_t& color) -> mat::rgb_color_float_t { return color * 10; });
+    mat::copy(out.mut_view(), mat::rotate(conan.view(), -90), { 400, 0, 0 });
+    mat::copy(out.mut_view(), mat::rotate(conan.view(), -180), { 400, 200, 0 });
+    mat::copy(out.mut_view(), mat::rotate(conan.view(), -270), { 400, 400, 0 });
 
     const auto outer = rasterize({ mat::point(300, 300), 100 });
     const auto inner = rasterize({ mat::point(300, 450), 100 });
@@ -188,7 +179,7 @@ void run(const std::vector<std::string_view>&)
     // mat::draw_raster(out.mut_view(), outer, zx::mat::rgb_color_t{ 255, 255, 0 });
     // mat::draw_raster(out.mut_view(), inner, zx::mat::rgb_color_t{ 255, 0, 255 });
     // mat::draw_raster(out.mut_view(), rect, zx::mat::rgb_color_t{ 255, 255, 255 });
-    mat::draw_raster(out.mut_view(), outer - stripes, zx::mat::rgb_color_t{ 0, 0, 32 });
+    mat::draw_raster(out.mut_view(), outer - stripes, zx::mat::rgb_color_t{ 255, 100, 32 });
 
     mat::save_bitmap(out, mat::filepath_t{ "/home/krzysiek/out.bmp" });
 }

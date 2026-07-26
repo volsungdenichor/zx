@@ -27,8 +27,16 @@ struct filepath_t
     friend std::ostream& operator<<(std::ostream& os, const filepath_t& item) { return os << item.m_path; }
 };
 
-using rgb_image_t = array_t<byte_t, 3>;
-using channel_t = array_t<byte_t, 2>;
+namespace detail
+{
+struct rgb_image_tag_t
+{
+};
+
+}  // namespace detail
+
+using rgb_image_t = array_t<byte_t, 3, detail::rgb_image_tag_t>;
+using channel_t = array_t<byte_t, 2, detail::rgb_image_tag_t>;
 
 namespace detail
 {
@@ -396,15 +404,15 @@ struct channel_fn
 
 struct rotate_fn
 {
-    template <class T>
-    auto operator()(array_view_base_t<T, 2> image, int degrees) const -> array_view_base_t<T, 2>
+    template <class T, class Tag>
+    auto operator()(array_view_base_t<T, 2, Tag> image, int degrees) const -> array_view_base_t<T, 2, Tag>
     {
         const auto [shape, offset] = new_shape_and_offset(image.shape(), normalize_quarter_turns(degrees));
         return { image.from_offset(offset), shape };
     }
 
-    template <class T>
-    auto operator()(array_view_base_t<T, 3> image, int degrees) const -> array_view_base_t<T, 3>
+    template <class T, class Tag>
+    auto operator()(array_view_base_t<T, 3, Tag> image, int degrees) const -> array_view_base_t<T, 3, Tag>
     {
         const auto [shape, offset] = new_shape_and_offset(image.shape(), normalize_quarter_turns(degrees));
         return { image.from_offset(offset), shape };
@@ -477,15 +485,15 @@ struct flip_fn
 {
     static_assert(D < 2, "flip: axis out of range");
 
-    template <class T>
-    auto operator()(array_view_base_t<T, 2> image) const -> array_view_base_t<T, 2>
+    template <class T, class Tag>
+    auto operator()(array_view_base_t<T, 2, Tag> image) const -> array_view_base_t<T, 2, Tag>
     {
         const auto [shape, offset] = new_shape_and_offset(image.shape());
         return { image.from_offset(offset), shape };
     }
 
-    template <class T>
-    auto operator()(array_view_base_t<T, 3> image) const -> array_view_base_t<T, 3>
+    template <class T, class Tag>
+    auto operator()(array_view_base_t<T, 3, Tag> image) const -> array_view_base_t<T, 3, Tag>
     {
         const auto [shape, offset] = new_shape_and_offset(image.shape());
         return { image.from_offset(offset), shape };
@@ -602,17 +610,13 @@ struct bresenham_line_fn
 struct bresenham_circle_fn
 {
     void operator()(
-        const rgb_image_t::mut_view_type& image,
-        const circle_t<location_base_t>& circle,
-        const rgb_color_t& color) const
+        const rgb_image_t::mut_view_type& image, const circle_t<location_base_t>& circle, const rgb_color_t& color) const
     {
         (*this)(image, circle, inject_t{ color });
     }
 
     void operator()(
-        const rgb_image_t::mut_view_type& image,
-        const circle_t<location_base_t>& circle,
-        color_filter_t color_filter) const
+        const rgb_image_t::mut_view_type& image, const circle_t<location_base_t>& circle, color_filter_t color_filter) const
     {
         (*this)(circle.center, circle.radius, draw_pixel_t{ image, color_filter });
     }
@@ -657,9 +661,7 @@ struct draw_rectangle_fn
     }
 
     void operator()(
-        const rgb_image_t::mut_view_type& image,
-        const rectangle_t<location_base_t>& rect,
-        color_filter_t color_filter) const
+        const rgb_image_t::mut_view_type& image, const rectangle_t<location_base_t>& rect, color_filter_t color_filter) const
     {
         for (const auto seg : segments(rect))
         {

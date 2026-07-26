@@ -398,7 +398,7 @@ struct flat_iter_impl<T, 1>
 
 }  // namespace detail
 
-template <class T, std::size_t D>
+template <class T, std::size_t D, class Tag = void>
 struct array_view_base_t
 {
     using value_type = std::remove_const_t<T>;
@@ -423,9 +423,9 @@ struct array_view_base_t
 
     const shape_type& shape() const { return m_shape; }
 
-    array_view_base_t<std::add_const_t<T>, D> as_const() const { return { from_offset(0), m_shape }; }
+    array_view_base_t<std::add_const_t<T>, D, Tag> as_const() const { return { from_offset(0), m_shape }; }
 
-    operator array_view_base_t<std::add_const_t<T>, D>() const { return as_const(); }
+    operator array_view_base_t<std::add_const_t<T>, D, Tag>() const { return as_const(); }
 
     extent_type extent() const { return m_shape.extent(); }
     stride_type stride() const { return m_shape.stride(); }
@@ -458,7 +458,7 @@ struct array_view_base_t
         return array_view_base_t{ from_offset(offset), new_shape };
     }
 
-    array_view_base_t<T, D - 1> sub(std::size_t d, location_base_t n) const
+    array_view_base_t<T, D - 1, Tag> sub(std::size_t d, location_base_t n) const
     {
         const location_base_t adjusted_loc = m_shape.dim(d).adjust_location(n);
         if (!contains(m_shape.dim(d).bounds(), adjusted_loc))
@@ -466,10 +466,10 @@ struct array_view_base_t
             throw std::out_of_range{ format("Index ", n, " is out of bounds (", m_shape.dim(d).extent, ")") };
         }
         const auto offset = adjusted_loc * m_shape.dim(d).stride;
-        return array_view_base_t<T, D - 1>{ from_offset(offset), m_shape.erase(d) };
+        return array_view_base_t<T, D - 1, Tag>{ from_offset(offset), m_shape.erase(d) };
     }
 
-    array_view_base_t<T, D - 1> operator[](location_base_t n) const { return sub(0, n); }
+    array_view_base_t<T, D - 1, Tag> operator[](location_base_t n) const { return sub(0, n); }
 
     template <class T_ = T, enable_if_t<!std::is_const_v<T_>> = 0>
     void fill(const value_type& value)
@@ -491,8 +491,8 @@ struct array_view_base_t
     shape_type m_shape;
 };
 
-template <class T>
-struct array_view_base_t<T, 1>
+template <class T, class Tag>
+struct array_view_base_t<T, 1, Tag>
 {
     using value_type = std::remove_const_t<T>;
     using shape_type = shape_t<1>;
@@ -569,17 +569,17 @@ struct array_view_base_t<T, 1>
     shape_type m_shape;
 };
 
-template <class T, std::size_t D>
-using array_view_t = array_view_base_t<const T, D>;
+template <class T, std::size_t D, class Tag = void>
+using array_view_t = array_view_base_t<const T, D, Tag>;
 
-template <class T, std::size_t D>
-using array_mut_view_t = array_view_base_t<T, D>;
+template <class T, std::size_t D, class Tag = void>
+using array_mut_view_t = array_view_base_t<T, D, Tag>;
 
 namespace detail
 {
 
-template <class T, class U, std::size_t D>
-void copy_from_view(array_mut_view_t<T, D> dst, array_view_t<U, D> src)
+template <class T, class U, std::size_t D, class Tag>
+void copy_from_view(array_mut_view_t<T, D, Tag> dst, array_view_t<U, D, Tag> src)
 {
     if (dst.extent() != src.extent())
     {
@@ -591,18 +591,18 @@ void copy_from_view(array_mut_view_t<T, D> dst, array_view_t<U, D> src)
 
 }  // namespace detail
 
-template <class T, std::size_t D>
+template <class T, std::size_t D, class Tag = void>
 struct array_t
 {
     using value_type = T;
-    using mut_view_type = array_mut_view_t<T, D>;
-    using view_type = array_view_t<T, D>;
+    using mut_view_type = array_mut_view_t<T, D, Tag>;
+    using view_type = array_view_t<T, D, Tag>;
 
     template <std::size_t D_>
-    using mut_sub_view_type = array_mut_view_t<T, D_>;
+    using mut_sub_view_type = array_mut_view_t<T, D_, Tag>;
 
     template <std::size_t D_>
-    using sub_view_type = array_view_t<T, D_>;
+    using sub_view_type = array_view_t<T, D_, Tag>;
 
     using shape_type = typename view_type::shape_type;
     using location_type = typename view_type::location_type;
@@ -784,8 +784,8 @@ static constexpr inline auto to_slice = to_slice_fn{};
 
 struct copy_fn
 {
-    template <class T, class U>
-    void operator()(array_view_base_t<T, 1> dst, array_view_base_t<U, 1> src) const
+    template <class T, class U, class DstTag, class SrcTag>
+    void operator()(array_view_base_t<T, 1, DstTag> dst, array_view_base_t<U, 1, SrcTag> src) const
     {
         if (dst.extent() != src.extent())
         {
@@ -798,8 +798,8 @@ struct copy_fn
         }
     }
 
-    template <class T, class U, std::size_t D>
-    void operator()(array_view_base_t<T, D> dst, array_view_base_t<U, D> src) const
+    template <class T, class U, std::size_t D, class DstTag, class SrcTag>
+    void operator()(array_view_base_t<T, D, DstTag> dst, array_view_base_t<U, D, SrcTag> src) const
     {
         if (dst.extent() != src.extent())
         {
@@ -812,8 +812,9 @@ struct copy_fn
         }
     }
 
-    template <class T, class U, std::size_t D>
-    void operator()(array_view_base_t<T, D> dst, array_view_base_t<U, D> src, const location_t<D>& location) const
+    template <class T, class U, std::size_t D, class DstTag, class SrcTag>
+    void operator()(
+        array_view_base_t<T, D, DstTag> dst, array_view_base_t<U, D, SrcTag> src, const location_t<D>& location) const
     {
         const auto [src_bounds, dst_bounds] = adjust_bounds(dst.bounds(), src.bounds(), location);
         (*this)(dst.slice(to_slice(dst_bounds)), src.slice(to_slice(src_bounds)));
