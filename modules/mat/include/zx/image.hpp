@@ -235,7 +235,7 @@ struct load_bitmap_fn
         rgb_image_t result = prepare_array(header);
         auto ref = result.mut_view();
 
-        using palette_t = std::array<rgb_color_t, 256>;
+        using palette_t = std::array<true_color_t, 256>;
         palette_t palette = {};
 
         for (std::size_t i = 0; i < 256; ++i)
@@ -253,7 +253,7 @@ struct load_bitmap_fn
         {
             for (location_base_t x = 0; x < w; ++x)
             {
-                const rgb_color_t rgb = palette.at(read<byte_t>(is));
+                const true_color_t rgb = palette.at(read<byte_t>(is));
                 for (std::size_t z = 0; z < 3; ++z)
                 {
                     ref[rgb_image_t::location_type{ y, x, z }] = rgb[z];
@@ -341,12 +341,13 @@ struct inject_t
 };
 
 using color_filter_t = function_ref<rgb_color_t(const rgb_color_t&)>;
+using binary_color_filter_t = function_ref<rgb_color_t(const rgb_color_t&, const rgb_color_t&)>;
 
 struct at_fn
 {
-    rgb_color_t operator()(const rgb_image_t::view_type& image, const location_t<2>& loc) const
+    true_color_t operator()(const rgb_image_t::view_type& image, const location_t<2>& loc) const
     {
-        rgb_color_t result = {};
+        true_color_t result = {};
         for (std::size_t z = 0; z < 3; ++z)
         {
             result[z] = image[rgb_image_t::location_type{ loc[0], loc[1], z }];
@@ -354,7 +355,7 @@ struct at_fn
         return result;
     }
 
-    void operator()(const rgb_image_t::mut_view_type& image, const location_t<2>& loc, const rgb_color_t& color) const
+    void operator()(const rgb_image_t::mut_view_type& image, const location_t<2>& loc, const true_color_t& color) const
     {
         for (std::size_t z = 0; z < 3; ++z)
         {
@@ -540,7 +541,7 @@ struct draw_pixel_t
 struct bresenham_line_fn
 {
     void operator()(
-        const rgb_image_t::mut_view_type& image, const segment_t<2, location_base_t>& seg, const rgb_color_t& color) const
+        const rgb_image_t::mut_view_type& image, const segment_t<2, location_base_t>& seg, const true_color_t& color) const
     {
         (*this)(image, seg, inject_t{ color });
     }
@@ -610,7 +611,7 @@ struct bresenham_line_fn
 struct bresenham_circle_fn
 {
     void operator()(
-        const rgb_image_t::mut_view_type& image, const circle_t<location_base_t>& circle, const rgb_color_t& color) const
+        const rgb_image_t::mut_view_type& image, const circle_t<location_base_t>& circle, const true_color_t& color) const
     {
         (*this)(image, circle, inject_t{ color });
     }
@@ -655,7 +656,7 @@ struct bresenham_circle_fn
 struct draw_rectangle_fn
 {
     void operator()(
-        const rgb_image_t::mut_view_type& image, const rectangle_t<location_base_t>& rect, const rgb_color_t& color) const
+        const rgb_image_t::mut_view_type& image, const rectangle_t<location_base_t>& rect, const true_color_t& color) const
     {
         (*this)(image, rect, inject_t{ color });
     }
@@ -672,7 +673,7 @@ struct draw_rectangle_fn
 
 struct draw_raster_fn
 {
-    void operator()(const rgb_image_t::mut_view_type& image, const raster_t& raster, const rgb_color_t& color) const
+    void operator()(const rgb_image_t::mut_view_type& image, const raster_t& raster, const true_color_t& color) const
     {
         (*this)(image, raster, inject_t{ color });
     }
@@ -701,6 +702,39 @@ struct draw_raster_fn
     }
 };
 
+struct paste_fn
+{
+    void operator()(
+        const rgb_image_t::mut_view_type& dst, const rgb_image_t::view_type& src, const location_t<2>& location) const
+    {
+        return (*this)(dst, src, location, [](const rgb_color_t&, const rgb_color_t& src) { return src; });
+    }
+
+    void operator()(
+        const rgb_image_t::mut_view_type& dst,
+        const rgb_image_t::view_type& src,
+        const location_t<2>& location,
+        binary_color_filter_t filter) const
+    {
+        const auto [src_bounds, dst_bounds] = adjust_bounds(dst.bounds(), src.bounds(), { location[0], location[1], 0 });
+
+        const auto clipped_dst = dst.slice(to_slice(dst_bounds));
+        const auto clipped_src = src.slice(to_slice(src_bounds));
+
+        const extent_base_t h = clipped_src.shape()[0].extent;
+        const extent_base_t w = clipped_src.shape()[1].extent;
+
+        for (location_base_t y = 0; y < h; ++y)
+        {
+            for (location_base_t x = 0; x < w; ++x)
+            {
+                const auto loc = location_t<2>{ y, x };
+                at(clipped_dst, loc, filter(at(clipped_dst, loc), at(clipped_src, loc)));
+            }
+        }
+    }
+};
+
 }  // namespace detail
 
 using detail::at;
@@ -717,6 +751,7 @@ static constexpr inline auto draw_line = detail::bresenham_line_fn{};
 static constexpr inline auto draw_circle = detail::bresenham_circle_fn{};
 static constexpr inline auto draw_rectangle = detail::draw_rectangle_fn{};
 static constexpr inline auto draw_raster = detail::draw_raster_fn{};
+static constexpr inline auto paste = detail::paste_fn{};
 
 }  // namespace mat
 

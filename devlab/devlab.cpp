@@ -17,33 +17,6 @@
 #include "zx/string.hpp"
 #include "zx/widget.hpp"
 
-struct sepia
-{
-    zx::mat::rgb_color_float_t operator()(const zx::mat::rgb_color_float_t& color) const
-    {
-        static const std::array<std::array<float, 3>, 3> coeffs
-            = { { { 0.393F, 0.769F, 0.189F }, { 0.349F, 0.686F, 0.168F }, { 0.272F, 0.534F, 0.131F } } };
-
-        zx::mat::rgb_color_float_t result;
-        for (std::size_t i = 0; i < 3; ++i)
-        {
-            result[i] = std::inner_product(coeffs[i].begin(), coeffs[i].end(), color.begin(), 0.F);
-        }
-        return result;
-    }
-};
-
-struct gray
-{
-    zx::mat::rgb_color_float_t operator()(const zx::mat::rgb_color_float_t& color) const
-    {
-        static const std::array<float, 3> coeffs = { 0.299F, 0.587F, 0.114F };
-
-        const float gray_value = std::inner_product(coeffs.begin(), coeffs.end(), color.begin(), 0.F);
-        return zx::mat::rgb_color_float_t{ gray_value, gray_value, gray_value };
-    }
-};
-
 zx::mat::raster_t rasterize(const zx::mat::rectangle_t<zx::mat::location_base_t>& shape)
 {
     zx::mat::raster_t::shape_t raster_shape;
@@ -153,20 +126,20 @@ void run(const std::vector<std::string_view>&)
 
     auto out = background;
 
-    // mat::modify(out, mat::lookup_table::contrast(1.F) * mat::lookup_table::brightness(20.F));
-    mat::modify(out, sepia{});
+    mat::modify(out, mat::lookup_table::contrast(1.5F) * mat::lookup_table::brightness(-10.F));
+    // mat::modify(out, sepia{});
 
-    mat::copy(out.mut_view(), conan.view(), { 0, 0, 0 });
-    mat::copy(out.mut_view(), mat::flip_horizontal(conan.view()), { 0, 200, 0 });
-    mat::copy(out.mut_view(), mat::flip_vertical(conan.view()), { 0, 400, 0 });
+    // mat::copy(out.mut_view(), conan.view(), { 0, 0, 0 });
+    // mat::copy(out.mut_view(), mat::flip_horizontal(conan.view()), { 0, 200, 0 });
+    // mat::copy(out.mut_view(), mat::flip_vertical(conan.view()), { 0, 400, 0 });
 
-    mat::copy(out.mut_view(), mat::rotate(conan.view(), 90), { 200, 0, 0 });
-    mat::copy(out.mut_view(), mat::rotate(conan.view(), 180), { 200, 200, 0 });
-    mat::copy(out.mut_view(), mat::rotate(conan.view(), 270), { 200, 400, 0 });
+    // mat::copy(out.mut_view(), mat::rotate(conan.view(), 90), { 200, 0, 0 });
+    // mat::copy(out.mut_view(), mat::rotate(conan.view(), 180), { 200, 200, 0 });
+    // mat::copy(out.mut_view(), mat::rotate(conan.view(), 270), { 200, 400, 0 });
 
-    mat::copy(out.mut_view(), mat::rotate(conan.view(), -90), { 400, 0, 0 });
-    mat::copy(out.mut_view(), mat::rotate(conan.view(), -180), { 400, 200, 0 });
-    mat::copy(out.mut_view(), mat::rotate(conan.view(), -270), { 400, 400, 0 });
+    // mat::copy(out.mut_view(), mat::rotate(conan.view(), -90), { 400, 0, 0 });
+    // mat::copy(out.mut_view(), mat::rotate(conan.view(), -180), { 400, 200, 0 });
+    mat::paste(out.mut_view(), mat::rotate(conan.view(), -270), { 400, 400 }, mat::color_filters::screen());
 
     const auto outer = rasterize({ mat::point(300, 300), 100 });
     const auto inner = rasterize({ mat::point(300, 450), 100 });
@@ -176,10 +149,10 @@ void run(const std::vector<std::string_view>&)
         mat::box::from_center_extent(mat::point(300, 300), mat::extent(220, 220)),
         [&](const mat::location_t<2>& loc) { return loc[1] % 5 == 0; });
 
-    // mat::draw_raster(out.mut_view(), outer, zx::mat::rgb_color_t{ 255, 255, 0 });
-    // mat::draw_raster(out.mut_view(), inner, zx::mat::rgb_color_t{ 255, 0, 255 });
-    // mat::draw_raster(out.mut_view(), rect, zx::mat::rgb_color_t{ 255, 255, 255 });
-    mat::draw_raster(out.mut_view(), outer - stripes, zx::mat::rgb_color_t{ 255, 100, 32 });
+    // mat::draw_raster(out.mut_view(), outer, zx::mat::true_color_t{ 255, 255, 0 });
+    // mat::draw_raster(out.mut_view(), inner, zx::mat::true_color_t{ 255, 0, 255 });
+    // mat::draw_raster(out.mut_view(), rect, zx::mat::true_color_t{ 255, 255, 255 });
+    mat::draw_raster(out.mut_view(), outer - stripes, mat::color_filters::sepia());
 
     mat::save_bitmap(out, mat::filepath_t{ "/home/krzysiek/out.bmp" });
 }

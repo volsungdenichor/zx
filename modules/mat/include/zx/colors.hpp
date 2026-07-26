@@ -3,6 +3,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <numeric>
 #include <ostream>
 #include <vector>
 #include <zx/function_ref.hpp>
@@ -107,8 +108,8 @@ struct rgb_color_base_t<byte_t> : std::array<byte_t, 3>
     friend bool operator!=(const rgb_color_base_t& lhs, const rgb_color_base_t& rhs) { return !(lhs == rhs); }
 };
 
-using rgb_color_t = rgb_color_base_t<byte_t>;
-using rgb_color_float_t = rgb_color_base_t<float>;
+using true_color_t = rgb_color_base_t<byte_t>;
+using rgb_color_t = rgb_color_base_t<float>;
 
 struct lookup_table_t
 {
@@ -136,14 +137,14 @@ struct lookup_table_t
 
     float operator()(byte_t value) const { return m_table[value]; }
 
-    rgb_color_float_t operator()(const rgb_color_t& color) const
+    rgb_color_t operator()(const true_color_t& color) const
     {
-        return rgb_color_float_t{ (*this)(color[0]), (*this)(color[1]), (*this)(color[2]) };
+        return rgb_color_t{ (*this)(color[0]), (*this)(color[1]), (*this)(color[2]) };
     }
 
     friend lookup_table_t operator*(const lookup_table_t& lhs, const lookup_table_t& rhs)
     {
-        return lookup_table_t::create([&](float v) { return rhs(rgb_color_t::from_float(lhs(static_cast<byte_t>(v)))); });
+        return lookup_table_t::create([&](float v) { return rhs(true_color_t::from_float(lhs(static_cast<byte_t>(v)))); });
     }
 };
 
@@ -202,6 +203,131 @@ struct lookup_table
 
     static lookup_table_t gamma(float value) { return levels_adjustment({ 0.F, 255.F }, { 0.F, 255.F }, value); }
 };
+
+namespace color_filters
+{
+
+inline auto blend(float alpha)
+{
+    return [=](const rgb_color_t& dst, const rgb_color_t& src)
+    {
+        const auto apply = [=](float d, float s) { return d * (1.F - alpha) + s * alpha; };
+        return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
+    };
+}
+
+inline auto normal()
+{
+    return [](const rgb_color_t& dst, const rgb_color_t& src) { return src; };
+}
+
+inline auto lighter()
+{
+    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    {
+        const auto apply = [](float d, float s) { return std::max(d, s); };
+        return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
+    };
+}
+
+inline auto darker()
+{
+    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    {
+        const auto apply = [](float d, float s) { return std::min(d, s); };
+        return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
+    };
+}
+
+inline auto multiply()
+{
+    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    {
+        const auto apply = [](float d, float s) { return d * s / 255.F; };
+        return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
+    };
+}
+
+inline auto screen()
+{
+    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    {
+        const auto apply = [](float d, float s) { return 255.F - (255.F - d) * (255.F - s) / 255.F; };
+        return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
+    };
+}
+
+inline auto difference()
+{
+    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    {
+        const auto apply = [](float d, float s) { return std::abs(d - s); };
+        return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
+    };
+}
+
+inline auto overlay()
+{
+    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    {
+        const auto apply = [](float d, float s)
+        { return d < 128.F ? (2.F * d * s / 255.F) : (255.F - 2.F * (255.F - d) * (255.F - s) / 255.F); };
+
+        return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
+    };
+}
+
+inline auto add()
+{
+    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    {
+        const auto apply = [](float d, float s) { return s + d; };
+        return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
+    };
+}
+
+inline auto subtract()
+{
+    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    {
+        const auto apply = [](float d, float s) { return d + s - 255.F; };
+        return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
+    };
+}
+
+inline auto sepia()
+{
+    return [](const rgb_color_t& color)
+    {
+        static const std::array<std::array<float, 3>, 3> coeffs
+            = { { { 0.393F, 0.769F, 0.189F }, { 0.349F, 0.686F, 0.168F }, { 0.272F, 0.534F, 0.131F } } };
+
+        rgb_color_t result;
+        for (std::size_t i = 0; i < 3; ++i)
+        {
+            result[i] = std::inner_product(coeffs[i].begin(), coeffs[i].end(), color.begin(), 0.F);
+        }
+        return result;
+    };
+}
+
+inline auto gray()
+{
+    return [](const rgb_color_t& color)
+    {
+        static const std::array<float, 3> coeffs = { 0.299F, 0.587F, 0.114F };
+
+        const float v = std::inner_product(coeffs.begin(), coeffs.end(), color.begin(), 0.F);
+        return rgb_color_t{ v, v, v };
+    };
+}
+
+inline auto solid(const rgb_color_t& new_color, float alpha = 1.F)
+{
+    return [=](const rgb_color_t& color) { return blend(alpha)(color, new_color); };
+}
+
+}  // namespace color_filters
 
 }  // namespace mat
 }  // namespace zx
