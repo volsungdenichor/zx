@@ -44,17 +44,14 @@ struct raster_t
         return raster_t{ normalize_disjoint(difference(flatten(lhs.m_shapes), flatten(rhs.m_shapes))) };
     }
 
-    static raster_t dilate(const raster_t& raster, location_base_t radius)
+    raster_t dilate(location_base_t radius) const
     {
-        return raster_t{ normalize_disjoint(dilate(flatten(raster.m_shapes), radius)) };
+        return raster_t{ normalize_disjoint(dilate(flatten(m_shapes), radius)) };
     }
 
-    static raster_t erode(const raster_t& raster, location_base_t radius)
-    {
-        return raster_t{ normalize_disjoint(erode(flatten(raster.m_shapes), radius)) };
-    }
+    raster_t erode(location_base_t radius) const { return raster_t{ normalize_disjoint(erode(flatten(m_shapes), radius)) }; }
 
-    static raster_t outline(const raster_t& raster, location_base_t radius) { return dilate(raster, radius) - raster; }
+    raster_t outline(location_base_t radius) const { return dilate(radius) - *this; }
 
 private:
     static bool cmp(const interval_type& lhs, const interval_type& rhs)

@@ -472,13 +472,13 @@ struct array_view_base_t
     array_view_base_t<T, D - 1, Tag> operator[](location_base_t n) const { return sub(0, n); }
 
     template <class T_ = T, enable_if_t<!std::is_const_v<T_>> = 0>
-    void fill(const value_type& value)
+    void fill(const value_type& value) const
     {
         std::fill(this->begin(), this->end(), value);
     }
 
     template <class T_ = T, class Range, enable_if_t<!std::is_const_v<T_>> = 0>
-    void assign(Range&& range)
+    void assign(Range&& range) const
     {
         overwrite(this->begin(), this->end(), std::begin(range), std::end(range));
     }

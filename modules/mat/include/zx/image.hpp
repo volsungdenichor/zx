@@ -369,6 +369,21 @@ struct at_fn
 
 static constexpr inline auto at = at_fn{};
 
+template <std::size_t D>
+void for_each(const shape_t<D>& shape, function_ref<void(const location_t<2>&)> func)
+{
+    const extent_base_t h = shape[0].extent;
+    const extent_base_t w = shape[1].extent;
+
+    for (location_base_t y = 0; y < h; ++y)
+    {
+        for (location_base_t x = 0; x < w; ++x)
+        {
+            func(location_t<2>{ y, x });
+        }
+    }
+}
+
 struct modify_fn
 {
     void operator()(const rgb_image_t::mut_view_type& image, const location_t<2>& loc, color_filter_t filter) const
@@ -378,16 +393,7 @@ struct modify_fn
 
     void operator()(const rgb_image_t::mut_view_type& image, color_filter_t filter) const
     {
-        const extent_base_t h = image.shape()[0].extent;
-        const extent_base_t w = image.shape()[1].extent;
-
-        for (location_base_t y = 0; y < h; ++y)
-        {
-            for (location_base_t x = 0; x < w; ++x)
-            {
-                (*this)(image, location_t<2>{ y, x }, filter);
-            }
-        }
+        for_each(image.shape(), [&](const location_t<2>& loc) { (*this)(image, loc, filter); });
     }
 };
 
@@ -748,17 +754,9 @@ struct paste_fn
         const auto clipped_dst = dst.slice(to_slice(dst_bounds));
         const auto clipped_src = src.slice(to_slice(src_bounds));
 
-        const extent_base_t h = clipped_src.shape()[0].extent;
-        const extent_base_t w = clipped_src.shape()[1].extent;
-
-        for (location_base_t y = 0; y < h; ++y)
-        {
-            for (location_base_t x = 0; x < w; ++x)
-            {
-                const auto loc = location_t<2>{ y, x };
-                at(clipped_dst, loc, filter(at(clipped_dst, loc), at(clipped_src, loc)));
-            }
-        }
+        for_each(
+            clipped_dst.shape(),
+            [&](const location_t<2>& loc) { at(clipped_dst, loc, filter(at(clipped_dst, loc), at(clipped_src, loc))); });
     }
 };
 
@@ -769,25 +767,18 @@ struct convolve_fn
     {
         const auto kernel_size = kernel.extent();
 
-        dst = dst.slice(
-            channel_t::slice_type{ slice_base_t{ 0, src.shape()[0].extent - kernel_size[0] + 1, std::nullopt },
-                                   slice_base_t{ 0, src.shape()[1].extent - kernel_size[1] + 1, std::nullopt } });
+        dst = dst.slice(channel_t::slice_type{ slice_base_t{ 0, src.shape()[0].extent - kernel_size[0] + 1 },
+                                               slice_base_t{ 0, src.shape()[1].extent - kernel_size[1] + 1 } });
 
-        const extent_base_t h = dst.shape()[0].extent;
-        const extent_base_t w = dst.shape()[1].extent;
-
-        for (location_base_t y = 0; y < h; ++y)
-        {
-            for (location_base_t x = 0; x < w; ++x)
+        for_each(
+            dst.shape(),
+            [&](const location_t<2>& loc)
             {
-                const auto loc = location_t<2>{ y, x };
-                const auto region
-                    = src.slice(channel_t::slice_type{ slice_base_t{ loc[0], loc[0] + kernel_size[0], std::nullopt },
-                                                       slice_base_t{ loc[1], loc[1] + kernel_size[1], std::nullopt } });
+                const auto region = src.slice(channel_t::slice_type{ slice_base_t{ loc[0], loc[0] + kernel_size[0] },
+                                                                     slice_base_t{ loc[1], loc[1] + kernel_size[1] } });
 
                 dst[loc] = true_color_t::from_float(kernel(region));
-            }
-        }
+            });
     }
 
     template <class Kernel>
@@ -798,25 +789,28 @@ struct convolve_fn
             (*this)(channel(dst, z), channel(src, z), kernel);
         }
     }
+
+    template <class Kernel>
+    void operator()(const rgb_image_t::mut_view_type& src, const Kernel& kernel) const
+    {
+        rgb_image_t dst{ src.extent() };
+        (*this)(dst.mut_view(), src, kernel);
+        src.assign(dst);
+    }
 };
 
 template <class T, class Func>
 T accumulate(const mask_t::view_type& mask, const channel_t::view_type& region, T init, Func&& func)
 {
-    const auto h = region.shape()[0].extent;
-    const auto w = region.shape()[1].extent;
-
-    for (location_base_t y = 0; y < h; ++y)
-    {
-        for (location_base_t x = 0; x < w; ++x)
+    for_each(
+        region.shape(),
+        [&](const location_t<2>& loc)
         {
-            const auto loc = channel_t::location_type{ y, x };
             if (contains(mask.bounds(), loc) && contains(region.bounds(), loc))
             {
                 init = func(std::move(init), mask[loc], region[loc]);
             }
-        }
-    }
+        });
 
     return init;
 }
@@ -969,14 +963,7 @@ struct mask
     static mask_t rect(extent_t<2, extent_base_t> size)
     {
         mask_t mask{ size };
-        for (location_base_t y = 0; y < size[0]; ++y)
-        {
-            for (location_base_t x = 0; x < size[1]; ++x)
-            {
-                mask[{ y, x }] = 1.F;
-            }
-        }
-
+        detail::for_each(mask.shape(), [&](const location_t<2>& loc) { mask[loc] = 1.F; });
         return mask;
     }
 
@@ -991,17 +978,16 @@ struct mask
             (center[1] > 0.F) ? center[1] : 1.F,
         };
 
-        for (location_base_t y = 0; y < size[0]; ++y)
-        {
-            for (location_base_t x = 0; x < size[1]; ++x)
+        detail::for_each(
+            mask.shape(),
+            [&](const location_t<2>& loc)
             {
-                const auto loc = vector_t<2, float>{ static_cast<float>(y), static_cast<float>(x) };
+                const auto loc_float = vector_t<2, float>{ static_cast<float>(loc[0]), static_cast<float>(loc[1]) };
                 const auto delta = loc - center;
                 const float normalized_distance_squared
                     = (delta[0] * delta[0]) / (radius[0] * radius[0]) + (delta[1] * delta[1]) / (radius[1] * radius[1]);
-                mask[{ y, x }] = (normalized_distance_squared <= 1.F) ? 1.F : 0.F;
-            }
-        }
+                mask[loc] = (normalized_distance_squared <= 1.F) ? 1.F : 0.F;
+            });
 
         return mask;
     }
@@ -1038,16 +1024,15 @@ struct kernel
         const float mean = static_cast<float>(size - 1) / 2.F;
         const float sigma2 = 2.F * sigma * sigma;
 
-        for (location_base_t y = 0; y < size; ++y)
-        {
-            for (location_base_t x = 0; x < size; ++x)
+        detail::for_each(
+            mask.shape(),
+            [&](const location_t<2>& loc)
             {
-                const float dx = static_cast<float>(x) - mean;
-                const float dy = static_cast<float>(y) - mean;
+                const float dx = static_cast<float>(loc[1]) - mean;
+                const float dy = static_cast<float>(loc[0]) - mean;
                 const float value = std::exp(-(dx * dx + dy * dy) / sigma2);
-                mask[{ y, x }] = value;
-            }
-        }
+                mask[loc] = value;
+            });
         return normalize(mask);
     }
 
@@ -1100,14 +1085,7 @@ private:
 
         mask_t mask{ { N, N } };
         auto it = values.begin();
-        for (location_base_t y = 0; y < N; ++y)
-        {
-            for (location_base_t x = 0; x < N; ++x)
-            {
-                mask[{ y, x }] = *it++;
-            }
-        }
-
+        detail::for_each(mask.shape(), [&](const location_t<2>& loc) { mask[loc] = *it++; });
         return mask;
     }
 };

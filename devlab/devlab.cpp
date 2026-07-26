@@ -131,19 +131,29 @@ void run(const std::vector<std::string_view>&)
     const auto background = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/river.bmp" });
     const auto conan = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/conan_small.bmp" });
 
-    const auto temp = mat::with(background, [](auto v) { mat::modify(v, mat::lookup_table::brightness(30.F)); });
-
-    const auto out = mat::with(temp, [&](auto v) { mat::convolve(v, temp, mat::kernel::dilate(mat::mask::circle(5))); });
+    const auto temp = mat::with(
+        background,
+        [](auto v) { mat::convolve(v, mat::kernel::median(mat::mask::square(3))); },
+        [](auto v) { mat::convolve(v, mat::kernel::sobel()); });
 
     const auto shape = rasterize(
-        mat::bounds(out),
+        mat::bounds(temp.slice({ mat::slice_base_t{ 0, -4 }, mat::slice_base_t{ 0, -4 }, mat::slice_base_t{} })),
         [&](const mat::location_t<2>& loc)
         {
-            const auto pixel = mat::filters::gray()(mat::at(out, loc));
-            return pixel[0] > 192.F;
+            const auto pixel = mat::filters::gray()(mat::at(temp, loc));
+            return pixel[0] > 128.F;
         });
 
-    auto result = mat::with(background, [&](auto v) { mat::draw_raster(v, shape, mat::true_color_t{ 255, 255, 0 }); });
+    auto result = mat::with(
+        background,
+        [](auto v) { mat::modify(v, mat::filters::sepia()); },
+        [](auto v) { mat::modify(v, mat::lookup_table::contrast(0.25F) * mat::lookup_table::brightness(-64.F)); },
+        [&](auto v) {
+            mat::draw_raster(v, shape, mat::true_color_t{ 0, 255, 0 });
+        },
+        [&](auto v) {
+            mat::paste(v, conan, mat::location_t<2>{ 600, 50 }, mat::filters::screen());
+        });
 
     mat::save_bitmap(result, mat::filepath_t{ "/home/krzysiek/out.bmp" });
 }
