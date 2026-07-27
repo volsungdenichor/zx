@@ -767,15 +767,14 @@ struct convolve_fn
     {
         const auto kernel_size = kernel.extent();
 
-        dst = dst.slice(channel_t::slice_type{ { 0, src.shape()[0].extent - kernel_size[0] + 1 },
-                                               { 0, src.shape()[1].extent - kernel_size[1] + 1 } });
+        dst = dst.slice(
+            { { 0, src.shape()[0].extent - kernel_size[0] + 1 }, { 0, src.shape()[1].extent - kernel_size[1] + 1 } });
 
         for_each(
             dst.shape(),
             [&](const location_t<2>& loc)
             {
-                const auto region = src.slice(
-                    channel_t::slice_type{ { loc[0], loc[0] + kernel_size[0] }, { loc[1], loc[1] + kernel_size[1] } });
+                const auto region = src.slice({ { loc[0], loc[0] + kernel_size[0] }, { loc[1], loc[1] + kernel_size[1] } });
 
                 dst[loc] = true_color_t::from_float(kernel(region));
             });

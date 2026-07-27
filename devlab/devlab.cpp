@@ -137,7 +137,7 @@ void run(const std::vector<std::string_view>&)
         [](auto v) { mat::convolve(v, mat::kernel::sobel()); });
 
     const auto shape = rasterize(
-        mat::bounds(temp.slice({ mat::slice_base_t{ 0, -4 }, mat::slice_base_t{ 0, -4 }, mat::slice_base_t{} })),
+        mat::bounds(temp.slice({ { 0, -4 }, { 0, -4 }, {} })),
         [&](const mat::location_t<2>& loc)
         {
             const auto pixel = mat::filters::gray()(mat::at(temp, loc));
