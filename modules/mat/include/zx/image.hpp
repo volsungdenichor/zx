@@ -39,7 +39,10 @@ struct rgb_image_tag_t
 using rgb_image_t = array_t<byte_t, 3, detail::rgb_image_tag_t>;
 using channel_t = array_t<byte_t, 2, detail::rgb_image_tag_t>;
 
-using mask_t = zx::mat::array_t<float, 2>;
+using mask_t = array_t<float, 2>;
+
+using segment_type = segment_t<2, location_base_t>;
+using circle_type = circle_t<location_base_t>;
 
 namespace detail
 {
@@ -249,8 +252,7 @@ struct load_bitmap_fn
             is.ignore(1);
         }
 
-        const extent_base_t h = ref.shape()[0].extent;
-        const extent_base_t w = ref.shape()[1].extent;
+        const auto [h, w, _] = ref.extent();
 
         for (location_base_t y = h - 1; y >= 0; --y)
         {
@@ -276,8 +278,7 @@ struct load_bitmap_fn
         rgb_image_t result = prepare_array(header);
         auto ref = result.mut_view();
 
-        const extent_base_t h = ref.shape()[0].extent;
-        const extent_base_t w = ref.shape()[1].extent;
+        const auto [h, w, _] = ref.extent();
 
         for (location_base_t y = h - 1; y >= 0; --y)
         {
@@ -301,10 +302,10 @@ struct save_bitmap_fn
     void operator()(rgb_image_t::view_type image, std::ostream& os) const
     {
         static const std::size_t bits_per_pixel = 24;
-        const std::size_t padding = get_padding(static_cast<std::size_t>(image.shape()[1].extent), bits_per_pixel);
 
-        const extent_base_t h = image.shape()[0].extent;
-        const extent_base_t w = image.shape()[1].extent;
+        const auto [h, w, _] = image.extent();
+
+        const std::size_t padding = get_padding(static_cast<std::size_t>(w), bits_per_pixel);
 
         save_header(os, static_cast<std::size_t>(w), static_cast<std::size_t>(h), padding, bits_per_pixel, 0);
 
@@ -573,16 +574,13 @@ struct draw_pixel_t
 
 struct bresenham_line_fn
 {
-    void operator()(
-        const rgb_image_t::mut_view_type& image, const segment_t<2, location_base_t>& seg, const true_color_t& color) const
+    void operator()(const rgb_image_t::mut_view_type& image, const segment_type& seg, const true_color_t& color) const
     {
         (*this)(image, seg, inject_t{ color });
     }
 
     void operator()(
-        const rgb_image_t::mut_view_type& image,
-        const segment_t<2, location_base_t>& seg,
-        const color_filter_t& color_filter) const
+        const rgb_image_t::mut_view_type& image, const segment_type& seg, const color_filter_t& color_filter) const
     {
         (*this)(seg[0], seg[1], draw_pixel_t{ image, color_filter });
     }
@@ -644,20 +642,20 @@ struct bresenham_line_fn
 struct bresenham_circle_fn
 {
     void operator()(
-        const rgb_image_t::mut_view_type& image, const circle_t<location_base_t>& circle, const true_color_t& color) const
+        const rgb_image_t::mut_view_type& image, const circle_type& circle, const true_color_t& color) const
     {
         (*this)(image, circle, inject_t{ color });
     }
 
     void operator()(
-        const rgb_image_t::mut_view_type& image, const circle_t<location_base_t>& circle, color_filter_t color_filter) const
+        const rgb_image_t::mut_view_type& image, const circle_type& circle, color_filter_t color_filter) const
     {
         (*this)(circle.center, circle.radius, draw_pixel_t{ image, color_filter });
     }
 
     void operator()(const location_t<2>& center, int radius, function_ref<void(const location_t<2>&)> output) const
     {
-        mat::vector_t<2, location_base_t> cur{ radius, 0 };
+        location_t<2> cur{ radius, 0 };
         int err = 0;
 
         while (cur[0] >= cur[1])

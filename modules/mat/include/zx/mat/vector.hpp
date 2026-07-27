@@ -149,6 +149,17 @@ struct vector_t : public md_base_t<D, T, vector_t>
     using base_t = md_base_t<D, T, vector_t>;
 
     using base_t::base_t;
+
+    template <class U>
+    vector_t<D, U> to() const
+    {
+        vector_t<D, U> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = static_cast<U>((*this)[d]);
+        }
+        return result;
+    }
 };
 
 template <std::size_t D, class T>
@@ -267,3 +278,37 @@ constexpr bool operator!=(const vector_t<D, L>& lhs, const vector_t<D, R>& rhs)
 
 }  // namespace mat
 }  // namespace zx
+
+namespace std
+{
+
+template <size_t D, class T>
+struct tuple_size<zx::mat::vector_t<D, T>> : integral_constant<size_t, D>
+{
+};
+
+template <size_t I, size_t D, class T>
+struct tuple_element<I, zx::mat::vector_t<D, T>>
+{
+    using type = T;
+};
+
+template <size_t I, size_t D, class T>
+constexpr T& get(zx::mat::vector_t<D, T>& item) noexcept
+{
+    return item[I];
+}
+
+template <size_t I, size_t D, class T>
+constexpr const T& get(const zx::mat::vector_t<D, T>& item) noexcept
+{
+    return item[I];
+}
+
+template <size_t I, size_t D, class T>
+constexpr T&& get(zx::mat::vector_t<D, T>&& item) noexcept
+{
+    return std::move(item[I]);
+}
+
+}  // namespace std
