@@ -3,7 +3,6 @@
 #include <bitset>
 #include <functional>
 #include <tuple>
-#include <type_traits>
 #include <zx/type_traits.hpp>
 
 namespace zx
@@ -347,6 +346,47 @@ struct range_fn
     }
 };
 
+struct linspace_fn
+{
+    template <class T>
+    struct generator_t
+    {
+        T m_start;
+        T m_stop;
+        std::size_t m_count;
+        bool m_endpoint;
+
+        constexpr generator_t(T start, T stop, std::size_t count, bool endpoint)
+            : m_start(start)
+            , m_stop(stop)
+            , m_count(count)
+            , m_endpoint(endpoint)
+        {
+        }
+
+        template <class Reductor>
+        void operator()(Reductor&& reductor) const
+        {
+            for (std::size_t i = 0; i < m_count; ++i)
+            {
+                const T value
+                    = m_start + (m_stop - m_start) * static_cast<T>(i) / static_cast<T>(m_endpoint ? m_count - 1 : m_count);
+                if (reductor(value) == step_t::loop_break)
+                {
+                    return;
+                }
+            }
+        }
+    };
+
+    template <class T>
+    constexpr auto operator()(T start, T stop, std::size_t count, bool endpoint = true) const
+    {
+        static_assert(std::is_floating_point_v<T>, "linspace requires floating point type");
+        return generate(generator_t<T>{ start, stop, count });
+    }
+};
+
 struct iota_fn
 {
     template <class T>
@@ -498,6 +538,7 @@ struct repeat_fn
 }  // namespace detail
 
 static constexpr inline auto range = detail::range_fn{};
+static constexpr inline auto linspace = detail::linspace_fn{};
 static constexpr inline auto iota = detail::iota_fn{};
 static constexpr inline auto from = detail::from_fn{};
 static constexpr inline auto chain = detail::chain_fn{};
@@ -1482,6 +1523,7 @@ static constexpr inline auto for_each_indexed = detail::for_each_fn<true>{};
 using generators::chain;
 using generators::from;
 using generators::iota;
+using generators::linspace;
 using generators::range;
 using generators::repeat;
 
