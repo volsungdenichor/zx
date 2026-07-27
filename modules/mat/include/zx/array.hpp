@@ -142,9 +142,6 @@ template <std::size_t D>
 using location_t = point_t<D, location_base_t>;
 
 template <std::size_t D>
-using slice_t = vector_t<D, slice_base_t>;
-
-template <std::size_t D>
 using bounds_t = box_shape_t<D, extent_base_t>;
 
 template <std::size_t D, class...>
@@ -153,7 +150,7 @@ struct shape_t : md_base_t<D, dim_t, shape_t>
     using extent_type = extent_t<D, extent_base_t>;
     using stride_type = stride_t<D>;
     using location_type = location_t<D>;
-    using slice_type = slice_t<D>;
+    using slice_type = vector_t<D, slice_base_t>;
     using bounds_type = bounds_t<D>;
 
     using dims_type = std::array<dim_t, D>;
@@ -550,13 +547,13 @@ struct array_view_base_t<T, 1, Tag>
     }
 
     template <class T_ = T, enable_if_t<!std::is_const_v<T_>> = 0>
-    void fill(const value_type& value)
+    void fill(const value_type& value) const
     {
         std::fill(this->begin(), this->end(), value);
     }
 
     template <class T_ = T, class Range, enable_if_t<!std::is_const_v<T_>> = 0>
-    void assign(Range&& range)
+    void assign(Range&& range) const
     {
         overwrite(this->begin(), this->end(), std::begin(range), std::end(range));
     }
@@ -763,15 +760,12 @@ static constexpr inline auto adjust_copy_bounds = adjust_copy_bounds_fn{};
 
 struct to_slice_fn
 {
-    slice_base_t operator()(const interval_t<extent_base_t>& bounds) const
-    {
-        return slice_base_t{ lower(bounds), upper(bounds) };
-    }
+    slice_base_t operator()(const interval_type& bounds) const { return slice_base_t{ lower(bounds), upper(bounds) }; }
 
     template <std::size_t D>
-    slice_t<D> operator()(const bounds_t<D>& bounds) const
+    vector_t<D, slice_base_t> operator()(const bounds_t<D>& bounds) const
     {
-        slice_t<D> result = {};
+        vector_t<D, slice_base_t> result = {};
         for (std::size_t d = 0; d < D; ++d)
         {
             result[d] = (*this)(bounds[d]);

@@ -252,7 +252,7 @@ TEST(array, array_construct_from_view_same_type)
         src.m_data[i] = static_cast<int>(i);
     }
 
-    auto src_view = src.view().slice({ zx::mat::slice_base_t{ 0, 3, 1 }, zx::mat::slice_base_t{ 0, 4, 2 } });
+    auto src_view = src.view().slice({ { 0, 3, 1 }, { 0, 4, 2 } });
     zx::mat::array_t<int, 2> dst{ src_view };
 
     EXPECT_THAT(dst.extent(), testing::Eq(src_view.extent()));

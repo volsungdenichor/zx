@@ -92,6 +92,26 @@ struct md_base_t : public std::array<T, D>
 
     constexpr md_base_t() : base_t{} { std::fill(this->begin(), this->end(), T{}); }
 
+    template <std::size_t D_ = D, enable_if_t<(D_ == 1)> = 0>
+    constexpr md_base_t(T v0) : base_t{ v0 }
+    {
+    }
+
+    template <std::size_t D_ = D, enable_if_t<(D_ == 2)> = 0>
+    constexpr md_base_t(T v0, T v1) : base_t{ v0, v1 }
+    {
+    }
+
+    template <std::size_t D_ = D, enable_if_t<(D_ == 3)> = 0>
+    constexpr md_base_t(T v0, T v1, T v2) : base_t{ v0, v1, v2 }
+    {
+    }
+
+    template <std::size_t D_ = D, enable_if_t<(D_ == 4)> = 0>
+    constexpr md_base_t(T v0, T v1, T v2, T v3) : base_t{ v0, v1, v2, v3 }
+    {
+    }
+
     template <class... Tail>
     constexpr md_base_t(T head, Tail... tail) : base_t{ head, static_cast<T>(tail)... }
     {
