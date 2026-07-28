@@ -11,7 +11,6 @@ All modules are header-only (INTERFACE targets) and can be used individually or 
 | Module | Description |
 |---|---|
 | [core](modules/core/README.md) | Result/optional types, Unicode strings, formatting, type traits |
-| [functional](modules/functional/README.md) | Composable pipelines, `function_ref`, `let`, `do_all` |
 | [sequence](modules/sequence/README.md) | Lazy pull-based sequences with rich adapters |
 | [yield](modules/yield/README.md) | Push-based generators, transducers, and reductors |
 | [mat](modules/mat/README.md) | Vectors, matrices, and geometric primitives. N-dimensional strided arrays with Python-like slicing. |
