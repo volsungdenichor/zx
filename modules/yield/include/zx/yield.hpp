@@ -383,7 +383,7 @@ struct linspace_fn
     constexpr auto operator()(T start, T stop, std::size_t count, bool endpoint = true) const
     {
         static_assert(std::is_floating_point_v<T>, "linspace requires floating point type");
-        return generate(generator_t<T>{ start, stop, count });
+        return generate(generator_t<T>{ start, stop, count, endpoint });
     }
 };
 
