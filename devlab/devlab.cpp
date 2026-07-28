@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "zx/ansi/widgets/border.hpp"
+#include "zx/ansi/widgets/input.hpp"
 #include "zx/ansi/widgets/label.hpp"
 #include "zx/ansi/widgets/layout.hpp"
 #include "zx/app.hpp"
@@ -23,17 +24,31 @@ void run(const std::vector<std::string_view>&)
 {
     using namespace zx;
 
-    auto root = ansi::widgets::border(ansi::widgets::vstack(
-        ansi::widgets::hstack(ansi::widgets::border(ansi::widgets::label("Alpha")), ansi::widgets::label("Beta")),
-        ansi::widgets::hstack(ansi::widgets::label("Gamma"), ansi::widgets::border(ansi::widgets::label("Delta")))));
+    auto root = std::invoke(
+        []()
+        {
+            using namespace zx::ansi::widgets;
+
+            input_fn::config_t input_cfg;
+            input_cfg.placeholder = "Type here and press Enter";
+
+            return border(vstack(
+                hstack(border(label("Alpha")), label("Beta")),
+                hstack(label("Gamma"), border(label("Delta"))),
+                border(input(input_cfg))));
+        });
 
     ansi::app_t app{ std::move(root),
                      create<ansi::app_options>(
-                         [](auto& opts)
+                         [](auto& it)
                          {
-                             opts.use_alt_screen = true;
-                             opts.hide_cursor = true;
-                             opts.tick_ms = 100;
+                             it.use_alt_screen = true;
+                             it.hide_cursor = true;
+                             it.tick_ms = 200;
+                             it.mouse.button = true;
+                             it.mouse.drag = true;
+                             it.mouse.motion = true;
+                             it.mouse.sgr = true;
                          }) };
 
     app.run();

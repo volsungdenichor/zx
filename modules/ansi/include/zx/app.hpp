@@ -67,6 +67,8 @@ public:
     {
         setup_terminal();
 
+        m_root.on_attach(m_bus);
+
         const auto size = get_terminal_size();
         m_canvas = surface_t{ size };
         m_prev_canvas = surface_t{ extent_t{} };
@@ -98,25 +100,11 @@ public:
             }
             else
             {
-                if (auto ev = read_event(); ev)
+                // Drain currently queued input before rendering to avoid lag under event bursts.
+                dispatch_event(read_event());
+                while (wait_for_input(1) > 0)
                 {
-                    if (auto e = std::get_if<key_event_t>(&*ev))
-                    {
-                        m_bus.publish_to(m_root.id(), *e);
-                    }
-                    if (auto e = std::get_if<mouse_event_t>(&*ev))
-                    {
-                        m_bus.publish_to(m_root.id(), *e);
-                    }
-                    if (auto e = std::get_if<resize_event_t>(&*ev))
-                    {
-                        m_bus.publish_to(m_root.id(), *e);
-                    }
-
-                    if (std::holds_alternative<quit_event_t>(*ev))
-                    {
-                        detail::quit_flag().store(true);
-                    }
+                    dispatch_event(read_event());
                 }
             }
 
@@ -136,6 +124,7 @@ public:
             }
         }
 
+        m_root.on_detach(m_bus);
         cleanup_terminal();
     }
 
@@ -164,7 +153,35 @@ private:
 
     int wait_for_input() const { return m_terminal->wait_for_input(m_opts.tick_ms); }
 
+    int wait_for_input(int tick_ms) const { return m_terminal->wait_for_input(tick_ms); }
+
     std::optional<event_t> read_event() { return m_terminal->read_event(s_resize_pending); }
+
+    void dispatch_event(const std::optional<event_t>& ev)
+    {
+        if (!ev)
+        {
+            return;
+        }
+
+        if (auto e = std::get_if<key_event_t>(&*ev))
+        {
+            m_bus.publish_to(m_root.id(), *e);
+        }
+        if (auto e = std::get_if<mouse_event_t>(&*ev))
+        {
+            m_bus.publish_to(m_root.id(), *e);
+        }
+        if (auto e = std::get_if<resize_event_t>(&*ev))
+        {
+            m_bus.publish_to(m_root.id(), *e);
+        }
+
+        if (std::holds_alternative<quit_event_t>(*ev))
+        {
+            detail::quit_flag().store(true);
+        }
+    }
 
     void render()
     {

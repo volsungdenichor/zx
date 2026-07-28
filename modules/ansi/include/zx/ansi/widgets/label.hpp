@@ -121,9 +121,9 @@ struct label_fn
                 });
         }
 
-        void on_attach() override { }
+        void on_attach(message_bus_t&) override { }
 
-        void on_detach() override { }
+        void on_detach(message_bus_t&) override { }
 
     private:
         string_t m_content;

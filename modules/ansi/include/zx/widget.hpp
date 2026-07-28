@@ -15,6 +15,8 @@ namespace zx
 namespace ansi
 {
 
+struct message_bus_t;
+
 struct widget_t
 {
     using id_type = std::size_t;
@@ -31,9 +33,9 @@ struct widget_t
 
         virtual void render(surface_t::mut_view_type) const { }
 
-        virtual void on_attach() { }
+        virtual void on_attach(message_bus_t&) { }
 
-        virtual void on_detach() { }
+        virtual void on_detach(message_bus_t&) { }
 
         virtual id_type id() const { return reinterpret_cast<id_type>(this); }
 
@@ -129,9 +131,9 @@ struct widget_t
 
     void render(surface_t::mut_view_type view) const { m_impl->render(view); }
 
-    void on_attach() { m_impl->on_attach(); }
+    void on_attach(message_bus_t& bus) { m_impl->on_attach(bus); }
 
-    void on_detach() { m_impl->on_detach(); }
+    void on_detach(message_bus_t& bus) { m_impl->on_detach(bus); }
 
     extent_t preferred_size() const { return m_impl->preferred_size(); }
 

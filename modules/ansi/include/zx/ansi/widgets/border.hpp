@@ -1,6 +1,8 @@
 #pragma once
 
 #include <utility>
+#include <zx/event.hpp>
+#include <zx/message_bus.hpp>
 #include <zx/widget.hpp>
 
 namespace zx
@@ -34,6 +36,7 @@ struct border_fn
             const extent_t size = view.extent();
             if (size[0] < 2 || size[1] < 2)
             {
+                m_has_last_inner = false;
                 return;
             }
 
@@ -43,16 +46,57 @@ struct border_fn
 
             const extent_t inner_extent = size - extent_t::ones() * 2;
             const auto inner_bounds = mat::box::from_lower_extent(inner_lower, inner_extent);
+            m_last_inner_lower = inner_lower;
+            m_last_inner_extent = inner_extent;
+            m_has_last_inner = true;
             m_child.render(view.slice(mat::to_slice(inner_bounds)));
         }
 
-        void on_attach() override { m_child.m_impl->on_attach(); }
+        void on_attach(message_bus_t& bus) override
+        {
+            auto self = subscriber_proxy_t{ id() };
+            bus.subscribe(self.on_target<key_event_t>(
+                [this](message_bus_t::context_t& context, const key_event_t& event)
+                { context.publish_to(m_child.id(), event); }));
+            bus.subscribe(self.on_target<resize_event_t>(
+                [this](message_bus_t::context_t& context, const resize_event_t& event)
+                { context.publish_to(m_child.id(), event); }));
+            bus.subscribe(self.on_target<mouse_event_t>(
+                [this](message_bus_t::context_t& context, const mouse_event_t& event)
+                {
+                    if (!m_has_last_inner)
+                    {
+                        return;
+                    }
 
-        void on_detach() override { m_child.m_impl->on_detach(); }
+                    const auto lower = m_last_inner_lower;
+                    const auto upper = m_last_inner_lower + m_last_inner_extent - location_t::ones();
+                    const auto& pos = event.location;
+                    const bool inside = lower[0] <= pos[0] && pos[0] <= upper[0] && lower[1] <= pos[1] && pos[1] <= upper[1];
+
+                    if (inside)
+                    {
+                        mouse_event_t child_event = event;
+                        child_event.location -= m_last_inner_lower;
+                        context.publish_to(m_child.id(), child_event);
+                    }
+                }));
+
+            m_child.m_impl->on_attach(bus);
+        }
+
+        void on_detach(message_bus_t& bus) override
+        {
+            bus.unsubscribe_subscriber(id());
+            m_child.m_impl->on_detach(bus);
+        }
 
     private:
         widget_t m_child;
         config_t m_cfg;
+        mutable bool m_has_last_inner = false;
+        mutable location_t m_last_inner_lower = {};
+        mutable extent_t m_last_inner_extent = {};
     };
 
     inline widget_t operator()(widget_t child, config_t cfg) const

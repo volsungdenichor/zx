@@ -5,6 +5,7 @@
 #include <variant>
 #include <zx/mat.hpp>
 #include <zx/string.hpp>
+#include <zx/surface.hpp>
 
 namespace zx
 {
@@ -235,7 +236,7 @@ struct mouse_event_t
 {
     mouse_event_kind_t kind = mouse_event_kind_t::move;
     mouse_button_t button = mouse_button_t::none;
-    mat::vector_t<2, std::ptrdiff_t> location;
+    location_t location;
     std::ptrdiff_t scroll_y = 0;
     key_modifiers_t modifiers = key_modifiers_t::none;
 
