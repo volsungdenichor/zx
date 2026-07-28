@@ -92,16 +92,14 @@ struct label_fn
 {
     struct config_t
     {
-        style_t normal_style;
-        style_t focused_style;
+        style_t normal_style = {};
+        style_t focused_style = {};
     };
 
-    class model_t : public widget_t::interface
+    class model_t : public widget_t::interface_t
     {
     public:
-        explicit model_t(string_t content, config_t cfg = config_t{}) : m_content(std::move(content)), m_cfg(std::move(cfg))
-        {
-        }
+        explicit model_t(string_t content, config_t cfg) : m_content(std::move(content)), m_cfg(std::move(cfg)) { }
 
         const string_t& content() const { return m_content; }
 
@@ -133,10 +131,12 @@ struct label_fn
         bool m_focused = false;
     };
 
-    inline widget_t operator()(string_t content, config_t cfg = config_t{}) const
+    inline widget_t operator()(string_t content, config_t cfg) const
     {
         return widget_t::make<model_t>(std::move(content), std::move(cfg));
     }
+
+    inline widget_t operator()(string_t content) const { return widget_t::make<model_t>(std::move(content), config_t{}); }
 };
 
 constexpr auto label = label_fn{};

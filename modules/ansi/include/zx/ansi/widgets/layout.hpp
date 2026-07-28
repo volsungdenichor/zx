@@ -63,9 +63,9 @@ inline std::vector<extent_t> compute_sizes(const std::vector<layout_child_t>& ch
 template <std::size_t D>
 struct stack_fn
 {
-    struct model : widget_t::interface
+    struct model : widget_t::interface_t
     {
-        model(std::vector<layout_child_t> children) : m_children(std::move(children)) { }
+        explicit model(std::vector<layout_child_t> children) : m_children(std::move(children)) { }
 
         extent_t preferred_size() const override
         {
@@ -87,7 +87,7 @@ struct stack_fn
         {
             const auto sizes = compute_sizes<D>(m_children, mat::size(view.bounds()));
             m_last_child_bounds.assign(m_children.size(), bounds_t{});
-            auto loc = view.bounds().get(mat::side_t::lower);
+            auto loc = mat::lower(view.bounds());
             for (std::size_t i = 0; i < m_children.size(); ++i)
             {
                 extent_t size = sizes[i];
@@ -118,8 +118,8 @@ struct stack_fn
     }
 };  // namespace widgets
 
-constexpr auto vstack = stack_fn<1>{};
-constexpr auto hstack = stack_fn<0>{};
+constexpr auto vstack = stack_fn<0>{};
+constexpr auto hstack = stack_fn<1>{};
 
 }  // namespace widgets
 }  // namespace ansi

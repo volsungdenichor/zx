@@ -19,9 +19,9 @@ struct widget_t
 {
     using id_type = std::size_t;
 
-    struct interface
+    struct interface_t
     {
-        virtual ~interface() = default;
+        virtual ~interface_t() = default;
 
         virtual extent_t preferred_size() const { return {}; }
 
@@ -37,10 +37,10 @@ struct widget_t
 
         virtual id_type id() const { return reinterpret_cast<id_type>(this); }
 
-        std::weak_ptr<interface> m_parent;
-        std::vector<std::shared_ptr<interface>> m_children;
+        std::weak_ptr<interface_t> m_parent;
+        std::vector<std::shared_ptr<interface_t>> m_children;
 
-        maybe_t<const interface&> parent() const
+        maybe_t<const interface_t&> parent() const
         {
             if (auto parent = m_parent.lock())
             {
@@ -49,16 +49,16 @@ struct widget_t
             return none;
         }
 
-        sequence_t<const interface&> children() const
+        sequence_t<const interface_t&> children() const
         {
             return seq::view(m_children)
-                .transform([](const std::shared_ptr<interface>& impl) -> interface& { return *impl; });
+                .transform([](const std::shared_ptr<interface_t>& impl) -> interface_t& { return *impl; });
         }
     };
 
-    std::shared_ptr<interface> m_impl;
+    std::shared_ptr<interface_t> m_impl;
 
-    explicit widget_t(std::shared_ptr<interface> impl) : m_impl{ std::move(impl) } { }
+    explicit widget_t(std::shared_ptr<interface_t> impl) : m_impl{ std::move(impl) } { }
 
     template <class T, class... Args>
     static widget_t make(Args&&... args)
@@ -91,7 +91,7 @@ struct widget_t
         auto it = std::find_if(
             m_impl->m_children.begin(),
             m_impl->m_children.end(),
-            [&](const std::shared_ptr<interface>& impl) { return impl->id() == child.id(); });
+            [&](const std::shared_ptr<interface_t>& impl) { return impl->id() == child.id(); });
         if (it != m_impl->m_children.end())
         {
             m_impl->m_children.erase(it);
@@ -122,7 +122,7 @@ struct widget_t
     sequence_t<widget_t> children() const
     {
         return seq::view(m_impl->m_children)
-            .transform([](const std::shared_ptr<interface>& impl) { return widget_t{ impl }; });
+            .transform([](const std::shared_ptr<interface_t>& impl) { return widget_t{ impl }; });
     }
 
     id_type id() const { return m_impl->id(); }

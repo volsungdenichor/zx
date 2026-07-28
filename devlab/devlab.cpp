@@ -6,6 +6,7 @@
 #include <variant>
 #include <vector>
 
+#include "zx/ansi/widgets/border.hpp"
 #include "zx/ansi/widgets/label.hpp"
 #include "zx/ansi/widgets/layout.hpp"
 #include "zx/app.hpp"
@@ -21,36 +22,21 @@
 void run(const std::vector<std::string_view>&)
 {
     using namespace zx;
-    const auto background = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/river.bmp" });
-    const auto conan = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/conan_small.bmp" });
 
-    const auto temp = mat::with(
-        background,
-        [&](auto v)
-        {
-            mat::convolve(v, mat::kernel::median(mat::mask::square(9)));
-            mat::convolve(v, mat::kernel::prewitt());
-        });
+    auto root = ansi::widgets::border(ansi::widgets::vstack(
+        ansi::widgets::hstack(ansi::widgets::border(ansi::widgets::label("Alpha")), ansi::widgets::label("Beta")),
+        ansi::widgets::hstack(ansi::widgets::label("Gamma"), ansi::widgets::border(ansi::widgets::label("Delta")))));
 
-    const auto shape = zx::mat::rasterize(
-        mat::bounds(temp.slice({ { 0, -10 }, { 0, -10 }, {} })),
-        [&](const mat::location_t<2>& loc)
-        {
-            const auto pixel = mat::filters::gray()(mat::at(temp, loc));
-            return pixel[0] > 192.F;
-        });
+    ansi::app_t app{ std::move(root),
+                     create<ansi::app_options>(
+                         [](auto& opts)
+                         {
+                             opts.use_alt_screen = true;
+                             opts.hide_cursor = true;
+                             opts.tick_ms = 100;
+                         }) };
 
-    const auto result = mat::with(
-        background,
-        [&](auto v)
-        {
-            mat::modify(v, mat::filters::sepia());
-            mat::modify(v, mat::lookup_table::contrast(0.25F) * mat::lookup_table::brightness(-64.F));
-            mat::draw_raster(v, shape, mat::true_color_t{ 0, 255, 0 });
-            mat::paste(v, conan, mat::location_t<2>{ 600, 50 }, mat::filters::screen());
-        });
-
-    mat::save_bitmap(mat::flip_horizontal(result.view()), mat::filepath_t{ "/home/krzysiek/out.bmp" });
+    app.run();
 }
 
 void handle_exception(std::exception_ptr ptr, int level = 0)
