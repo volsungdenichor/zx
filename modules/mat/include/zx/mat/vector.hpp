@@ -160,6 +160,20 @@ struct vector_t : public md_base_t<D, T, vector_t>
         }
         return result;
     }
+
+    static constexpr vector_t zeros() { return create_uniform<0>(); }
+    static constexpr vector_t ones() { return create_uniform<1>(); }
+
+    template <int V>
+    static constexpr vector_t create_uniform()
+    {
+        vector_t result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = static_cast<T>(V);
+        }
+        return result;
+    }
 };
 
 template <std::size_t D, class T>

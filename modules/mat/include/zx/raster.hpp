@@ -392,5 +392,111 @@ private:
     }
 };
 
+namespace detail
+{
+
+struct rasterize_fn
+{
+    raster_t operator()(const rectangle_t<location_base_t>& shape) const
+    {
+        raster_t::shape_t raster_shape;
+
+        for (location_base_t y = shape[0].get(side_t::lower); y < shape[0].get(side_t::upper); ++y)
+        {
+            raster_shape.emplace(
+                y, std::vector<interval_type>{ { shape[1].get(side_t::lower), shape[1].get(side_t::upper) } });
+        }
+
+        return raster_t{ { raster_shape } };
+    }
+
+    raster_t operator()(const circle_t<location_base_t>& shape) const
+    {
+        raster_t::shape_t raster_shape;
+        const auto center = shape.center;
+
+        auto output_row = [&](location_base_t y, interval_type interval)
+        {
+            auto [it, inserted] = raster_shape.emplace(y, std::vector<interval_type>{});
+            if (inserted || it->second.empty())
+            {
+                it->second.push_back(interval);
+                return;
+            }
+
+            auto& span = it->second.front();
+            span[0] = std::min(span[0], interval[0]);
+            span[1] = std::max(span[1], interval[1]);
+        };
+
+        vector_t<2, location_base_t> cur{ shape.radius, 0 };
+        int err = 0;
+
+        while (cur[0] >= cur[1])
+        {
+            output_row(center[0] + cur[1], { center[1] - cur[0], center[1] + cur[0] + 1 });
+            output_row(center[0] - cur[1], { center[1] - cur[0], center[1] + cur[0] + 1 });
+            output_row(center[0] + cur[0], { center[1] - cur[1], center[1] + cur[1] + 1 });
+            output_row(center[0] - cur[0], { center[1] - cur[1], center[1] + cur[1] + 1 });
+
+            if (err <= 0)
+            {
+                cur[1] += 1;
+                err += 2 * cur[1] + 1;
+            }
+
+            if (err > 0)
+            {
+                cur[0] -= 1;
+                err -= 2 * cur[0] + 1;
+            }
+        }
+        return raster_t{ { raster_shape } };
+    }
+
+    raster_t operator()(
+        const rectangle_t<location_base_t>& area, zx::function_ref<bool(const location_t<2>&)> predicate) const
+    {
+        raster_t::shape_t raster_shape;
+
+        const auto output_interval = [&](location_base_t y, interval_type interval) { raster_shape[y].push_back(interval); };
+
+        for (location_base_t y = area[0].get(side_t::lower); y < area[0].get(side_t::upper); ++y)
+        {
+            bool in_interval = false;
+            location_base_t interval_start = 0;
+
+            for (location_base_t x = area[1].get(side_t::lower); x < area[1].get(side_t::upper); ++x)
+            {
+                const location_t<2> loc{ y, x };
+                if (predicate(loc))
+                {
+                    if (!in_interval)
+                    {
+                        interval_start = x;
+                        in_interval = true;
+                    }
+                }
+                else if (in_interval)
+                {
+                    output_interval(y, { interval_start, x });
+                    in_interval = false;
+                }
+            }
+
+            if (in_interval)
+            {
+                output_interval(y, { interval_start, area[1].get(side_t::upper) });
+            }
+        }
+
+        return raster_t{ { raster_shape } };
+    }
+};
+
+}  // namespace detail
+
+static constexpr inline auto rasterize = detail::rasterize_fn{};
+
 }  // namespace mat
 }  // namespace zx

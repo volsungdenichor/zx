@@ -17,113 +17,6 @@
 #include "zx/string.hpp"
 #include "zx/widget.hpp"
 
-struct rasterize_fn
-{
-    zx::mat::raster_t operator()(const zx::mat::rectangle_t<zx::mat::location_base_t>& shape) const
-    {
-        zx::mat::raster_t::shape_t raster_shape;
-
-        for (zx::mat::location_base_t y = shape[0].get(zx::mat::side_t::lower); y < shape[0].get(zx::mat::side_t::upper);
-             ++y)
-        {
-            raster_shape.emplace(
-                y,
-                std::vector<zx::mat::interval_type>{
-                    { shape[1].get(zx::mat::side_t::lower), shape[1].get(zx::mat::side_t::upper) } });
-        }
-
-        return zx::mat::raster_t{ { raster_shape } };
-    }
-
-    zx::mat::raster_t operator()(const zx::mat::circle_t<zx::mat::location_base_t>& shape) const
-    {
-        zx::mat::raster_t::shape_t raster_shape;
-        const auto center = shape.center;
-
-        auto output_row = [&](zx::mat::location_base_t y, zx::mat::interval_type interval)
-        {
-            auto [it, inserted] = raster_shape.emplace(y, std::vector<zx::mat::interval_type>{});
-            if (inserted || it->second.empty())
-            {
-                it->second.push_back(interval);
-                return;
-            }
-
-            auto& span = it->second.front();
-            span[0] = std::min(span[0], interval[0]);
-            span[1] = std::max(span[1], interval[1]);
-        };
-
-        zx::mat::vector_t<2, zx::mat::location_base_t> cur{ shape.radius, 0 };
-        int err = 0;
-
-        while (cur[0] >= cur[1])
-        {
-            output_row(center[0] + cur[1], { center[1] - cur[0], center[1] + cur[0] + 1 });
-            output_row(center[0] - cur[1], { center[1] - cur[0], center[1] + cur[0] + 1 });
-            output_row(center[0] + cur[0], { center[1] - cur[1], center[1] + cur[1] + 1 });
-            output_row(center[0] - cur[0], { center[1] - cur[1], center[1] + cur[1] + 1 });
-
-            if (err <= 0)
-            {
-                cur[1] += 1;
-                err += 2 * cur[1] + 1;
-            }
-
-            if (err > 0)
-            {
-                cur[0] -= 1;
-                err -= 2 * cur[0] + 1;
-            }
-        }
-        return zx::mat::raster_t{ { raster_shape } };
-    }
-
-    zx::mat::raster_t operator()(
-        const zx::mat::rectangle_t<zx::mat::location_base_t>& area,
-        zx::function_ref<bool(const zx::mat::location_t<2>&)> predicate) const
-    {
-        zx::mat::raster_t::shape_t raster_shape;
-
-        const auto output_interval
-            = [&](zx::mat::location_base_t y, zx::mat::interval_type interval) { raster_shape[y].push_back(interval); };
-
-        for (zx::mat::location_base_t y = area[0].get(zx::mat::side_t::lower); y < area[0].get(zx::mat::side_t::upper); ++y)
-        {
-            bool in_interval = false;
-            zx::mat::location_base_t interval_start = 0;
-
-            for (zx::mat::location_base_t x = area[1].get(zx::mat::side_t::lower); x < area[1].get(zx::mat::side_t::upper);
-                 ++x)
-            {
-                const zx::mat::location_t<2> loc{ y, x };
-                if (predicate(loc))
-                {
-                    if (!in_interval)
-                    {
-                        interval_start = x;
-                        in_interval = true;
-                    }
-                }
-                else if (in_interval)
-                {
-                    output_interval(y, { interval_start, x });
-                    in_interval = false;
-                }
-            }
-
-            if (in_interval)
-            {
-                output_interval(y, { interval_start, area[1].get(zx::mat::side_t::upper) });
-            }
-        }
-
-        return zx::mat::raster_t{ { raster_shape } };
-    }
-};
-
-static constexpr inline auto rasterize = rasterize_fn{};
-
 // cmake --build --preset ninja-release && ./build/ninja-release/devlab/zx_devlab && wslview ~/out.bmp
 void run(const std::vector<std::string_view>&)
 {
@@ -133,29 +26,31 @@ void run(const std::vector<std::string_view>&)
 
     const auto temp = mat::with(
         background,
-        [](auto v) { mat::convolve(v, mat::kernel::median(mat::mask::square(3))); },
-        [](auto v) { mat::convolve(v, mat::kernel::sobel()); });
+        [&](auto v)
+        {
+            mat::convolve(v, mat::kernel::median(mat::mask::square(9)));
+            mat::convolve(v, mat::kernel::prewitt());
+        });
 
-    const auto shape = rasterize(
-        mat::bounds(temp.slice({ { 0, -4 }, { 0, -4 }, {} })),
+    const auto shape = zx::mat::rasterize(
+        mat::bounds(temp.slice({ { 0, -10 }, { 0, -10 }, {} })),
         [&](const mat::location_t<2>& loc)
         {
             const auto pixel = mat::filters::gray()(mat::at(temp, loc));
-            return pixel[0] > 128.F;
+            return pixel[0] > 192.F;
         });
 
-    auto result = mat::with(
+    const auto result = mat::with(
         background,
-        [](auto v) { mat::modify(v, mat::filters::sepia()); },
-        [](auto v) { mat::modify(v, mat::lookup_table::contrast(0.25F) * mat::lookup_table::brightness(-64.F)); },
-        [&](auto v) {
+        [&](auto v)
+        {
+            mat::modify(v, mat::filters::sepia());
+            mat::modify(v, mat::lookup_table::contrast(0.25F) * mat::lookup_table::brightness(-64.F));
             mat::draw_raster(v, shape, mat::true_color_t{ 0, 255, 0 });
-        },
-        [&](auto v) {
             mat::paste(v, conan, mat::location_t<2>{ 600, 50 }, mat::filters::screen());
         });
 
-    mat::save_bitmap(result, mat::filepath_t{ "/home/krzysiek/out.bmp" });
+    mat::save_bitmap(mat::flip_horizontal(result.view()), mat::filepath_t{ "/home/krzysiek/out.bmp" });
 }
 
 void handle_exception(std::exception_ptr ptr, int level = 0)

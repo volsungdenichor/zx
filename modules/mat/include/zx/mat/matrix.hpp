@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <limits>
 #include <numeric>
 #include <optional>
@@ -131,6 +132,20 @@ struct matrix_t
     constexpr const_iterator end() const { return std::end(m_data); }
     constexpr iterator begin() { return std::begin(m_data); }
     constexpr iterator end() { return std::end(m_data); }
+
+    static constexpr matrix_t zeros() { return create_uniform<0>(); }
+    static constexpr matrix_t ones() { return create_uniform<1>(); }
+
+    template <int V>
+    static constexpr matrix_t create_uniform()
+    {
+        matrix_t result;
+        for (std::size_t i = 0; i < R * C; ++i)
+        {
+            std::fill(std::begin(result.m_data), std::end(result.m_data), static_cast<T>(V));
+        }
+        return result;
+    }
 };
 
 template <std::size_t R, std::size_t C, class T>
