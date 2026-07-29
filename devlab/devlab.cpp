@@ -5,6 +5,7 @@
 #include <string_view>
 #include <variant>
 #include <vector>
+
 #include "zx/format.hpp"
 #include "zx/functional.hpp"
 #include "zx/image.hpp"
@@ -31,7 +32,7 @@ void run(const std::vector<std::string_view>&)
         mat::bounds(temp.slice({ { 0, -10 }, { 0, -10 }, {} })),
         [&](const mat::location_t<2>& loc)
         {
-            const auto pixel = mat::filters::gray()(mat::at(temp, loc));
+            const auto pixel = mat::filters::gray(mat::at(temp, loc));
             return pixel[0] > 192.F;
         });
 
@@ -39,10 +40,10 @@ void run(const std::vector<std::string_view>&)
         background,
         [&](auto v)
         {
-            mat::modify(v, mat::filters::sepia());
+            mat::modify(v, mat::filters::sepia);
             mat::modify(v, mat::lookup_table::contrast(0.25F) * mat::lookup_table::brightness(-64.F));
-            mat::draw_raster(v, shape, mat::true_color_t{ 0, 255, 0 });
-            mat::paste(v, conan, mat::location_t<2>{ 600, 50 }, mat::filters::screen());
+            mat::draw_raster(v, shape, mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
+            mat::paste(v, conan, mat::location_t<2>{ 600, 50 }, mat::filters::blend(0.5F));
         });
 
     mat::save_bitmap(mat::flip_horizontal(result.view()), mat::filepath_t{ "/home/krzysiek/out.bmp" });

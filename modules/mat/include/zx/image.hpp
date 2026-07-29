@@ -446,8 +446,13 @@ struct rotate_fn
         return { image.from_offset(offset), shape };
     }
 
-    template <class T, class Tag>
-    auto operator()(array_view_base_t<T, 3, Tag> image, int degrees) const -> array_view_base_t<T, 3, Tag>
+    auto operator()(const rgb_image_t::view_type& image, int degrees) const -> rgb_image_t::view_type
+    {
+        const auto [shape, offset] = new_shape_and_offset(image.shape(), normalize_quarter_turns(degrees));
+        return { image.from_offset(offset), shape };
+    }
+
+    auto operator()(const rgb_image_t::mut_view_type& image, int degrees) const -> rgb_image_t::mut_view_type
     {
         const auto [shape, offset] = new_shape_and_offset(image.shape(), normalize_quarter_turns(degrees));
         return { image.from_offset(offset), shape };
@@ -521,14 +526,19 @@ struct flip_fn
     static_assert(D < 2, "flip: axis out of range");
 
     template <class T, class Tag>
-    auto operator()(array_view_base_t<T, 2, Tag> image) const -> array_view_base_t<T, 2, Tag>
+    auto operator()(const array_view_base_t<T, 2, Tag>& image) const -> array_view_base_t<T, 2, Tag>
     {
         const auto [shape, offset] = new_shape_and_offset(image.shape());
         return { image.from_offset(offset), shape };
     }
 
-    template <class T, class Tag>
-    auto operator()(array_view_base_t<T, 3, Tag> image) const -> array_view_base_t<T, 3, Tag>
+    auto operator()(const rgb_image_t::view_type& image) const -> rgb_image_t::view_type
+    {
+        const auto [shape, offset] = new_shape_and_offset(image.shape());
+        return { image.from_offset(offset), shape };
+    }
+
+    auto operator()(const rgb_image_t::mut_view_type& image) const -> rgb_image_t::mut_view_type
     {
         const auto [shape, offset] = new_shape_and_offset(image.shape());
         return { image.from_offset(offset), shape };
@@ -574,11 +584,6 @@ struct draw_pixel_t
 
 struct bresenham_line_fn
 {
-    void operator()(const rgb_image_t::mut_view_type& image, const segment_type& seg, const true_color_t& color) const
-    {
-        (*this)(image, seg, inject_t{ color });
-    }
-
     void operator()(
         const rgb_image_t::mut_view_type& image, const segment_type& seg, const color_filter_t& color_filter) const
     {
@@ -641,14 +646,7 @@ struct bresenham_line_fn
 
 struct bresenham_circle_fn
 {
-    void operator()(
-        const rgb_image_t::mut_view_type& image, const circle_type& circle, const true_color_t& color) const
-    {
-        (*this)(image, circle, inject_t{ color });
-    }
-
-    void operator()(
-        const rgb_image_t::mut_view_type& image, const circle_type& circle, color_filter_t color_filter) const
+    void operator()(const rgb_image_t::mut_view_type& image, const circle_type& circle, color_filter_t color_filter) const
     {
         (*this)(circle.center, circle.radius, draw_pixel_t{ image, color_filter });
     }
@@ -687,12 +685,6 @@ struct bresenham_circle_fn
 struct draw_rectangle_fn
 {
     void operator()(
-        const rgb_image_t::mut_view_type& image, const rectangle_t<location_base_t>& rect, const true_color_t& color) const
-    {
-        (*this)(image, rect, inject_t{ color });
-    }
-
-    void operator()(
         const rgb_image_t::mut_view_type& image, const rectangle_t<location_base_t>& rect, color_filter_t color_filter) const
     {
         for (const auto seg : segments(rect))
@@ -704,11 +696,6 @@ struct draw_rectangle_fn
 
 struct draw_raster_fn
 {
-    void operator()(const rgb_image_t::mut_view_type& image, const raster_t& raster, const true_color_t& color) const
-    {
-        (*this)(image, raster, inject_t{ color });
-    }
-
     void operator()(const rgb_image_t::mut_view_type& image, const raster_t& raster, color_filter_t color_filter) const
     {
         const auto do_draw = draw_pixel_t{ image, color_filter };
@@ -736,16 +723,10 @@ struct draw_raster_fn
 struct paste_fn
 {
     void operator()(
-        const rgb_image_t::mut_view_type& dst, const rgb_image_t::view_type& src, const location_t<2>& location) const
-    {
-        return (*this)(dst, src, location, [](const rgb_color_t&, const rgb_color_t& src) { return src; });
-    }
-
-    void operator()(
         const rgb_image_t::mut_view_type& dst,
         const rgb_image_t::view_type& src,
         const location_t<2>& location,
-        binary_color_filter_t filter) const
+        binary_color_filter_t filter = filters::normal) const
     {
         const auto [src_bounds, dst_bounds] = adjust_bounds(dst.bounds(), src.bounds(), { location[0], location[1], 0 });
 

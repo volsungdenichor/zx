@@ -216,88 +216,88 @@ inline auto blend(float alpha)
     };
 }
 
-inline auto normal()
+static constexpr inline struct normal_fn
 {
-    return [](const rgb_color_t&, const rgb_color_t& src) { return src; };
-}
+    rgb_color_t operator()(const rgb_color_t& dst, const rgb_color_t& src) const { return src; };
+} normal = {};
 
-inline auto lighter()
+static constexpr inline struct lighter_fn
 {
-    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    rgb_color_t operator()(const rgb_color_t& dst, const rgb_color_t& src) const
     {
         const auto apply = [](float d, float s) { return std::max(d, s); };
         return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
     };
-}
+} lighter = {};
 
-inline auto darker()
+static constexpr inline struct darker_fn
 {
-    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    rgb_color_t operator()(const rgb_color_t& dst, const rgb_color_t& src) const
     {
         const auto apply = [](float d, float s) { return std::min(d, s); };
         return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
     };
-}
+} darker = {};
 
-inline auto multiply()
+static constexpr inline struct multiply_fn
 {
-    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    rgb_color_t operator()(const rgb_color_t& dst, const rgb_color_t& src) const
     {
         const auto apply = [](float d, float s) { return d * s / 255.F; };
         return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
     };
-}
+} multiply = {};
 
-inline auto screen()
+static constexpr inline struct screen_fn
 {
-    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    rgb_color_t operator()(const rgb_color_t& dst, const rgb_color_t& src) const
     {
         const auto apply = [](float d, float s) { return 255.F - (255.F - d) * (255.F - s) / 255.F; };
         return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
     };
-}
+} screen = {};
 
-inline auto difference()
+static constexpr inline struct difference_fn
 {
-    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    rgb_color_t operator()(const rgb_color_t& dst, const rgb_color_t& src) const
     {
         const auto apply = [](float d, float s) { return std::abs(d - s); };
         return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
     };
-}
+} difference = {};
 
-inline auto overlay()
+static constexpr inline struct overlay_fn
 {
-    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    rgb_color_t operator()(const rgb_color_t& dst, const rgb_color_t& src) const
     {
         const auto apply = [](float d, float s)
         { return d < 128.F ? (2.F * d * s / 255.F) : (255.F - 2.F * (255.F - d) * (255.F - s) / 255.F); };
 
         return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
     };
-}
+} overlay = {};
 
-inline auto add()
+static constexpr inline struct add_fn
 {
-    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    rgb_color_t operator()(const rgb_color_t& dst, const rgb_color_t& src) const
     {
         const auto apply = [](float d, float s) { return s + d; };
         return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
     };
-}
+} add = {};
 
-inline auto subtract()
+static constexpr inline struct subtract_fn
 {
-    return [](const rgb_color_t& dst, const rgb_color_t& src)
+    rgb_color_t operator()(const rgb_color_t& dst, const rgb_color_t& src) const
     {
         const auto apply = [](float d, float s) { return d + s - 255.F; };
         return rgb_color_t{ apply(dst[0], src[0]), apply(dst[1], src[1]), apply(dst[2], src[2]) };
     };
-}
+} subtract = {};
 
-inline auto sepia()
+static constexpr inline struct sepia_fn
 {
-    return [](const rgb_color_t& color)
+    rgb_color_t operator()(const rgb_color_t& color) const
     {
         static const std::array<std::array<float, 3>, 3> coeffs
             = { { { 0.393F, 0.769F, 0.189F }, { 0.349F, 0.686F, 0.168F }, { 0.272F, 0.534F, 0.131F } } };
@@ -309,18 +309,18 @@ inline auto sepia()
         }
         return result;
     };
-}
+} sepia = {};
 
-inline auto gray()
+static constexpr inline struct gray_fn
 {
-    return [](const rgb_color_t& color)
+    rgb_color_t operator()(const rgb_color_t& color) const
     {
         static const std::array<float, 3> coeffs = { 0.299F, 0.587F, 0.114F };
 
         const float v = std::inner_product(coeffs.begin(), coeffs.end(), color.begin(), 0.F);
         return rgb_color_t{ v, v, v };
     };
-}
+} gray = {};
 
 inline auto solid(const rgb_color_t& new_color, float alpha = 1.F)
 {
