@@ -218,7 +218,7 @@ inline auto blend(float alpha)
 
 static constexpr inline struct normal_fn
 {
-    rgb_color_t operator()(const rgb_color_t& dst, const rgb_color_t& src) const { return src; };
+    rgb_color_t operator()(const rgb_color_t&, const rgb_color_t& src) const { return src; };
 } normal = {};
 
 static constexpr inline struct lighter_fn
