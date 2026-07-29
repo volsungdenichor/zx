@@ -60,6 +60,15 @@ struct abs_fn
     }
 };
 
+struct round_fn
+{
+    template <class T, class Res = decltype(std::round(std::declval<T>()))>
+    constexpr auto operator()(T x) const -> Res
+    {
+        return std::round(x);
+    }
+};
+
 struct floor_fn
 {
     template <class T, class Res = decltype(std::floor(std::declval<T>()))>
@@ -75,6 +84,24 @@ struct ceil_fn
     constexpr auto operator()(T x) const -> Res
     {
         return std::ceil(x);
+    }
+};
+
+struct fractional_part_fn
+{
+    template <class T>
+    constexpr auto operator()(T value) const -> T
+    {
+        return value - std::floor(value);
+    }
+};
+
+struct floor_and_fractional_part_fn
+{
+    template <class T>
+    constexpr auto operator()(T value) const -> std::pair<T, T>
+    {
+        return { std::floor(value), value - std::floor(value) };
     }
 };
 
@@ -130,12 +157,15 @@ static constexpr inline auto sqrt = detail::sqrt_fn{};
 static constexpr inline auto abs = detail::abs_fn{};
 static constexpr inline auto floor = detail::floor_fn{};
 static constexpr inline auto ceil = detail::ceil_fn{};
+static constexpr inline auto fractional_part = detail::fractional_part_fn{};
 static constexpr inline auto sin = detail::sin_fn{};
 static constexpr inline auto cos = detail::cos_fn{};
 static constexpr inline auto atan2 = detail::atan2_fn{};
 static constexpr inline auto asin = detail::asin_fn{};
 static constexpr inline auto acos = detail::acos_fn{};
+static constexpr inline auto floor_and_fractional_part = detail::floor_and_fractional_part_fn{};
 static constexpr inline auto sign = detail::sign_fn{};
+static constexpr inline auto round = detail::round_fn{};
 
 template <class T>
 constexpr T pi = T{ 3.14159265358979323846 };

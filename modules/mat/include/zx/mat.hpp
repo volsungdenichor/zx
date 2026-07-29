@@ -960,10 +960,122 @@ struct segments_fn
 
 static constexpr inline auto segments = segments_fn{};
 
+struct round_fn
+{
+    template <class T>
+    constexpr T operator()(T value) const
+    {
+        return math::round(value);
+    }
+
+    template <std::size_t D, class T>
+    constexpr vector_t<D, T> operator()(const vector_t<D, T>& value) const
+    {
+        vector_t<D, T> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(value[d]);
+        }
+        return result;
+    }
+};
+
+static constexpr inline auto round = round_fn{};
+
+struct floor_fn
+{
+    template <class T>
+    constexpr T operator()(T value) const
+    {
+        return math::floor(value);
+    }
+
+    template <std::size_t D, class T>
+    constexpr vector_t<D, T> operator()(const vector_t<D, T>& value) const
+    {
+        vector_t<D, T> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(value[d]);
+        }
+        return result;
+    }
+};
+
+static constexpr inline auto floor = floor_fn{};
+
+struct ceil_fn
+{
+    template <class T>
+    constexpr T operator()(T value) const
+    {
+        return math::ceil(value);
+    }
+
+    template <std::size_t D, class T>
+    constexpr vector_t<D, T> operator()(const vector_t<D, T>& value) const
+    {
+        vector_t<D, T> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(value[d]);
+        }
+        return result;
+    }
+};
+
+static constexpr inline auto ceil = ceil_fn{};
+
+struct fractional_part_fn
+{
+    template <class T>
+    constexpr T operator()(T value) const
+    {
+        return math::fractional_part(value);
+    }
+
+    template <std::size_t D, class T>
+    constexpr vector_t<D, T> operator()(const vector_t<D, T>& value) const
+    {
+        vector_t<D, T> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(value[d]);
+        }
+        return result;
+    }
+};
+
+static constexpr inline auto fractional_part = fractional_part_fn{};
+
+struct floor_and_fractional_part_fn
+{
+    template <class T>
+    constexpr std::pair<T, T> operator()(T value) const
+    {
+        return math::floor_and_fractional_part(value);
+    }
+
+    template <std::size_t D, class T>
+    constexpr std::pair<vector_t<D, T>, vector_t<D, T>> operator()(const vector_t<D, T>& value) const
+    {
+        vector_t<D, T> lo;
+        vector_t<D, T> frac;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            std::tie(lo[d], frac[d]) = (*this)(value[d]);
+        }
+        return { lo, frac };
+    }
+};
+
+static constexpr inline auto floor_and_fractional_part = floor_and_fractional_part_fn{};
+
 }  // namespace detail
 
 using detail::altitude;
 using detail::angle;
+using detail::ceil;
 using detail::center;
 using detail::centroid;
 using detail::circumcenter;
@@ -973,6 +1085,8 @@ using detail::cross;
 using detail::distance;
 using detail::dot;
 using detail::extend;
+using detail::floor_and_fractional_part;
+using detail::fractional_part;
 using detail::incenter;
 using detail::incircle;
 using detail::interpolate;
@@ -989,6 +1103,7 @@ using detail::perpendicular;
 using detail::projection;
 using detail::radius;
 using detail::rejection;
+using detail::round;
 using detail::segments;
 using detail::size;
 using detail::transform;
