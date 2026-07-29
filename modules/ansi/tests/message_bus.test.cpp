@@ -11,10 +11,6 @@ struct test_event_t
     int value = 0;
 };
 
-struct test_widget_t : zx::ansi::widget_t::interface
-{
-};
-
 std::string_view phase_name(zx::ansi::event_phase_t phase)
 {
     switch (phase)
