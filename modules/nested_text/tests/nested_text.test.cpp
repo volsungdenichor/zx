@@ -1,42 +1,66 @@
 #include <gmock/gmock.h>
 
 #include <zx/nested_text.hpp>
+#include <zx/test/functional_matcher.hpp>
 
 namespace
 {
-constexpr auto WhenSerialized = [](auto&& matcher)
+std::vector<std::string> split_lines(const std::string& text)
 {
-    return testing::ResultOf(
-        "serialized",
-        [](const auto& value)
+    std::istringstream is(text);
+    std::vector<std::string> lines;
+    std::string line;
+    while (std::getline(is, line))
+    {
+        if (!line.empty() && line.back() == '\r')
         {
-            std::ostringstream os;
-            os << value;
-            return os.str();
-        },
-        std::forward<decltype(matcher)>(matcher));
+            line.pop_back();
+        }
+        lines.push_back(line);
+    }
+    return lines;
+}
+
+constexpr auto WhenSerialized = [](testing::Matcher<const std::string&> matcher)
+{
+    return zx::test::FunctionalMatcher{ [](const zx::nested_text::node_t& value,
+                                           const testing::Matcher<const std::string&>& m) -> std::optional<std::string>
+                                        {
+                                            if (auto res = zx::test::validate(zx::format(value), m); res.has_value())
+                                            {
+                                                return "\nwhich does not match";
+                                            }
+                                            return std::nullopt;
+                                        },
+                                        [](std::ostream& os, bool positive, const testing::Matcher<const std::string&>& m)
+                                        { os << "result of serialization " << zx::test::format_matcher(m, positive); },
+                                        std::move(matcher) };
 };
 
-constexpr auto WhenSplitByLines = [](auto&& matcher)
+constexpr auto WhenSplitByLines = [](testing::Matcher<const std::vector<std::string>&> matcher)
 {
-    return testing::ResultOf(
-        "line-split",
-        [](const auto& value)
+    return zx::test::FunctionalMatcher{
+        [](const std::string& value,
+           const testing::Matcher<const std::vector<std::string>&>& m) -> std::optional<std::string>
         {
-            std::istringstream is(value);
-            std::vector<std::string> lines;
-            std::string line;
-            while (std::getline(is, line))
+            const std::vector<std::string> lines = split_lines(value);
+            if (auto res = zx::test::validate(lines, m); res.has_value())
             {
-                if (!line.empty() && line.back() == '\r')
+                std::stringstream ss;
+                ss << "\nwhose result of line-split is:";
+                for (std::size_t i = 0; i < lines.size(); ++i)
                 {
-                    line.pop_back();
+                    ss << "\n  [" << std::setw(2) << i << "] " << lines[i];
                 }
-                lines.push_back(line);
+                ss << "\nand " << res->message;
+                return ss.str();
             }
-            return lines;
+            return std::nullopt;
         },
-        std::forward<decltype(matcher)>(matcher));
+        [](std::ostream& os, bool positive, const testing::Matcher<const std::vector<std::string>&>& m)
+        { os << "result of line-split " << zx::test::format_matcher(m, positive); },
+        std::move(matcher)
+    };
 };
 
 void ExpectParseError(std::string_view text, std::string_view message)

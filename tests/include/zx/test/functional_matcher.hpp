@@ -27,14 +27,25 @@ std::string format_matcher(const Matcher& matcher, bool positive = true)
     return os.str();
 }
 
+struct GtestValidationResult
+{
+    std::string expected;
+    std::string message;
+
+    friend std::ostream& operator<<(std::ostream& os, const GtestValidationResult& item)
+    {
+        return os << "\n  expected: " << item.expected << "\n  message: " << item.message;
+    }
+};
+
 template <class T, class Matcher>
-auto validate(const T& actual, const Matcher& matcher) -> std::optional<std::tuple<std::string, std::string>>
+auto validate(const T& actual, const Matcher& matcher) -> std::optional<GtestValidationResult>
 {
     testing::StringMatchResultListener listener;
     const auto m = testing::SafeMatcherCast<const T&>(matcher);
     if (!testing::ExplainMatchResult(m, actual, &listener))
     {
-        return std::make_tuple(format_matcher(m, true), listener.str());
+        return GtestValidationResult{ format_matcher(m, true), listener.str() };
     }
     return std::nullopt;
 }
