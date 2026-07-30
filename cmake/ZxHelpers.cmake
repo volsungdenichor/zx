@@ -98,6 +98,9 @@ function(zx_add_module)
             GTest::gtest_main
             GTest::gmock
         )
+        target_include_directories(${ARG_NAME}_tests PRIVATE
+            ${PROJECT_SOURCE_DIR}/tests/include
+        )
         target_compile_features(${ARG_NAME}_tests PRIVATE cxx_std_17)
         zx_set_strict_warnings(${ARG_NAME}_tests)
 
