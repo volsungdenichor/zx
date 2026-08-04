@@ -177,6 +177,61 @@ struct vector_t : public md_base_t<D, T, vector_t>
 };
 
 template <std::size_t D, class T>
+constexpr auto insert(const vector_t<D, T>& v, std::size_t index, T value) -> vector_t<D + 1, T>
+{
+    vector_t<D + 1, T> result;
+    for (std::size_t d = 0; d < index; ++d)
+    {
+        result[d] = v[d];
+    }
+    result[index] = value;
+    for (std::size_t d = index; d < D; ++d)
+    {
+        result[d + 1] = v[d];
+    }
+    return result;
+}
+
+template <std::size_t D, class T, enable_if_t<(D > 1)> = 0>
+constexpr auto erase(const vector_t<D, T>& v, std::size_t index) -> vector_t<D - 1, T>
+{
+    vector_t<D - 1, T> result;
+    for (std::size_t d = 0; d < index; ++d)
+    {
+        result[d] = v[d];
+    }
+    for (std::size_t d = index + 1; d < D; ++d)
+    {
+        result[d - 1] = v[d];
+    }
+    return result;
+}
+
+template <std::size_t D, class T>
+constexpr auto append(const vector_t<D, T>& v, T value) -> vector_t<D + 1, T>
+{
+    return insert(v, D, value);
+}
+
+template <std::size_t D, class T>
+constexpr auto prepend(const vector_t<D, T>& v, T value) -> vector_t<D + 1, T>
+{
+    return insert(v, 0, value);
+}
+
+template <std::size_t D, class T>
+constexpr auto pop_back(const vector_t<D, T>& v) -> vector_t<D - 1, T>
+{
+    return erase(v, D - 1);
+}
+
+template <std::size_t D, class T>
+constexpr auto pop_front(const vector_t<D, T>& v) -> vector_t<D - 1, T>
+{
+    return erase(v, 0);
+}
+
+template <std::size_t D, class T>
 using point_t = vector_t<D, T>;
 
 template <std::size_t D, class T>
