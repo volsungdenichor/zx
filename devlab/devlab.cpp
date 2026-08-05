@@ -134,6 +134,18 @@ struct perlin_fn
 
 static constexpr inline perlin_fn perlin = {};
 
+template <class In, class Out>
+struct interpolate_fn
+{
+    std::pair<In, In> m_in;
+    std::pair<Out, Out> m_out;
+
+    auto operator()(In value) const -> Out
+    {
+        return m_out.first + (m_out.second - m_out.first) * (value - m_in.first) / (m_in.second - m_in.first);
+    }
+};
+
 // cmake --build --preset ninja-release && ./build/ninja-release/devlab/zx_devlab && wslview ~/out.bmp
 void run(const std::vector<std::string_view>&)
 {
@@ -152,11 +164,12 @@ void run(const std::vector<std::string_view>&)
     const auto background = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/river.bmp" });
     const auto conan = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/conan_small.bmp" });
 
-    const auto create_perlin = [&](const mat::array_t<float, 2>::extent_type& extent) -> mat::rgb_image_t
+    const auto create_perlin = [&](const mat::array_t<float, 2>::extent_type& extent) -> mat::image_t
     {
         mat::array_t<float, 2> result(extent);
         mat::detail::for_each(
-            result.shape(), [&](const mat::location_t<2>& loc) { result[loc] = perlin(loc.to<float>(), get_permutation); });
+            result.shape(),
+            [&](const mat::location_t<2>& loc) { result[loc] = perlin(loc.to<float>() / 20.F, get_permutation); });
         float min_value = std::numeric_limits<float>::max();
         float max_value = std::numeric_limits<float>::lowest();
         for (auto v : result)
@@ -164,20 +177,21 @@ void run(const std::vector<std::string_view>&)
             min_value = std::min(min_value, v);
             max_value = std::max(max_value, v);
         }
+        const auto f = interpolate_fn<float, float>{ { min_value, max_value }, { 0.F, 255.F } };
         for (auto& v : result)
         {
-            v = 255.F * (v - min_value) / (max_value - min_value);
+            v = f(v);
         }
-        mat::rgb_image_t res({ extent[0], extent[1], 3 });
+        mat::image_t res(extent, 3);
         mat::detail::for_each(
-            res.shape(),
-            [&](const mat::location_t<2>& loc) {
-                mat::at(res.mut_view(), loc, mat::rgb_color_t{ result[loc], 0.F, 0.F });
+            res.data().shape(),
+            [&](const mat::image_t::location_type& loc) {
+                res[loc] = mat::rgb_color_t{ result[loc], result[loc], result[loc] };
             });
         return res;
     };
 
-    const auto perlin = create_perlin(zx::mat::pop_back(background.extent()));
+    const auto perlin = create_perlin(background.extent());
 
     const auto temp = mat::with(
         background,
@@ -188,10 +202,10 @@ void run(const std::vector<std::string_view>&)
         });
 
     const auto shape = zx::mat::rasterize(
-        mat::bounds(temp.slice({ { 0, -10 }, { 0, -10 }, {} })),
-        [&](const mat::location_t<2>& loc)
+        temp.slice({ { 0, -10 }, { 0, -10 } }).bounds(),
+        [&](const mat::image_t::location_type& loc)
         {
-            const auto pixel = mat::filters::gray(mat::at(temp, loc));
+            const auto pixel = mat::filters::gray(temp[loc]);
             return pixel[0] > 192.F;
         });
 
@@ -202,8 +216,8 @@ void run(const std::vector<std::string_view>&)
             mat::modify(v, mat::filters::sepia);
             mat::modify(v, mat::lookup_table::contrast(0.25F) * mat::lookup_table::brightness(-64.F));
             mat::draw_raster(v, shape, mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
-            mat::paste(v, conan, mat::location_t<2>{ 600, 50 }, mat::filters::blend(0.5F));
-            mat::paste(v, perlin, mat::location_t<2>{ 0, 0 }, mat::filters::blend(0.75F));
+            mat::paste(v, conan, mat::image_t::location_type{ 600, 50 }, mat::filters::blend(0.5F));
+            mat::paste(v, perlin, mat::image_t::location_type{ 0, 0 }, mat::filters::blend(0.125F));
         });
 
     mat::save_bitmap(mat::flip_horizontal(result.view()), mat::filepath_t{ "/home/krzysiek/out.bmp" });
