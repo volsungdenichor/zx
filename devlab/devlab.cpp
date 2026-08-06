@@ -164,7 +164,7 @@ void run(const std::vector<std::string_view>&)
     const auto background = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/river.bmp" });
     const auto conan = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/conan_small.bmp" });
 
-    const auto create_perlin = [&](const mat::array_t<float, 2>::extent_type& extent) -> mat::image_t
+    const auto create_perlin = [&](const mat::array_t<float, 2>::extent_type& extent) -> mat::rgb_image_t
     {
         mat::array_t<float, 2> result(extent);
         mat::detail::for_each(
@@ -182,16 +182,16 @@ void run(const std::vector<std::string_view>&)
         {
             v = f(v);
         }
-        mat::image_t res(extent, 3);
+        mat::rgb_image_t res(extent);
         mat::detail::for_each(
             res.data().shape(),
-            [&](const mat::image_t::location_type& loc) {
+            [&](const mat::rgb_image_t::location_type& loc) {
                 res[loc] = mat::rgb_color_t{ result[loc], result[loc], result[loc] };
             });
         return res;
     };
 
-    const auto perlin = create_perlin(background.extent());
+    // const auto perlin = create_perlin(background.extent());
 
     const auto temp = mat::with(
         background,
@@ -203,7 +203,7 @@ void run(const std::vector<std::string_view>&)
 
     const auto shape = zx::mat::rasterize(
         temp.slice({ { 0, -10 }, { 0, -10 } }).bounds(),
-        [&](const mat::image_t::location_type& loc)
+        [&](const mat::rgb_image_t::location_type& loc)
         {
             const auto pixel = mat::filters::gray(temp[loc]);
             return pixel[0] > 192.F;
@@ -216,8 +216,8 @@ void run(const std::vector<std::string_view>&)
             mat::modify(v, mat::filters::sepia);
             mat::modify(v, mat::lookup_table::contrast(0.25F) * mat::lookup_table::brightness(-64.F));
             mat::draw_raster(v, shape, mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
-            mat::paste(v, conan, mat::image_t::location_type{ 600, 50 }, mat::filters::blend(0.5F));
-            mat::paste(v, perlin, mat::image_t::location_type{ 0, 0 }, mat::filters::blend(0.125F));
+            mat::paste(v, conan, mat::rgb_image_t::location_type{ 600, 50 }, mat::filters::blend(0.5F));
+            // mat::paste(v, perlin, mat::rgb_image_t::location_type{ 0, 0 }, mat::filters::blend(0.125F));
         });
 
     mat::save_bitmap(mat::flip_horizontal(result.view()), mat::filepath_t{ "/home/krzysiek/out.bmp" });

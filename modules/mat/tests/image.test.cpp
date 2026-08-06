@@ -5,7 +5,7 @@
 TEST(image, load_image)
 {
     const auto img = zx::mat::load_bitmap(zx::mat::filepath_t{ std::string(TEST_DATA_DIR) + "/test-24.bmp" });
-    EXPECT_THAT(img.extent(), (zx::mat::image_t::extent_type{ 4, 8 }));
+    EXPECT_THAT(img.extent(), (zx::mat::rgb_image_t::extent_type{ 4, 8 }));
     EXPECT_THAT(img.channel_count(), 3);
 
     EXPECT_THAT((img[{ 0, 0 }]), (zx::mat::true_color_t{ 255, 0, 0 }));

@@ -28,7 +28,8 @@ struct filepath_t
     friend std::ostream& operator<<(std::ostream& os, const filepath_t& item) { return os << item.m_path; }
 };
 
-struct image_t
+template <extent_base_t Channels>
+struct image_base_t
 {
     using storage_type = array_t<byte_t, 3>;
     using channel_type = array_t<byte_t, 2>;
@@ -95,7 +96,8 @@ struct image_t
 
         channel_type::view_type channel(std::size_t channel_index) const
         {
-            return channel_type::view_type{ m_data.data() + channel_index, m_data.shape().erase(2) };
+            // return channel_type::view_type{ m_data.data() + channel_index, m_data.shape().erase(2) };
+            return m_data.sub(2, static_cast<location_base_t>(channel_index));
         }
 
         bounds_type bounds() const
@@ -128,7 +130,8 @@ struct image_t
 
         channel_type::mut_view_type channel(std::size_t channel_index) const
         {
-            return channel_type::mut_view_type{ m_data.data() + channel_index, m_data.shape().erase(2) };
+            // return channel_type::mut_view_type{ m_data.data() + channel_index, m_data.shape().erase(2) };
+            return m_data.sub(2, static_cast<location_base_t>(channel_index));
         }
 
         bounds_type bounds() const
@@ -140,10 +143,10 @@ struct image_t
         mut_view_type slice(const slice_type& s) const { return { m_data.slice({ s[0], s[1], slice_base_t{} }) }; }
     };
 
-    using extent_type = view_type::extent_type;
-    using location_type = view_type::location_type;
-    using bounds_type = view_type::bounds_type;
-    using slice_type = view_type::slice_type;
+    using extent_type = typename view_type::extent_type;
+    using location_type = typename view_type::location_type;
+    using bounds_type = typename view_type::bounds_type;
+    using slice_type = typename view_type::slice_type;
 
     view_type view() const { return view_type{ m_data.view() }; }
     mut_view_type mut_view() { return mut_view_type{ m_data.mut_view() }; }
@@ -151,9 +154,9 @@ struct image_t
     storage_type::mut_view_type mut_data() { return m_data.mut_view(); }
     storage_type::view_type data() const { return m_data.view(); }
 
-    image_t(const storage_type::extent_type& extent) : m_data{ extent } { }
-    image_t(const extent_type& extent, extent_base_t channel_count) : image_t{ append(extent, channel_count) } { }
-    image_t(const view_type& view) : m_data{ view.data() } { }
+    image_base_t(const storage_type::extent_type& extent) : m_data{ extent } { }
+    image_base_t(const extent_type& extent) : image_base_t{ append(extent, Channels) } { }
+    image_base_t(const view_type& view) : m_data{ view.data() } { }
 
     extent_type extent() const { return view().extent(); }
     bounds_type bounds() const { return view().bounds(); }
@@ -171,6 +174,9 @@ struct image_t
     true_color_t operator[](const location_type& loc) const { return view()[loc]; }
     proxy_t operator[](const location_type& loc) { return mut_view()[loc]; }
 };
+
+using rgb_image_t = image_base_t<3>;
+using rgba_image_t = image_base_t<4>;
 
 using mask_t = array_t<float, 2>;
 
@@ -331,7 +337,7 @@ inline void save_header(
 
 struct load_bitmap_fn
 {
-    auto operator()(std::istream& is) const -> image_t
+    auto operator()(std::istream& is) const -> rgb_image_t
     {
         if (!is)
         {
@@ -351,7 +357,7 @@ struct load_bitmap_fn
         }
     }
 
-    auto operator()(const filepath_t& path) const -> image_t
+    auto operator()(const filepath_t& path) const -> rgb_image_t
     {
         std::ifstream fs(path.c_str(), std::ifstream::binary);
         if (!fs)
@@ -361,42 +367,44 @@ struct load_bitmap_fn
         return (*this)(fs);
     }
 
-    static auto prepare_array(const dib_header& header) -> image_t
+    static auto prepare_array(const dib_header& header) -> rgb_image_t
     {
-        return image_t{
-            image_t::extent_type{ static_cast<extent_base_t>(header.height), static_cast<extent_base_t>(header.width) }, 3
-        };
+        return rgb_image_t{ rgb_image_t::extent_type{ static_cast<extent_base_t>(header.height),
+                                                      static_cast<extent_base_t>(header.width) } };
     }
 
-    static auto load_bitmap_8(std::istream& is, const dib_header& header) -> image_t
+    static auto read_color(std::istream& is) -> true_color_t
+    {
+        true_color_t result = {};
+        result[2] = read<byte_t>(is);
+        result[1] = read<byte_t>(is);
+        result[0] = read<byte_t>(is);
+        return result;
+    }
+
+    static auto load_bitmap_8(std::istream& is, const dib_header& header) -> rgb_image_t
     {
         const auto padding = get_padding(header.width, header.bits_per_pixel);
 
-        image_t result = prepare_array(header);
-        auto ref = result.mut_data();
+        rgb_image_t result = prepare_array(header);
+        auto view = result.mut_view();
 
         using palette_t = std::array<true_color_t, 256>;
         palette_t palette = {};
 
         for (std::size_t i = 0; i < 256; ++i)
         {
-            palette[i][2] = read<byte_t>(is);
-            palette[i][1] = read<byte_t>(is);
-            palette[i][0] = read<byte_t>(is);
+            palette[i] = read_color(is);
             is.ignore(1);
         }
 
-        const auto [h, w] = result.extent();
+        const auto [h, w] = view.extent();
 
         for (location_base_t y = h - 1; y >= 0; --y)
         {
             for (location_base_t x = 0; x < w; ++x)
             {
-                const true_color_t rgb = palette.at(read<byte_t>(is));
-                for (std::size_t z = 0; z < 3; ++z)
-                {
-                    ref[image_t::storage_type::location_type{ y, x, z }] = rgb[z];
-                }
+                view[rgb_image_t::location_type{ y, x }] = palette.at(read<byte_t>(is));
             }
 
             is.ignore(static_cast<std::streamsize>(padding));
@@ -405,24 +413,20 @@ struct load_bitmap_fn
         return result;
     }
 
-    static auto load_bitmap_24(std::istream& is, const dib_header& header) -> image_t
+    static auto load_bitmap_24(std::istream& is, const dib_header& header) -> rgb_image_t
     {
         const auto padding = get_padding(header.width, header.bits_per_pixel);
 
-        image_t result = prepare_array(header);
-        auto ref = result.mut_data();
+        rgb_image_t result = prepare_array(header);
+        auto view = result.mut_view();
 
-        const auto [h, w] = result.extent();
+        const auto [h, w] = view.extent();
 
         for (location_base_t y = h - 1; y >= 0; --y)
         {
             for (location_base_t x = 0; x < w; ++x)
             {
-                for (location_base_t z = 2; z >= 0; --z)
-                {
-                    const byte_t value = read<byte_t>(is);
-                    ref[image_t::storage_type::location_type{ y, x, z }] = value;
-                }
+                view[rgb_image_t::location_type{ y, x }] = read_color(is);
             }
 
             is.ignore(static_cast<std::streamsize>(padding));
@@ -433,13 +437,11 @@ struct load_bitmap_fn
 
 struct save_bitmap_fn
 {
-    void operator()(image_t::view_type image, std::ostream& os) const
+    void operator()(const rgb_image_t::view_type& image, std::ostream& os) const
     {
         static const std::size_t bits_per_pixel = 24;
 
         const auto [h, w] = image.extent();
-
-        auto ref = image.data();
 
         const std::size_t padding = get_padding(static_cast<std::size_t>(w), bits_per_pixel);
 
@@ -449,17 +451,21 @@ struct save_bitmap_fn
         {
             for (location_base_t x = 0; x < w; ++x)
             {
-                for (location_base_t z = 2; z >= 0; --z)
-                {
-                    write<byte_t>(os, ref[image_t::storage_type::location_type{ y, x, z }]);
-                }
+                write_color(os, image[rgb_image_t::location_type{ y, x }]);
             }
 
             write_n(os, padding);
         }
     }
 
-    void operator()(image_t::view_type image, const filepath_t& path) const
+    static void write_color(std::ostream& os, const true_color_t& color)
+    {
+        write<byte_t>(os, color[2]);
+        write<byte_t>(os, color[1]);
+        write<byte_t>(os, color[0]);
+    }
+
+    void operator()(const rgb_image_t::view_type& image, const filepath_t& path) const
     {
         std::ofstream fs(path.c_str(), std::ofstream::binary);
         (*this)(image, fs);
@@ -500,23 +506,24 @@ void for_each(const shape_t<D>& shape, function_ref<void(const location_t<2>&)> 
 
 struct modify_fn
 {
-    void operator()(const image_t::mut_view_type& image, const image_t::location_type& loc, color_filter_t filter) const
+    void operator()(
+        const rgb_image_t::mut_view_type& image, const rgb_image_t::location_type& loc, color_filter_t filter) const
     {
         image[loc] = filter(image[loc]);
     }
 
-    void operator()(const image_t::mut_view_type& image, color_filter_t filter) const
+    void operator()(const rgb_image_t::mut_view_type& image, color_filter_t filter) const
     {
-        for_each(image.data().shape(), [&](const image_t::location_type& loc) { (*this)(image, loc, filter); });
+        for_each(image.data().shape(), [&](const rgb_image_t::location_type& loc) { (*this)(image, loc, filter); });
     }
 };
 
 struct with_fn
 {
     template <class... Funcs>
-    image_t operator()(const image_t::view_type& image, Funcs&&... funcs) const
+    rgb_image_t operator()(const rgb_image_t::view_type& image, Funcs&&... funcs) const
     {
-        image_t result = image;
+        rgb_image_t result = image;
         (std::invoke(std::forward<Funcs>(funcs), result.mut_view()), ...);
         return result;
     }
@@ -531,13 +538,13 @@ struct rotate_fn
         return { image.from_offset(offset), shape };
     }
 
-    auto operator()(const image_t::view_type& image, int degrees) const -> image_t::view_type
+    auto operator()(const rgb_image_t::view_type& image, int degrees) const -> rgb_image_t::view_type
     {
         const auto [shape, offset] = new_shape_and_offset(image.data().shape(), normalize_quarter_turns(degrees));
         return { { image.data().from_offset(offset), shape } };
     }
 
-    auto operator()(const image_t::mut_view_type& image, int degrees) const -> image_t::mut_view_type
+    auto operator()(const rgb_image_t::mut_view_type& image, int degrees) const -> rgb_image_t::mut_view_type
     {
         const auto [shape, offset] = new_shape_and_offset(image.data().shape(), normalize_quarter_turns(degrees));
         return { { image.data().from_offset(offset), shape } };
@@ -617,13 +624,13 @@ struct flip_fn
         return { image.from_offset(offset), shape };
     }
 
-    auto operator()(const image_t::view_type& image) const -> image_t::view_type
+    auto operator()(const rgb_image_t::view_type& image) const -> rgb_image_t::view_type
     {
         const auto [shape, offset] = new_shape_and_offset(image.data().shape());
         return { { image.data().from_offset(offset), shape } };
     }
 
-    auto operator()(const image_t::mut_view_type& image) const -> image_t::mut_view_type
+    auto operator()(const rgb_image_t::mut_view_type& image) const -> rgb_image_t::mut_view_type
     {
         const auto [shape, offset] = new_shape_and_offset(image.data().shape());
         return { { image.data().from_offset(offset), shape } };
@@ -655,10 +662,10 @@ struct flip_fn
 
 struct draw_pixel_t
 {
-    image_t::mut_view_type m_image;
+    rgb_image_t::mut_view_type m_image;
     color_filter_t m_color_filter;
 
-    void operator()(const image_t::location_type& loc) const
+    void operator()(const rgb_image_t::location_type& loc) const
     {
         if (contains(m_image.bounds(), loc))
         {
@@ -669,15 +676,16 @@ struct draw_pixel_t
 
 struct bresenham_line_fn
 {
-    void operator()(const image_t::mut_view_type& image, const segment_type& seg, const color_filter_t& color_filter) const
+    void operator()(
+        const rgb_image_t::mut_view_type& image, const segment_type& seg, const color_filter_t& color_filter) const
     {
         (*this)(seg[0], seg[1], draw_pixel_t{ image, color_filter });
     }
 
     void operator()(
-        const image_t::location_type& start,
-        const image_t::location_type& end,
-        function_ref<void(const image_t::location_type&)> output) const
+        const rgb_image_t::location_type& start,
+        const rgb_image_t::location_type& end,
+        function_ref<void(const rgb_image_t::location_type&)> output) const
     {
         const auto direction = end - start;
 
@@ -692,7 +700,7 @@ struct bresenham_line_fn
             dir,
             dist,
             (dist[0] > dist[1] ? dist[0] : -dist[1]) / 2,
-            [&](const image_t::location_type& loc)
+            [&](const rgb_image_t::location_type& loc)
             {
                 output(loc);
                 return loc != end;
@@ -700,11 +708,11 @@ struct bresenham_line_fn
     }
 
     static void bresenham(
-        image_t::location_type cur,
+        rgb_image_t::location_type cur,
         const vector_t<2, location_base_t>& dir,
         const vector_t<2, location_base_t>& dist,
         int err,
-        function_ref<bool(const image_t::location_type&)> output)
+        function_ref<bool(const rgb_image_t::location_type&)> output)
     {
         while (true)
         {
@@ -732,15 +740,17 @@ struct bresenham_line_fn
 
 struct bresenham_circle_fn
 {
-    void operator()(const image_t::mut_view_type& image, const circle_type& circle, color_filter_t color_filter) const
+    void operator()(const rgb_image_t::mut_view_type& image, const circle_type& circle, color_filter_t color_filter) const
     {
         (*this)(circle.center, circle.radius, draw_pixel_t{ image, color_filter });
     }
 
     void operator()(
-        const image_t::location_type& center, int radius, function_ref<void(const image_t::location_type&)> output) const
+        const rgb_image_t::location_type& center,
+        int radius,
+        function_ref<void(const rgb_image_t::location_type&)> output) const
     {
-        image_t::location_type cur{ radius, 0 };
+        rgb_image_t::location_type cur{ radius, 0 };
         int err = 0;
 
         while (cur[0] >= cur[1])
@@ -772,7 +782,7 @@ struct bresenham_circle_fn
 struct draw_rectangle_fn
 {
     void operator()(
-        const image_t::mut_view_type& image, const rectangle_t<location_base_t>& rect, color_filter_t color_filter) const
+        const rgb_image_t::mut_view_type& image, const rectangle_t<location_base_t>& rect, color_filter_t color_filter) const
     {
         for (const auto seg : segments(rect))
         {
@@ -783,7 +793,7 @@ struct draw_rectangle_fn
 
 struct draw_raster_fn
 {
-    void operator()(const image_t::mut_view_type& image, const raster_t& raster, color_filter_t color_filter) const
+    void operator()(const rgb_image_t::mut_view_type& image, const raster_t& raster, color_filter_t color_filter) const
     {
         const auto do_draw = draw_pixel_t{ image, color_filter };
         for (const auto& shape : raster)
@@ -810,19 +820,19 @@ struct draw_raster_fn
 struct paste_fn
 {
     void operator()(
-        const image_t::mut_view_type& dst,
-        const image_t::view_type& src,
-        const image_t::location_type& location,
+        const rgb_image_t::mut_view_type& dst,
+        const rgb_image_t::view_type& src,
+        const rgb_image_t::location_type& location,
         binary_color_filter_t filter = filters::normal) const
     {
         const auto [src_bounds, dst_bounds] = adjust_bounds(dst.data().bounds(), src.data().bounds(), append(location, 0));
 
-        const auto clipped_dst = image_t::mut_view_type{ dst.data().slice(to_slice(dst_bounds)) };
-        const auto clipped_src = image_t::view_type{ src.data().slice(to_slice(src_bounds)) };
+        const auto clipped_dst = rgb_image_t::mut_view_type{ dst.data().slice(to_slice(dst_bounds)) };
+        const auto clipped_src = rgb_image_t::view_type{ src.data().slice(to_slice(src_bounds)) };
 
         for_each(
             clipped_dst.data().shape(),
-            [&](const image_t::location_type& loc) { clipped_dst[loc] = filter(clipped_dst[loc], clipped_src[loc]); });
+            [&](const rgb_image_t::location_type& loc) { clipped_dst[loc] = filter(clipped_dst[loc], clipped_src[loc]); });
     }
 };
 
@@ -830,7 +840,9 @@ struct convolve_fn
 {
     template <class Kernel>
     void operator()(
-        image_t::channel_type::mut_view_type dst, const image_t::channel_type::view_type& src, const Kernel& kernel) const
+        rgb_image_t::channel_type::mut_view_type dst,
+        const rgb_image_t::channel_type::view_type& src,
+        const Kernel& kernel) const
     {
         const auto kernel_size = kernel.extent();
 
@@ -848,7 +860,7 @@ struct convolve_fn
     }
 
     template <class Kernel>
-    void operator()(const image_t::mut_view_type& dst, const image_t::view_type& src, const Kernel& kernel) const
+    void operator()(const rgb_image_t::mut_view_type& dst, const rgb_image_t::view_type& src, const Kernel& kernel) const
     {
         for (std::size_t z = 0; z < 3; ++z)
         {
@@ -857,20 +869,20 @@ struct convolve_fn
     }
 
     template <class Kernel>
-    void operator()(const image_t::mut_view_type& src, const Kernel& kernel) const
+    void operator()(const rgb_image_t::mut_view_type& src, const Kernel& kernel) const
     {
-        image_t dst{ src.extent(), src.channel_count() };
+        rgb_image_t dst{ src.extent() };
         (*this)(dst.mut_view(), src, kernel);
         src.data().assign(dst.data());
     }
 };
 
 template <class T, class Func>
-T accumulate(const mask_t::view_type& mask, const image_t::channel_type::view_type& region, T init, Func&& func)
+T accumulate(const mask_t::view_type& mask, const rgb_image_t::channel_type::view_type& region, T init, Func&& func)
 {
     for_each(
         region.shape(),
-        [&](const image_t::location_type& loc)
+        [&](const rgb_image_t::location_type& loc)
         {
             if (contains(mask.bounds(), loc) && contains(region.bounds(), loc))
             {
@@ -885,9 +897,9 @@ struct dilation_kernel_t
 {
     mask_t m_mask;
 
-    image_t::channel_type::extent_type extent() const { return m_mask.extent(); }
+    rgb_image_t::channel_type::extent_type extent() const { return m_mask.extent(); }
 
-    float operator()(const image_t::channel_type::view_type& region) const
+    float operator()(const rgb_image_t::channel_type::view_type& region) const
     {
         return accumulate(
             m_mask,
@@ -902,9 +914,9 @@ struct erosion_kernel_t
 {
     mask_t m_mask;
 
-    image_t::channel_type::extent_type extent() const { return m_mask.extent(); }
+    rgb_image_t::channel_type::extent_type extent() const { return m_mask.extent(); }
 
-    float operator()(const image_t::channel_type::view_type& region) const
+    float operator()(const rgb_image_t::channel_type::view_type& region) const
     {
         return accumulate(
                    m_mask,
@@ -944,9 +956,9 @@ struct apply_kernel_t<1>
 
     apply_kernel_t(mask_t mask) : m_mask{ std::move(mask) } { }
 
-    image_t::channel_type::extent_type extent() const { return m_mask.extent(); }
+    rgb_image_t::channel_type::extent_type extent() const { return m_mask.extent(); }
 
-    float operator()(const image_t::channel_type::view_type& region) const
+    float operator()(const rgb_image_t::channel_type::view_type& region) const
     {
         return accumulate(m_mask, region, 0.F, kernel_accumulator_t{});
     }
@@ -957,9 +969,9 @@ struct apply_kernel_t<2>
 {
     std::array<mask_t, 2> m_masks;
 
-    image_t::channel_type::extent_type extent() const { return m_masks[0].extent(); }
+    rgb_image_t::channel_type::extent_type extent() const { return m_masks[0].extent(); }
 
-    float operator()(const image_t::channel_type::view_type& region) const
+    float operator()(const rgb_image_t::channel_type::view_type& region) const
     {
         const auto gx = accumulate(m_masks[0], region, 0.F, kernel_accumulator_t{});
         const auto gy = accumulate(m_masks[1], region, 0.F, kernel_accumulator_t{});
@@ -979,9 +991,9 @@ struct percentile_kernel_t
         m_values.reserve(static_cast<std::size_t>(m_mask.volume()));
     }
 
-    image_t::channel_type::extent_type extent() const { return m_mask.extent(); }
+    rgb_image_t::channel_type::extent_type extent() const { return m_mask.extent(); }
 
-    float operator()(const image_t::channel_type::view_type& region) const
+    float operator()(const rgb_image_t::channel_type::view_type& region) const
     {
         m_values.clear();
 

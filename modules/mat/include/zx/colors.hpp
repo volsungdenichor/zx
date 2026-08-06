@@ -102,7 +102,7 @@ struct rgb_color_base_t<byte_t> : std::array<byte_t, 3>
 
     friend bool operator==(const rgb_color_base_t& lhs, const rgb_color_base_t& rhs)
     {
-        return lhs[0] == rhs[0] && lhs[1] == rhs[1] && lhs[2] == rhs[2];
+        return static_cast<base_t>(lhs) == static_cast<base_t>(rhs);
     }
 
     friend bool operator!=(const rgb_color_base_t& lhs, const rgb_color_base_t& rhs) { return !(lhs == rhs); }
