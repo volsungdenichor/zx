@@ -143,7 +143,7 @@ using detail::format;
 using detail::format_to;
 using detail::print;
 using detail::println;
-static constexpr inline auto str = format;
+inline constexpr auto str = format;
 
 template <>
 struct formatter<bool>

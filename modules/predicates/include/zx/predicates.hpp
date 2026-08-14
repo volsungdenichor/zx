@@ -916,28 +916,28 @@ struct result_of_fn
 
 }  // namespace detail
 
-static constexpr inline auto eq = detail::eq_fn{};
-static constexpr inline auto ne = detail::ne_fn{};
-static constexpr inline auto gt = detail::gt_fn{};
-static constexpr inline auto lt = detail::lt_fn{};
-static constexpr inline auto le = detail::le_fn{};
-static constexpr inline auto ge = detail::ge_fn{};
+inline constexpr auto eq = detail::eq_fn{};
+inline constexpr auto ne = detail::ne_fn{};
+inline constexpr auto gt = detail::gt_fn{};
+inline constexpr auto lt = detail::lt_fn{};
+inline constexpr auto le = detail::le_fn{};
+inline constexpr auto ge = detail::ge_fn{};
 
-static constexpr inline auto divisible_by = detail::divisible_by_fn{};
+inline constexpr auto divisible_by = detail::divisible_by_fn{};
 
-static constexpr inline auto any = detail::any_fn{};
-static constexpr inline auto all = detail::all_fn{};
-static constexpr inline auto is_not = detail::is_not_fn{};
+inline constexpr auto any = detail::any_fn{};
+inline constexpr auto all = detail::all_fn{};
+inline constexpr auto is_not = detail::is_not_fn{};
 
-static constexpr inline auto items_all = detail::items_all_fn{};
-static constexpr inline auto items_any = detail::items_any_fn{};
-static constexpr inline auto items_none = detail::items_none_fn{};
-static constexpr inline auto items_count = detail::items_count_fn{};
-static constexpr inline auto items_are = detail::items_are_fn{};
+inline constexpr auto items_all = detail::items_all_fn{};
+inline constexpr auto items_any = detail::items_any_fn{};
+inline constexpr auto items_none = detail::items_none_fn{};
+inline constexpr auto items_count = detail::items_count_fn{};
+inline constexpr auto items_are = detail::items_are_fn{};
 
-static constexpr inline auto result_of = detail::result_of_fn{};
-static constexpr inline auto field = result_of;
-static constexpr inline auto property = result_of;
+inline constexpr auto result_of = detail::result_of_fn{};
+inline constexpr auto field = result_of;
+inline constexpr auto property = result_of;
 
 }  // namespace predicates
 }  // namespace zx

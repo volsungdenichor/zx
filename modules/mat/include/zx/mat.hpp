@@ -51,7 +51,7 @@ struct dot_fn
     }
 };
 
-static constexpr inline auto dot = dot_fn{};
+inline constexpr auto dot = dot_fn{};
 
 struct cross_fn
 {
@@ -70,7 +70,7 @@ struct cross_fn
     }
 };
 
-static constexpr inline auto cross = cross_fn{};
+inline constexpr auto cross = cross_fn{};
 
 struct angle_fn
 {
@@ -89,7 +89,7 @@ struct angle_fn
     }
 };
 
-static constexpr inline auto angle = angle_fn{};
+inline constexpr auto angle = angle_fn{};
 
 struct norm_fn
 {
@@ -100,7 +100,7 @@ struct norm_fn
     }
 };
 
-static constexpr inline auto norm = norm_fn{};
+inline constexpr auto norm = norm_fn{};
 
 struct length_fn
 {
@@ -117,7 +117,7 @@ struct length_fn
     }
 };
 
-static constexpr inline auto length = length_fn{};
+inline constexpr auto length = length_fn{};
 
 struct unit_fn
 {
@@ -134,7 +134,7 @@ struct unit_fn
     }
 };
 
-static constexpr inline auto unit = unit_fn{};
+inline constexpr auto unit = unit_fn{};
 
 struct distance_fn
 {
@@ -145,7 +145,7 @@ struct distance_fn
     }
 };
 
-static constexpr inline auto distance = distance_fn{};
+inline constexpr auto distance = distance_fn{};
 
 template <side_t S>
 struct get_fn
@@ -163,11 +163,11 @@ struct get_fn
     }
 };
 
-static constexpr inline auto lower = get_fn<side_t::lower>{};
-static constexpr inline auto upper = get_fn<side_t::upper>{};
+inline constexpr auto lower = get_fn<side_t::lower>{};
+inline constexpr auto upper = get_fn<side_t::upper>{};
 
-static constexpr inline auto min = get_fn<side_t::first>{};
-static constexpr inline auto max = get_fn<side_t::last>{};
+inline constexpr auto min = get_fn<side_t::first>{};
+inline constexpr auto max = get_fn<side_t::last>{};
 
 struct size_fn
 {
@@ -184,7 +184,7 @@ struct size_fn
     }
 };
 
-static constexpr inline auto size = size_fn{};
+inline constexpr auto size = size_fn{};
 
 struct radius_fn
 {
@@ -195,7 +195,7 @@ struct radius_fn
     }
 };
 
-static constexpr inline auto radius = radius_fn{};
+inline constexpr auto radius = radius_fn{};
 
 struct center_fn
 {
@@ -224,7 +224,7 @@ struct center_fn
     }
 };
 
-static constexpr inline auto center = center_fn{};
+inline constexpr auto center = center_fn{};
 
 struct extend_fn
 {
@@ -257,7 +257,7 @@ struct extend_fn
     }
 };
 
-static constexpr inline auto extend = extend_fn{};
+inline constexpr auto extend = extend_fn{};
 
 struct orientation_fn
 {
@@ -274,7 +274,7 @@ struct orientation_fn
     }
 };
 
-static constexpr inline auto orientation = orientation_fn{};
+inline constexpr auto orientation = orientation_fn{};
 
 struct contains_fn
 {
@@ -340,7 +340,7 @@ struct contains_fn
     }
 };
 
-static constexpr inline auto contains = contains_fn{};
+inline constexpr auto contains = contains_fn{};
 
 struct unite_fn
 {
@@ -380,7 +380,7 @@ struct unite_fn
     }
 };
 
-static constexpr inline auto unite = unite_fn{};
+inline constexpr auto unite = unite_fn{};
 
 struct intersects_fn
 {
@@ -410,7 +410,7 @@ struct intersects_fn
     }
 };
 
-static constexpr inline auto intersects = intersects_fn{};
+inline constexpr auto intersects = intersects_fn{};
 
 struct interpolate_fn
 {
@@ -433,7 +433,7 @@ struct interpolate_fn
     }
 };
 
-static constexpr inline auto interpolate = interpolate_fn{};
+inline constexpr auto interpolate = interpolate_fn{};
 
 namespace detail
 {
@@ -589,7 +589,7 @@ struct intersection_fn
     }
 };
 
-static constexpr inline auto intersection = intersection_fn{};
+inline constexpr auto intersection = intersection_fn{};
 
 struct projection_fn
 {
@@ -620,7 +620,7 @@ struct projection_fn
     }
 };
 
-static constexpr inline auto projection = projection_fn{};
+inline constexpr auto projection = projection_fn{};
 
 struct rejection_fn
 {
@@ -632,7 +632,7 @@ struct rejection_fn
     }
 };
 
-static constexpr inline auto rejection = rejection_fn{};
+inline constexpr auto rejection = rejection_fn{};
 
 struct perpendicular_fn
 {
@@ -656,7 +656,7 @@ struct perpendicular_fn
     }
 };
 
-static constexpr inline auto perpendicular = perpendicular_fn{};
+inline constexpr auto perpendicular = perpendicular_fn{};
 
 struct altitude_fn
 {
@@ -673,7 +673,7 @@ struct altitude_fn
     }
 };
 
-static constexpr inline auto altitude = altitude_fn{};
+inline constexpr auto altitude = altitude_fn{};
 
 struct centroid_fn
 {
@@ -684,7 +684,7 @@ struct centroid_fn
     }
 };
 
-static constexpr inline auto centroid = centroid_fn{};
+inline constexpr auto centroid = centroid_fn{};
 
 struct orthocenter_fn
 {
@@ -697,7 +697,7 @@ struct orthocenter_fn
     }
 };
 
-static constexpr inline auto orthocenter = orthocenter_fn{};
+inline constexpr auto orthocenter = orthocenter_fn{};
 
 struct circumcenter_fn
 {
@@ -713,7 +713,7 @@ struct circumcenter_fn
     }
 };
 
-static constexpr inline auto circumcenter = circumcenter_fn{};
+inline constexpr auto circumcenter = circumcenter_fn{};
 
 struct incenter_fn
 {
@@ -740,7 +740,7 @@ struct incenter_fn
     }
 };
 
-static constexpr inline auto incenter = incenter_fn{};
+inline constexpr auto incenter = incenter_fn{};
 
 struct incircle_fn
 {
@@ -756,7 +756,7 @@ struct incircle_fn
     }
 };
 
-static constexpr inline auto incircle = incircle_fn{};
+inline constexpr auto incircle = incircle_fn{};
 
 struct circumcircle_fn
 {
@@ -770,7 +770,7 @@ struct circumcircle_fn
     }
 };
 
-static constexpr inline auto circumcircle = circumcircle_fn{};
+inline constexpr auto circumcircle = circumcircle_fn{};
 
 struct translate_fn
 {
@@ -814,7 +814,7 @@ struct translate_fn
     }
 };
 
-static constexpr inline auto translate = translate_fn{};
+inline constexpr auto translate = translate_fn{};
 
 struct transform_fn
 {
@@ -894,7 +894,7 @@ struct transform_fn
     }
 };
 
-static constexpr inline auto transform = transform_fn{};
+inline constexpr auto transform = transform_fn{};
 
 struct segments_fn
 {
@@ -958,7 +958,7 @@ struct segments_fn
     }
 };
 
-static constexpr inline auto segments = segments_fn{};
+inline constexpr auto segments = segments_fn{};
 
 struct round_fn
 {
@@ -980,7 +980,7 @@ struct round_fn
     }
 };
 
-static constexpr inline auto round = round_fn{};
+inline constexpr auto round = round_fn{};
 
 struct floor_fn
 {
@@ -1002,7 +1002,7 @@ struct floor_fn
     }
 };
 
-static constexpr inline auto floor = floor_fn{};
+inline constexpr auto floor = floor_fn{};
 
 struct ceil_fn
 {
@@ -1024,7 +1024,7 @@ struct ceil_fn
     }
 };
 
-static constexpr inline auto ceil = ceil_fn{};
+inline constexpr auto ceil = ceil_fn{};
 
 struct fractional_part_fn
 {
@@ -1046,7 +1046,7 @@ struct fractional_part_fn
     }
 };
 
-static constexpr inline auto fractional_part = fractional_part_fn{};
+inline constexpr auto fractional_part = fractional_part_fn{};
 
 struct floor_and_fractional_part_fn
 {
@@ -1069,7 +1069,7 @@ struct floor_and_fractional_part_fn
     }
 };
 
-static constexpr inline auto floor_and_fractional_part = floor_and_fractional_part_fn{};
+inline constexpr auto floor_and_fractional_part = floor_and_fractional_part_fn{};
 
 }  // namespace detail
 

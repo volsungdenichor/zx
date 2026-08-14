@@ -152,20 +152,20 @@ struct acos_fn
 
 }  // namespace detail
 
-static constexpr inline auto sqr = detail::sqr_fn{};
-static constexpr inline auto sqrt = detail::sqrt_fn{};
-static constexpr inline auto abs = detail::abs_fn{};
-static constexpr inline auto floor = detail::floor_fn{};
-static constexpr inline auto ceil = detail::ceil_fn{};
-static constexpr inline auto fractional_part = detail::fractional_part_fn{};
-static constexpr inline auto sin = detail::sin_fn{};
-static constexpr inline auto cos = detail::cos_fn{};
-static constexpr inline auto atan2 = detail::atan2_fn{};
-static constexpr inline auto asin = detail::asin_fn{};
-static constexpr inline auto acos = detail::acos_fn{};
-static constexpr inline auto floor_and_fractional_part = detail::floor_and_fractional_part_fn{};
-static constexpr inline auto sign = detail::sign_fn{};
-static constexpr inline auto round = detail::round_fn{};
+inline constexpr auto sqr = detail::sqr_fn{};
+inline constexpr auto sqrt = detail::sqrt_fn{};
+inline constexpr auto abs = detail::abs_fn{};
+inline constexpr auto floor = detail::floor_fn{};
+inline constexpr auto ceil = detail::ceil_fn{};
+inline constexpr auto fractional_part = detail::fractional_part_fn{};
+inline constexpr auto sin = detail::sin_fn{};
+inline constexpr auto cos = detail::cos_fn{};
+inline constexpr auto atan2 = detail::atan2_fn{};
+inline constexpr auto asin = detail::asin_fn{};
+inline constexpr auto acos = detail::acos_fn{};
+inline constexpr auto floor_and_fractional_part = detail::floor_and_fractional_part_fn{};
+inline constexpr auto sign = detail::sign_fn{};
+inline constexpr auto round = detail::round_fn{};
 
 template <class T>
 constexpr T pi = T{ 3.14159265358979323846 };

@@ -1015,22 +1015,22 @@ struct percentile_kernel_t
 
 }  // namespace detail
 
-static constexpr inline auto modify = detail::modify_fn{};
-static constexpr inline auto with = detail::with_fn{};
+inline constexpr auto modify = detail::modify_fn{};
+inline constexpr auto with = detail::with_fn{};
 
-static constexpr inline auto load_bitmap = detail::load_bitmap_fn{};
-static constexpr inline auto save_bitmap = detail::save_bitmap_fn{};
+inline constexpr auto load_bitmap = detail::load_bitmap_fn{};
+inline constexpr auto save_bitmap = detail::save_bitmap_fn{};
 
-static constexpr inline auto rotate = detail::rotate_fn{};
-static constexpr inline auto flip_horizontal = detail::flip_fn<1>{};
-static constexpr inline auto flip_vertical = detail::flip_fn<0>{};
+inline constexpr auto rotate = detail::rotate_fn{};
+inline constexpr auto flip_horizontal = detail::flip_fn<1>{};
+inline constexpr auto flip_vertical = detail::flip_fn<0>{};
 
-static constexpr inline auto draw_line = detail::bresenham_line_fn{};
-static constexpr inline auto draw_circle = detail::bresenham_circle_fn{};
-static constexpr inline auto draw_rectangle = detail::draw_rectangle_fn{};
-static constexpr inline auto draw_raster = detail::draw_raster_fn{};
-static constexpr inline auto paste = detail::paste_fn{};
-static constexpr inline auto convolve = detail::convolve_fn{};
+inline constexpr auto draw_line = detail::bresenham_line_fn{};
+inline constexpr auto draw_circle = detail::bresenham_circle_fn{};
+inline constexpr auto draw_rectangle = detail::draw_rectangle_fn{};
+inline constexpr auto draw_raster = detail::draw_raster_fn{};
+inline constexpr auto paste = detail::paste_fn{};
+inline constexpr auto convolve = detail::convolve_fn{};
 
 struct mask
 {

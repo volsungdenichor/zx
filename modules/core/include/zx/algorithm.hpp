@@ -29,7 +29,7 @@ struct overwrite_fn
     }
 };
 
-static constexpr inline auto overwrite = overwrite_fn{};
+inline constexpr auto overwrite = overwrite_fn{};
 
 struct fold_left_fn
 {
@@ -56,7 +56,7 @@ struct fold_left_fn
     }
 };
 
-static constexpr inline auto fold_left = fold_left_fn{};
+inline constexpr auto fold_left = fold_left_fn{};
 
 struct fold_left_first_fn
 {
@@ -80,7 +80,7 @@ struct fold_left_first_fn
     }
 };
 
-static constexpr inline auto fold_left_first = fold_left_first_fn{};
+inline constexpr auto fold_left_first = fold_left_first_fn{};
 
 struct try_fold_left_fn
 {
@@ -111,7 +111,7 @@ struct try_fold_left_fn
     }
 };
 
-static constexpr inline auto try_fold_left = try_fold_left_fn{};
+inline constexpr auto try_fold_left = try_fold_left_fn{};
 
 struct try_fold_left_first_fn
 {
@@ -139,7 +139,7 @@ struct try_fold_left_first_fn
     }
 };
 
-static constexpr inline auto try_fold_left_first = try_fold_left_first_fn{};
+inline constexpr auto try_fold_left_first = try_fold_left_first_fn{};
 
 }  // namespace detail
 

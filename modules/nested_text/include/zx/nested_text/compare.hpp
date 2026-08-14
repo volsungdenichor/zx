@@ -97,7 +97,7 @@ struct compare_fn
 
 }  // namespace detail
 
-static constexpr inline auto compare = detail::compare_fn{};
+inline constexpr auto compare = detail::compare_fn{};
 
 }  // namespace nested_text
 }  // namespace zx

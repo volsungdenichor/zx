@@ -56,9 +56,9 @@ struct linear_shape_fn
 
 }  // namespace detail
 
-static constexpr inline auto line = detail::linear_shape_fn<detail::line_tag>{};
-static constexpr inline auto segment = detail::linear_shape_fn<detail::segment_tag>{};
-static constexpr inline auto ray = detail::linear_shape_fn<detail::ray_tag>{};
+inline constexpr auto line = detail::linear_shape_fn<detail::line_tag>{};
+inline constexpr auto segment = detail::linear_shape_fn<detail::segment_tag>{};
+inline constexpr auto ray = detail::linear_shape_fn<detail::ray_tag>{};
 
 template <std::size_t D, class T>
 std::ostream& operator<<(std::ostream& os, const line_t<D, T>& item)

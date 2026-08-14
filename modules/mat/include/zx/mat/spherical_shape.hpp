@@ -55,8 +55,8 @@ struct sphere_fn
 
 }  // namespace detail
 
-static constexpr inline auto circle = detail::circle_fn{};
-static constexpr inline auto sphere = detail::sphere_fn{};
+inline constexpr auto circle = detail::circle_fn{};
+inline constexpr auto sphere = detail::sphere_fn{};
 
 }  // namespace mat
 

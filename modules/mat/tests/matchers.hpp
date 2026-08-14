@@ -115,4 +115,4 @@ struct ApproxEqualFn
 
 }  // namespace detail
 
-constexpr inline auto ApproxEqual = detail::ApproxEqualFn{};
+inline constexpr auto ApproxEqual = detail::ApproxEqualFn{};

@@ -496,7 +496,7 @@ struct rasterize_fn
 
 }  // namespace detail
 
-static constexpr inline auto rasterize = detail::rasterize_fn{};
+inline constexpr auto rasterize = detail::rasterize_fn{};
 
 }  // namespace mat
 }  // namespace zx

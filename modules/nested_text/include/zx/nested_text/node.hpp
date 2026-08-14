@@ -163,7 +163,7 @@ struct unbox_fn
     }
 };
 
-static constexpr inline auto unbox = unbox_fn{};
+inline constexpr auto unbox = unbox_fn{};
 
 template <class Visitor>
 struct unboxing_visitor_t

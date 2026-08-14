@@ -263,9 +263,9 @@ struct vector_fn
 
 }  // namespace detail
 
-static constexpr inline auto vector = detail::vector_fn{};
-static constexpr inline auto point = detail::vector_fn{};
-static constexpr inline auto extent = detail::vector_fn{};
+inline constexpr auto vector = detail::vector_fn{};
+inline constexpr auto point = detail::vector_fn{};
+inline constexpr auto extent = detail::vector_fn{};
 
 template <std::size_t D, class T>
 constexpr auto operator+(const vector_t<D, T>& item) -> vector_t<D, T>

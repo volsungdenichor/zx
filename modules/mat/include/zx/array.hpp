@@ -721,7 +721,7 @@ struct adjust_bounds_fn
     }
 };
 
-static constexpr inline auto adjust_bounds = adjust_bounds_fn{};
+inline constexpr auto adjust_bounds = adjust_bounds_fn{};
 
 struct adjust_copy_bounds_fn
 {
@@ -756,7 +756,7 @@ struct adjust_copy_bounds_fn
     }
 };
 
-static constexpr inline auto adjust_copy_bounds = adjust_copy_bounds_fn{};
+inline constexpr auto adjust_copy_bounds = adjust_copy_bounds_fn{};
 
 struct to_slice_fn
 {
@@ -774,7 +774,7 @@ struct to_slice_fn
     }
 };
 
-static constexpr inline auto to_slice = to_slice_fn{};
+inline constexpr auto to_slice = to_slice_fn{};
 
 struct copy_fn
 {
@@ -814,7 +814,7 @@ struct copy_fn
     }
 };
 
-static constexpr inline auto copy = copy_fn{};
+inline constexpr auto copy = copy_fn{};
 
 }  // namespace mat
 

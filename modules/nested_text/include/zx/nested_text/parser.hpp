@@ -357,7 +357,7 @@ struct parse_fn
 
 }  // namespace detail
 
-constexpr inline auto parse = detail::parse_fn{};
+inline constexpr auto parse = detail::parse_fn{};
 
 namespace literals
 {

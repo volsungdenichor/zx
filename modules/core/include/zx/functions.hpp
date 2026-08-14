@@ -93,13 +93,13 @@ struct proj_fn
 template <std::size_t N>
 constexpr auto get_element = detail::get_element_fn<N>{};
 
-constexpr inline auto get_key = get_element<0>;
-constexpr inline auto get_value = get_element<1>;
+inline constexpr auto get_key = get_element<0>;
+inline constexpr auto get_value = get_element<1>;
 
-constexpr inline auto get_first = get_element<0>;
-constexpr inline auto get_second = get_element<1>;
+inline constexpr auto get_first = get_element<0>;
+inline constexpr auto get_second = get_element<1>;
 
-static constexpr inline auto dereference = detail::dereference_fn{};
-static constexpr inline auto proj = detail::proj_fn{};
+inline constexpr auto dereference = detail::dereference_fn{};
+inline constexpr auto proj = detail::proj_fn{};
 
 }  // namespace zx

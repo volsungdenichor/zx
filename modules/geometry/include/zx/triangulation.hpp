@@ -249,8 +249,8 @@ struct triangulate_fn
     }
 };
 
-constexpr inline auto voronoi = voronoi_fn{};
-constexpr inline auto triangulate = triangulate_fn{};
+inline constexpr auto voronoi = voronoi_fn{};
+inline constexpr auto triangulate = triangulate_fn{};
 
 }  // namespace geometry
 }  // namespace zx

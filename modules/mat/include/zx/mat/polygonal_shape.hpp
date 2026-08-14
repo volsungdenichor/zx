@@ -69,8 +69,8 @@ struct quad_fn
 
 }  // namespace detail
 
-static constexpr inline auto triangle = detail::triangle_fn{};
-static constexpr inline auto quad = detail::quad_fn{};
+inline constexpr auto triangle = detail::triangle_fn{};
+inline constexpr auto quad = detail::quad_fn{};
 
 template <std::size_t D, class T>
 struct polygon_t : public std::vector<point_t<D, T>>
@@ -137,8 +137,8 @@ struct polyline_fn
 
 }  // namespace detail
 
-static constexpr inline auto polygon = detail::polygon_fn{};
-static constexpr inline auto polyline = detail::polyline_fn{};
+inline constexpr auto polygon = detail::polygon_fn{};
+inline constexpr auto polyline = detail::polyline_fn{};
 
 }  // namespace mat
 

@@ -261,7 +261,9 @@ struct combine_fn
     {
         return from_tuple(std::tuple_cat(to_tuple(std::forward<Transducers>(transducers))...));
     }
-} combine = combine_fn{};
+};
+
+inline constexpr auto combine = combine_fn{};
 
 struct transduce_fn
 {
@@ -280,7 +282,9 @@ struct transduce_fn
         constexpr std::size_t last = num_args - 1;
         return impl<last>(std::forward_as_tuple(std::forward<Args>(args)...), std::make_index_sequence<last>{});
     }
-} transduce = transduce_fn{};
+};
+
+inline constexpr auto transduce = transduce_fn{};
 
 namespace generators
 {
@@ -537,12 +541,12 @@ struct repeat_fn
 
 }  // namespace detail
 
-static constexpr inline auto range = detail::range_fn{};
-static constexpr inline auto linspace = detail::linspace_fn{};
-static constexpr inline auto iota = detail::iota_fn{};
-static constexpr inline auto from = detail::from_fn{};
-static constexpr inline auto chain = detail::chain_fn{};
-static constexpr inline auto repeat = detail::repeat_fn{};
+inline constexpr auto range = detail::range_fn{};
+inline constexpr auto linspace = detail::linspace_fn{};
+inline constexpr auto iota = detail::iota_fn{};
+inline constexpr auto from = detail::from_fn{};
+inline constexpr auto chain = detail::chain_fn{};
+inline constexpr auto repeat = detail::repeat_fn{};
 
 template <
     class Generator,
@@ -1040,22 +1044,22 @@ constexpr auto operator|(Left&& left, Right&& right)
 
 }  // namespace detail
 
-static constexpr inline auto transform = detail::transform_fn<false>{};
-static constexpr inline auto transform_indexed = detail::transform_fn<true>{};
-static constexpr inline auto filter = detail::filter_fn<false>{};
-static constexpr inline auto filter_indexed = detail::filter_fn<true>{};
-static constexpr inline auto take_while = detail::take_while_fn<false>{};
-static constexpr inline auto drop_while = detail::drop_while_fn<false>{};
-static constexpr inline auto drop_while_indexed = detail::drop_while_fn<true>{};
-static constexpr inline auto take_while_indexed = detail::take_while_fn<true>{};
-static constexpr inline auto take = detail::take_fn{};
-static constexpr inline auto drop = detail::drop_fn{};
+inline constexpr auto transform = detail::transform_fn<false>{};
+inline constexpr auto transform_indexed = detail::transform_fn<true>{};
+inline constexpr auto filter = detail::filter_fn<false>{};
+inline constexpr auto filter_indexed = detail::filter_fn<true>{};
+inline constexpr auto take_while = detail::take_while_fn<false>{};
+inline constexpr auto drop_while = detail::drop_while_fn<false>{};
+inline constexpr auto drop_while_indexed = detail::drop_while_fn<true>{};
+inline constexpr auto take_while_indexed = detail::take_while_fn<true>{};
+inline constexpr auto take = detail::take_fn{};
+inline constexpr auto drop = detail::drop_fn{};
 
-static constexpr inline auto join = detail::join_fn{};
-static constexpr inline auto intersperse = detail::intersperse_fn{};
+inline constexpr auto join = detail::join_fn{};
+inline constexpr auto intersperse = detail::intersperse_fn{};
 
-static constexpr inline auto unpack = detail::unpack_fn{};
-static constexpr inline auto project = detail::project_fn{};
+inline constexpr auto unpack = detail::unpack_fn{};
+inline constexpr auto project = detail::project_fn{};
 
 }  // namespace transducers
 
@@ -1449,7 +1453,7 @@ struct assign_fn
     }
 };
 
-static constexpr inline auto assign = assign_fn{};
+inline constexpr auto assign = assign_fn{};
 
 struct out_fn
 {
@@ -1503,20 +1507,20 @@ struct out_fn
 
 }  // namespace detail
 
-static constexpr inline auto copy_to = detail::copy_to_fn{};
-static constexpr inline auto into = detail::into_fn{};
-static constexpr inline auto all_of = detail::all_of_fn{};
-static constexpr inline auto any_of = detail::any_of_fn{};
-static constexpr inline auto none_of = detail::none_of_fn{};
-static constexpr inline auto fork = detail::fork_fn{};
-static constexpr inline auto sum = detail::sum_fn{};
-static constexpr inline auto count = detail::count_fn{};
-static constexpr inline auto dev_null = detail::dev_null_fn{};
-static constexpr inline auto partition = detail::partition_fn{};
-static constexpr inline auto accumulate = detail::accumulate_fn{};
-static constexpr inline auto out = detail::out_fn{};
-static constexpr inline auto for_each = detail::for_each_fn<false>{};
-static constexpr inline auto for_each_indexed = detail::for_each_fn<true>{};
+inline constexpr auto copy_to = detail::copy_to_fn{};
+inline constexpr auto into = detail::into_fn{};
+inline constexpr auto all_of = detail::all_of_fn{};
+inline constexpr auto any_of = detail::any_of_fn{};
+inline constexpr auto none_of = detail::none_of_fn{};
+inline constexpr auto fork = detail::fork_fn{};
+inline constexpr auto sum = detail::sum_fn{};
+inline constexpr auto count = detail::count_fn{};
+inline constexpr auto dev_null = detail::dev_null_fn{};
+inline constexpr auto partition = detail::partition_fn{};
+inline constexpr auto accumulate = detail::accumulate_fn{};
+inline constexpr auto out = detail::out_fn{};
+inline constexpr auto for_each = detail::for_each_fn<false>{};
+inline constexpr auto for_each_indexed = detail::for_each_fn<true>{};
 
 }  // namespace reductors
 

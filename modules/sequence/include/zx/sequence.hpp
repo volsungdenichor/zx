@@ -1542,18 +1542,18 @@ namespace seq
 template <class T>
 static const inline auto empty = detail::empty_fn<T>{};
 
-static constexpr inline auto iota = detail::iota_fn{};
-static constexpr inline auto range = detail::range_fn{};
-static constexpr inline auto unfold = detail::unfold_fn{};
-static constexpr inline auto view = detail::view_fn{};
-static constexpr inline auto owning = detail::owning_fn{};
-static constexpr inline auto repeat = detail::repeat_fn{};
-static constexpr inline auto single = detail::single_fn{};
-static constexpr inline auto concat = detail::concat_fn{};
-static constexpr inline auto vec = detail::vec_fn{};
-static constexpr inline auto zip = detail::zip_fn{};
-static constexpr inline auto init = detail::init_fn{};
-static constexpr inline auto init_infinite = detail::init_infinite_fn{};
+inline constexpr auto iota = detail::iota_fn{};
+inline constexpr auto range = detail::range_fn{};
+inline constexpr auto unfold = detail::unfold_fn{};
+inline constexpr auto view = detail::view_fn{};
+inline constexpr auto owning = detail::owning_fn{};
+inline constexpr auto repeat = detail::repeat_fn{};
+inline constexpr auto single = detail::single_fn{};
+inline constexpr auto concat = detail::concat_fn{};
+inline constexpr auto vec = detail::vec_fn{};
+inline constexpr auto zip = detail::zip_fn{};
+inline constexpr auto init = detail::init_fn{};
+inline constexpr auto init_infinite = detail::init_infinite_fn{};
 
 }  // namespace seq
 

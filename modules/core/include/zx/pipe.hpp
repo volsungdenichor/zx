@@ -81,8 +81,8 @@ public:
 
 }  // namespace detail
 
-static constexpr inline auto pipe = detail::pipe_fn{};
-static constexpr inline auto fn = pipe;
+inline constexpr auto pipe = detail::pipe_fn{};
+inline constexpr auto fn = pipe;
 
 template <class T, class... Pipes, std::enable_if_t<!is_pipeline<std::decay_t<T>>::value, int> = 0>
 constexpr auto operator|=(T&& item, const pipeline<Pipes...>& p)

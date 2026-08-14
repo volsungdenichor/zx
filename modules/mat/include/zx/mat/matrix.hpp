@@ -358,7 +358,7 @@ struct minor_fn
     }
 };
 
-static constexpr inline auto minor = minor_fn{};
+inline constexpr auto minor = minor_fn{};
 
 struct transpose_fn
 {
@@ -378,7 +378,7 @@ struct transpose_fn
     }
 };
 
-static constexpr inline auto transpose = transpose_fn{};
+inline constexpr auto transpose = transpose_fn{};
 
 struct determinant_fn
 {
@@ -422,7 +422,7 @@ struct determinant_fn
     }
 };
 
-static constexpr inline auto determinant = determinant_fn{};
+inline constexpr auto determinant = determinant_fn{};
 
 struct invert_fn
 {
@@ -455,7 +455,7 @@ struct invert_fn
     }
 };
 
-static constexpr inline auto invert = invert_fn{};
+inline constexpr auto invert = invert_fn{};
 
 struct identity_fn
 {
@@ -482,7 +482,7 @@ struct identity_fn
     }
 };
 
-static constexpr inline auto identity = identity_fn{};
+inline constexpr auto identity = identity_fn{};
 
 struct scale_fn
 {
@@ -562,9 +562,9 @@ using detail::invert;
 using detail::minor;
 using detail::transpose;
 
-static constexpr inline auto scale = detail::scale_fn{};
-static constexpr inline auto translation = detail::translation_fn{};
-static constexpr inline auto rotation = detail::rotation_fn{};
+inline constexpr auto scale = detail::scale_fn{};
+inline constexpr auto translation = detail::translation_fn{};
+inline constexpr auto rotation = detail::rotation_fn{};
 
 }  // namespace mat
 
