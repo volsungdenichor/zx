@@ -16,100 +16,140 @@ namespace mat
 
 using byte_t = std::uint8_t;
 
-template <class T>
-struct rgb_color_base_t
+template <class T, std::size_t N>
+struct channel_color_base_t
 {
 };
 
-template <>
-struct rgb_color_base_t<float> : std::array<float, 3>
+template <std::size_t N>
+struct channel_color_base_t<float, N> : std::array<float, N>
 {
-    using base_t = std::array<float, 3>;
+    using base_t = std::array<float, N>;
     using base_t::base_t;
 
-    rgb_color_base_t(float r, float g, float b) : base_t{ r, g, b } { }
-
-    friend rgb_color_base_t& operator*=(rgb_color_base_t& lhs, float rhs)
+    template <class... Tail>
+    channel_color_base_t(float head, Tail... tail) : base_t{ head, static_cast<float>(tail)... }
     {
-        lhs[0] *= rhs;
-        lhs[1] *= rhs;
-        lhs[2] *= rhs;
+    }
+
+    friend channel_color_base_t& operator*=(channel_color_base_t& lhs, float rhs)
+    {
+        for (std::size_t i = 0; i < N; ++i)
+        {
+            lhs[i] *= rhs;
+        }
         return lhs;
     }
 
-    friend rgb_color_base_t operator*(rgb_color_base_t lhs, float rhs) { return lhs *= rhs; }
+    friend channel_color_base_t operator*(channel_color_base_t lhs, float rhs) { return lhs *= rhs; }
 
-    friend rgb_color_base_t operator*(float lhs, rgb_color_base_t rhs) { return rhs *= lhs; }
+    friend channel_color_base_t operator*(float lhs, channel_color_base_t rhs) { return rhs *= lhs; }
 
-    friend rgb_color_base_t& operator/=(rgb_color_base_t& lhs, float rhs)
+    friend channel_color_base_t& operator/=(channel_color_base_t& lhs, float rhs)
     {
-        lhs[0] /= rhs;
-        lhs[1] /= rhs;
-        lhs[2] /= rhs;
+        for (std::size_t i = 0; i < N; ++i)
+        {
+            lhs[i] /= rhs;
+        }
         return lhs;
     }
 
-    friend rgb_color_base_t operator/(rgb_color_base_t lhs, float rhs) { return lhs /= rhs; }
+    friend channel_color_base_t operator/(channel_color_base_t lhs, float rhs) { return lhs /= rhs; }
 
-    friend rgb_color_base_t& operator+=(rgb_color_base_t& lhs, const rgb_color_base_t& rhs)
+    friend channel_color_base_t& operator+=(channel_color_base_t& lhs, const channel_color_base_t& rhs)
     {
-        lhs[0] += rhs[0];
-        lhs[1] += rhs[1];
-        lhs[2] += rhs[2];
+        for (std::size_t i = 0; i < N; ++i)
+        {
+            lhs[i] += rhs[i];
+        }
         return lhs;
     }
 
-    friend rgb_color_base_t operator+(rgb_color_base_t lhs, const rgb_color_base_t& rhs) { return lhs += rhs; }
+    friend channel_color_base_t operator+(channel_color_base_t lhs, const channel_color_base_t& rhs) { return lhs += rhs; }
 
-    friend rgb_color_base_t& operator-=(rgb_color_base_t& lhs, const rgb_color_base_t& rhs)
+    friend channel_color_base_t& operator-=(channel_color_base_t& lhs, const channel_color_base_t& rhs)
     {
-        lhs[0] -= rhs[0];
-        lhs[1] -= rhs[1];
-        lhs[2] -= rhs[2];
+        for (std::size_t i = 0; i < N; ++i)
+        {
+            lhs[i] -= rhs[i];
+        }
         return lhs;
     }
 
-    friend rgb_color_base_t operator-(rgb_color_base_t lhs, const rgb_color_base_t& rhs) { return lhs -= rhs; }
+    friend channel_color_base_t operator-(channel_color_base_t lhs, const channel_color_base_t& rhs) { return lhs -= rhs; }
+
+    friend std::ostream& operator<<(std::ostream& os, const channel_color_base_t& item)
+    {
+        os << "(";
+        for (std::size_t i = 0; i < N; ++i)
+        {
+            if (i != 0)
+            {
+                os << " ";
+            }
+            os << item[i];
+        }
+        return os << ")";
+    }
 };
 
-template <>
-struct rgb_color_base_t<byte_t> : std::array<byte_t, 3>
+template <std::size_t N>
+struct channel_color_base_t<byte_t, N> : std::array<byte_t, N>
 {
-    using base_t = std::array<byte_t, 3>;
+    using base_t = std::array<byte_t, N>;
     using base_t::base_t;
 
-    rgb_color_base_t(byte_t r, byte_t g, byte_t b) : base_t{ r, g, b } { }
-
-    rgb_color_base_t(const rgb_color_base_t<float>& color)
-        : base_t{ from_float(color[0]), from_float(color[1]), from_float(color[2]) }
+    template <class... Tail>
+    channel_color_base_t(byte_t head, Tail... tail) : base_t{ head, static_cast<byte_t>(tail)... }
     {
     }
 
-    operator rgb_color_base_t<float>() const
+    channel_color_base_t(const channel_color_base_t<float, N>& color) : base_t{}
     {
-        return rgb_color_base_t<float>{ to_float((*this)[0]), to_float((*this)[1]), to_float((*this)[2]) };
+        for (std::size_t i = 0; i < N; ++i)
+        {
+            (*this)[i] = from_float(color[i]);
+        }
+    }
+
+    operator channel_color_base_t<float, N>() const
+    {
+        channel_color_base_t<float, N> result;
+        for (std::size_t i = 0; i < N; ++i)
+        {
+            result[i] = to_float((*this)[i]);
+        }
+        return result;
     }
 
     static byte_t from_float(float value) { return static_cast<byte_t>(std::clamp(value, 0.F, 255.F)); }
 
     static float to_float(byte_t value) { return static_cast<float>(value); }
 
-    friend std::ostream& operator<<(std::ostream& os, const rgb_color_base_t& item)
+    friend std::ostream& operator<<(std::ostream& os, const channel_color_base_t& item)
     {
-        return os << "(rgb " << static_cast<int>(item[0]) << " " << static_cast<int>(item[1]) << " "
-                  << static_cast<int>(item[2]) << ")";
+        os << "(";
+        for (std::size_t i = 0; i < N; ++i)
+        {
+            if (i != 0)
+            {
+                os << " ";
+            }
+            os << static_cast<int>(item[i]);
+        }
+        return os << ")";
     }
 
-    friend bool operator==(const rgb_color_base_t& lhs, const rgb_color_base_t& rhs)
+    friend bool operator==(const channel_color_base_t& lhs, const channel_color_base_t& rhs)
     {
         return static_cast<base_t>(lhs) == static_cast<base_t>(rhs);
     }
 
-    friend bool operator!=(const rgb_color_base_t& lhs, const rgb_color_base_t& rhs) { return !(lhs == rhs); }
+    friend bool operator!=(const channel_color_base_t& lhs, const channel_color_base_t& rhs) { return !(lhs == rhs); }
 };
 
-using true_color_t = rgb_color_base_t<byte_t>;
-using rgb_color_t = rgb_color_base_t<float>;
+using true_color_t = channel_color_base_t<byte_t, 3>;
+using rgb_color_t = channel_color_base_t<float, 3>;
 
 struct lookup_table_t
 {

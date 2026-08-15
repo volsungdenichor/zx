@@ -31,6 +31,7 @@ struct filepath_t
 template <extent_base_t Channels>
 struct image_base_t
 {
+    using color_type = channel_color_base_t<byte_t, static_cast<std::size_t>(Channels)>;
     using storage_type = array_t<byte_t, 3>;
     using channel_type = array_t<byte_t, 2>;
 
@@ -40,37 +41,39 @@ struct image_base_t
     {
         array_mut_view_t<byte_t, 1> _data;
 
-        void operator=(const true_color_t& color) const
+        void operator=(const color_type& color) const
         {
-            for (std::size_t z = 0; z < 3; ++z)
+            for (std::size_t c = 0; c < Channels; ++c)
             {
-                _data[static_cast<location_base_t>(z)] = color[z];
+                _data[static_cast<location_base_t>(c)] = color[c];
             }
         }
 
-        operator true_color_t() const
+        operator color_type() const
         {
-            true_color_t result = {};
-            for (std::size_t z = 0; z < 3; ++z)
+            color_type result = {};
+            for (std::size_t c = 0; c < Channels; ++c)
             {
-                result[z] = _data[static_cast<location_base_t>(z)];
+                result[c] = _data[static_cast<location_base_t>(c)];
             }
             return result;
         }
 
-        operator rgb_color_t() const { return static_cast<true_color_t>(*this); }
+        operator rgb_color_t() const { return static_cast<color_type>(*this); }
 
-        friend bool operator==(const proxy_t& lhs, const true_color_t& rhs) { return static_cast<true_color_t>(lhs) == rhs; }
+        friend bool operator==(const proxy_t& lhs, const color_type& rhs) { return static_cast<color_type>(lhs) == rhs; }
 
-        friend bool operator!=(const proxy_t& lhs, const true_color_t& rhs) { return !(lhs == rhs); }
+        friend bool operator!=(const proxy_t& lhs, const color_type& rhs) { return !(lhs == rhs); }
 
-        friend bool operator==(const true_color_t& lhs, const proxy_t& rhs) { return rhs == lhs; }
+        friend bool operator==(const color_type& lhs, const proxy_t& rhs) { return rhs == lhs; }
 
-        friend bool operator!=(const true_color_t& lhs, const proxy_t& rhs) { return rhs != lhs; }
+        friend bool operator!=(const color_type& lhs, const proxy_t& rhs) { return rhs != lhs; }
     };
 
     struct view_type
     {
+        using color_type = typename image_base_t::color_type;
+
         using extent_type = extent_t<2, extent_base_t>;
         using location_type = location_t<2>;
         using bounds_type = bounds_t<2>;
@@ -82,12 +85,12 @@ struct image_base_t
         data_type data() const { return m_data; }
         extent_type extent() const { return pop_back(m_data.extent()); }
 
-        true_color_t operator[](const location_type& loc) const
+        color_type operator[](const location_type& loc) const
         {
-            true_color_t result = {};
-            for (std::size_t z = 0; z < 3; ++z)
+            color_type result = {};
+            for (std::size_t c = 0; c < Channels; ++c)
             {
-                result[z] = m_data[data_type::location_type{ loc[0], loc[1], z }];
+                result[c] = m_data[data_type::location_type{ loc[0], loc[1], c }];
             }
             return result;
         }
@@ -96,7 +99,6 @@ struct image_base_t
 
         channel_type::view_type channel(std::size_t channel_index) const
         {
-            // return channel_type::view_type{ m_data.data() + channel_index, m_data.shape().erase(2) };
             return m_data.sub(2, static_cast<location_base_t>(channel_index));
         }
 
@@ -111,6 +113,8 @@ struct image_base_t
 
     struct mut_view_type
     {
+        using color_type = typename image_base_t::color_type;
+
         using extent_type = extent_t<2, extent_base_t>;
         using location_type = location_t<2>;
         using bounds_type = bounds_t<2>;
@@ -130,7 +134,6 @@ struct image_base_t
 
         channel_type::mut_view_type channel(std::size_t channel_index) const
         {
-            // return channel_type::mut_view_type{ m_data.data() + channel_index, m_data.shape().erase(2) };
             return m_data.sub(2, static_cast<location_base_t>(channel_index));
         }
 
