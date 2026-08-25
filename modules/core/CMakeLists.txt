@@ -15,6 +15,7 @@ zx_add_module(
     tests/pipe.test.cpp
     tests/functional.test.cpp
     tests/let.test.cpp
+    tests/static_string.test.cpp
 )
 
 if(WIN32)
