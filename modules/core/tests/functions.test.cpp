@@ -48,3 +48,10 @@ TEST(functions, proj)
     EXPECT_THAT(func("Hello"s, "World"s), 10);
     EXPECT_THAT(func("C++"s, "Programming"s), 14);
 }
+
+TEST(functions, cast)
+{
+    const auto cast_to_int = zx::cast<int>;
+    EXPECT_THAT(cast_to_int(42.5), 42);
+    EXPECT_THAT(cast_to_int(3.14f), 3);
+}

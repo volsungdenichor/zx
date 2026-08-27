@@ -4,6 +4,7 @@
 #include <array>
 #include <functional>
 #include <iostream>
+#include <zx/mat/math.hpp>
 #include <zx/type_traits.hpp>
 
 namespace zx
@@ -261,11 +262,55 @@ struct vector_fn
     }
 };
 
+struct polar_fn
+{
+    struct from_fn
+    {
+        template <class T>
+        constexpr vector_t<2, T> operator()(T radius, T angle) const
+        {
+            return radius * vector_t<2, T>{ math::cos(angle), math::sin(angle) };
+        }
+    };
+};
+
+struct cylindrical_fn
+{
+    struct from_fn
+    {
+        template <class T>
+        constexpr vector_t<3, T> operator()(T radius, T azimuth, T elevation) const
+        {
+            return radius * vector_t<3, T>{ math::cos(azimuth), T{}, math::sin(azimuth) }
+                   + vector_t<3, T>{ T{}, elevation, T{} };
+        }
+    };
+};
+
+struct spherical_fn
+{
+    struct from_fn
+    {
+        template <class T>
+        constexpr vector_t<3, T> operator()(T radius, T azimuth, T inclination) const
+        {
+            return radius
+                   * vector_t<3, T>{ math::cos(inclination) * math::cos(azimuth),
+                                     math::sin(inclination),
+                                     math::cos(inclination) * math::sin(azimuth) };
+        }
+    };
+};
+
 }  // namespace detail
 
 inline constexpr auto vector = detail::vector_fn{};
 inline constexpr auto point = detail::vector_fn{};
 inline constexpr auto extent = detail::vector_fn{};
+
+inline constexpr auto from_polar = detail::polar_fn::from_fn{};
+inline constexpr auto from_cylindrical = detail::cylindrical_fn::from_fn{};
+inline constexpr auto from_spherical = detail::spherical_fn::from_fn{};
 
 template <std::size_t D, class T>
 constexpr auto operator+(const vector_t<D, T>& item) -> vector_t<D, T>

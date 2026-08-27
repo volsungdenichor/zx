@@ -88,6 +88,16 @@ struct proj_fn
     }
 };
 
+template <class T>
+struct cast_fn
+{
+    template <class U>
+    constexpr T operator()(U&& value) const
+    {
+        return static_cast<T>(std::forward<U>(value));
+    }
+};
+
 }  // namespace detail
 
 template <std::size_t N>
@@ -101,5 +111,8 @@ inline constexpr auto get_second = get_element<1>;
 
 inline constexpr auto dereference = detail::dereference_fn{};
 inline constexpr auto proj = detail::proj_fn{};
+
+template <class T>
+inline constexpr auto cast = detail::cast_fn<T>{};
 
 }  // namespace zx
