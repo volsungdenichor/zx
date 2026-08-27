@@ -21,6 +21,7 @@ set(ZX_MODULE_DEPENDENCIES "
         [nested_text [core]]
         [yield [core]]
         [predicates [core nested_text]]
+        [random []]
     ]
 ")
 

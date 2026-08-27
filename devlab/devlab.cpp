@@ -1,9 +1,11 @@
 #include <chrono>
 #include <exception>
 #include <iostream>
+#include <optional>
 #include <random>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
@@ -11,6 +13,7 @@
 #include "zx/functional.hpp"
 #include "zx/image.hpp"
 #include "zx/maybe.hpp"
+#include "zx/random.hpp"
 #include "zx/raster.hpp"
 #include "zx/string.hpp"
 
@@ -149,6 +152,13 @@ struct interpolate_fn
 // cmake --build --preset ninja-release && ./build/ninja-release/devlab/zx_devlab && wslview ~/out.bmp
 void run(const std::vector<std::string_view>&)
 {
+    using namespace zx;
+
+    std::function<zx::mat::vector_t<2, float>()> f
+        = random::invoke(mat::from_polar, random::uniform(0.F, 1.F), random::uniform(0.F, 2 * mat::math::pi<float>));
+
+    std::cout << f() << std::endl;
+
     const auto permutations = std::invoke(
         []() -> std::vector<int>
         {
@@ -160,7 +170,6 @@ void run(const std::vector<std::string_view>&)
 
     const auto get_permutation = [&](int index) -> int { return permutations[index % permutations.size()]; };
 
-    using namespace zx;
     const auto background = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/river.bmp" });
     const auto conan = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/conan_small.bmp" });
 
