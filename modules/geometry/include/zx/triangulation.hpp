@@ -1,18 +1,36 @@
 #pragma once
 
+#include <algorithm>
 #include <set>
 #include <unordered_map>
 #include <zx/dcel.hpp>
+#include <zx/result.hpp>
 
 namespace zx
 {
 namespace geometry
 {
 
-struct voronoi_fn
+namespace detail
+{
+
+struct tesselate_fn
 {
     template <class T>
-    dcel_t<T> operator()(const dcel_t<T>& input) const
+    result_t<dcel_t<T>, std::string> operator()(const dcel_t<T>& input) const
+    {
+        try
+        {
+            return call(input);
+        }
+        catch (const std::exception& e)
+        {
+            return error(std::string{ "tesselate: " } + e.what());
+        }
+    }
+
+    template <class T>
+    static dcel_t<T> call(const dcel_t<T>& input)
     {
         using dcel_vertex_id = typename dcel_t<T>::vertex_id_type;
         using vertex_t = typename dcel_t<T>::vertex_t;
@@ -65,14 +83,14 @@ struct voronoi_fn
     }
 
     template <class T>
-    static mat::triangle_t<T, 2> as_triangle(const typename dcel_t<T>::face_t& face)
+    static mat::triangle_t<2, T> as_triangle(const typename dcel_t<T>::face_t& face)
     {
         const auto p = face.as_polygon();
         return { p.at(0), p.at(1), p.at(2) };
     }
 
     template <class T>
-    static mat::vector_t<T, 2> get_center(const typename dcel_t<T>::face_t& face)
+    static mat::vector_t<2, T> get_center(const typename dcel_t<T>::face_t& face)
     {
         return mat::circumcenter(as_triangle<T>(face));
     }
@@ -81,13 +99,26 @@ struct voronoi_fn
 struct triangulate_fn
 {
     template <class T>
-    dcel_t<T> operator()(std::vector<mat::vector_t<T, 2>> vertices) const
+    result_t<dcel_t<T>, std::string> operator()(std::vector<mat::vector_t<2, T>> vertices) const
+    {
+        try
+        {
+            return call(std::move(vertices));
+        }
+        catch (const std::exception& e)
+        {
+            return error(std::string{ "triangulate: " } + e.what());
+        }
+    }
+
+    template <class T>
+    static dcel_t<T> call(std::vector<mat::vector_t<2, T>> vertices)
     {
         using triangle_info = std::array<std::size_t, 3>;
         using edge_info = std::array<std::size_t, 2>;
-        using triangle_type = mat::triangle_t<T, 2>;
+        using triangle_type = mat::triangle_t<2, T>;
 
-        const auto get_vertex = [&](std::size_t index) -> const mat::vector_t<T, 2>& { return vertices.at(index); };
+        const auto get_vertex = [&](std::size_t index) -> const mat::vector_t<2, T>& { return vertices.at(index); };
 
         const auto get_triangle = [&](const triangle_info& t) -> triangle_type {
             return { get_vertex(t[0]), get_vertex(t[1]), get_vertex(t[2]) };
@@ -108,9 +139,9 @@ struct triangulate_fn
 
         const auto s = vertices.size();
 
-        vertices.push_back(c + mat::vector_t<T, 2>{ -delta * max_dimension, -max_dimension });
-        vertices.push_back(c + mat::vector_t<T, 2>{ 0, +delta * max_dimension });
-        vertices.push_back(c + mat::vector_t<T, 2>{ +delta * max_dimension, -max_dimension });
+        vertices.push_back(c + mat::vector_t<2, T>{ -delta * max_dimension, -max_dimension });
+        vertices.push_back(c + mat::vector_t<2, T>{ 0, +delta * max_dimension });
+        vertices.push_back(c + mat::vector_t<2, T>{ +delta * max_dimension, -max_dimension });
 
         const triangle_info super_triangle{ s + 0, s + 1, s + 2 };
 
@@ -190,7 +221,7 @@ struct triangulate_fn
 
         for (triangle_info& triangle : triangles)
         {
-            const mat::triangle_t<T, 2> t = get_triangle(triangle);
+            const mat::triangle_t<2, T> t = get_triangle(triangle);
             if (mat::cross(t[1] - t[0], t[2] - t[0]) > 0.0)
             {
                 std::reverse(triangle.begin(), triangle.end());
@@ -203,19 +234,19 @@ struct triangulate_fn
     }
 
     template <class T>
-    static mat::box_shape_t<T, 2> make_aabb(const std::vector<mat::vector_t<T, 2>>& vertices)
+    static mat::rectangle_t<T> make_aabb(const std::vector<mat::vector_t<2, T>>& vertices)
     {
         if (vertices.empty())
         {
-            return mat::box_shape_t<T, 2>{};
+            return mat::rectangle_t<T>{};
         }
-        mat::box_shape_t<T, 2> result{
+        mat::rectangle_t<T> result{
             mat::interval_t<T>{ vertices[0][0], vertices[0][0] },
             mat::interval_t<T>{ vertices[0][1], vertices[0][1] },
         };
-        for (const mat::vector_t<T, 2>& vertex : vertices)
+        for (const mat::vector_t<2, T>& vertex : vertices)
         {
-            result = mat::box_shape_t<T, 2>{
+            result = mat::rectangle_t<T>{
                 mat::interval_t<T>{ std::min(result[0][0], vertex[0]), std::max(result[0][1], vertex[0]) },
                 mat::interval_t<T>{ std::min(result[1][0], vertex[1]), std::max(result[1][1], vertex[1]) },
             };
@@ -224,7 +255,7 @@ struct triangulate_fn
     }
 
     template <class T>
-    void remove(std::vector<T>& lhs, const std::vector<T>& rhs) const
+    static void remove(std::vector<T>& lhs, const std::vector<T>& rhs)
     {
         remove_erase_if(
             lhs,
@@ -237,7 +268,7 @@ struct triangulate_fn
     }
 
     template <class T>
-    std::set<std::size_t> get_vertices(const T& item) const
+    static std::set<std::size_t> get_vertices(const T& item)
     {
         return std::set<std::size_t>{ item.begin(), item.end() };
     }
@@ -249,8 +280,10 @@ struct triangulate_fn
     }
 };
 
-inline constexpr auto voronoi = voronoi_fn{};
-inline constexpr auto triangulate = triangulate_fn{};
+}  // namespace detail
+
+inline constexpr auto triangulate = detail::triangulate_fn{};
+inline constexpr auto tesselate = detail::tesselate_fn{};
 
 }  // namespace geometry
 }  // namespace zx
