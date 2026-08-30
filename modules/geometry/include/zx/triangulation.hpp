@@ -17,16 +17,9 @@ namespace detail
 struct tesselate_fn
 {
     template <class T>
-    result_t<dcel_t<T>, std::string> operator()(const dcel_t<T>& input) const
+    result_t<dcel_t<T>, std::exception_ptr> operator()(const dcel_t<T>& input) const
     {
-        try
-        {
-            return call(input);
-        }
-        catch (const std::exception& e)
-        {
-            return error(std::string{ "tesselate: " } + e.what());
-        }
+        return try_invoke(&call<T>, input);
     }
 
     template <class T>
@@ -99,16 +92,9 @@ struct tesselate_fn
 struct triangulate_fn
 {
     template <class T>
-    result_t<dcel_t<T>, std::string> operator()(std::vector<mat::vector_t<2, T>> vertices) const
+    result_t<dcel_t<T>, std::exception_ptr> operator()(std::vector<mat::vector_t<2, T>> vertices) const
     {
-        try
-        {
-            return call(std::move(vertices));
-        }
-        catch (const std::exception& e)
-        {
-            return error(std::string{ "triangulate: " } + e.what());
-        }
+        return try_invoke(&call<T>, std::move(vertices));
     }
 
     template <class T>

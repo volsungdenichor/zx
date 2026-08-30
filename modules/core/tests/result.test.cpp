@@ -18,6 +18,10 @@ std::string get_error_message(const std::exception_ptr& ptr)
     {
         return ex.what();
     }
+    catch (...)
+    {
+        return "unknown exception";
+    }
     return {};
 }
 
