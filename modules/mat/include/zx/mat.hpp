@@ -185,6 +185,7 @@ struct size_fn
 };
 
 inline constexpr auto size = size_fn{};
+inline constexpr auto extent = size;
 
 struct radius_fn
 {
@@ -226,6 +227,27 @@ struct center_fn
 
 inline constexpr auto center = center_fn{};
 
+struct clamp_fn
+{
+    template <class T>
+    constexpr auto operator()(const interval_t<T>& item, T value) const -> T
+    {
+        return std::min(upper(item), std::max(lower(item), value));
+    }
+
+    template <std::size_t D, class T>
+    constexpr auto operator()(const box_shape_t<D, T>& item, const point_t<D, T>& value) const -> point_t<D, T>
+    {
+        point_t<D, T> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(item[d], value[d]);
+        }
+        return result;
+    }
+};
+
+inline constexpr auto clamp = clamp_fn{};
 struct extend_fn
 {
     template <class T>
@@ -427,9 +449,20 @@ struct interpolate_fn
     }
 
     template <class R, class T>
-    constexpr auto operator()(R r, const interval_t<T>& item) const
+    constexpr auto operator()(R r, const interval_t<T>& item) const -> T
     {
-        return lower(item) + r * size(item);
+        return static_cast<T>(lower(item) + r * size(item));
+    }
+
+    template <std::size_t D, class R, class T>
+    constexpr auto operator()(const point_t<D, R>& r, const box_shape_t<D, T>& item) const -> point_t<D, T>
+    {
+        point_t<D, T> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(r[d], item[d]);
+        }
+        return result;
     }
 };
 
@@ -1080,6 +1113,7 @@ using detail::center;
 using detail::centroid;
 using detail::circumcenter;
 using detail::circumcircle;
+using detail::clamp;
 using detail::contains;
 using detail::cross;
 using detail::distance;

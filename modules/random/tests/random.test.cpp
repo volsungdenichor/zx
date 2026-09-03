@@ -11,6 +11,18 @@ TEST(random, uniform)
     }
 }
 
+TEST(random, normal)
+{
+    const auto first = zx::random::normal(2.0, 0.5, zx::random::seed_t{ 123 });
+    const auto second = zx::random::normal(2.0, 0.5, zx::random::seed_t{ 123 });
+
+    static_assert(std::is_same_v<decltype(first()), double>);
+    for (int i = 0; i < 256; ++i)
+    {
+        EXPECT_THAT(first(), second());
+    }
+}
+
 TEST(random, invoke)
 {
     const auto f = zx::random::invoke(

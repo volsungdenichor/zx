@@ -1,4 +1,6 @@
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <exception>
 #include <iostream>
 #include <optional>
@@ -16,6 +18,194 @@
 #include "zx/random.hpp"
 #include "zx/raster.hpp"
 #include "zx/string.hpp"
+
+template <class T>
+using supplier_t = std::function<T()>;
+
+template <class... Args>
+using consumer_t = std::function<void(Args...)>;
+
+template <class... Args>
+using predicate_t = std::function<bool(Args...)>;
+
+template <std::size_t D, class T>
+supplier_t<zx::mat::vector_t<D, T>> random_point(const zx::mat::box_shape_t<D, T>& bounds, zx::random::seed_t seed = {})
+{
+    std::array<supplier_t<T>, D> generators;
+    for (std::size_t d = 0; d < D; ++d)
+    {
+        generators[d] = zx::random::uniform(bounds[d][0], bounds[d][1], seed);
+    }
+
+    return [generators]() mutable
+    {
+        zx::mat::vector_t<D, T> point;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            point[d] = generators[d]();
+        }
+        return point;
+    };
+}
+
+template <std::size_t D, class T>
+supplier_t<zx::mat::vector_t<D, T>> random_point(T radius, zx::random::seed_t seed = {})
+{
+    const auto direction_generator = zx::random::normal(T{}, T{ 1 }, seed);
+    const auto volume_generator = zx::random::uniform(
+        static_cast<T>(std::pow(radius, static_cast<T>(D))), static_cast<T>(std::pow(2 * radius, static_cast<T>(D))), seed);
+
+    return [direction_generator, volume_generator]() -> zx::mat::vector_t<D, T>
+    {
+        zx::mat::vector_t<D, T> direction;
+        do
+        {
+            for (std::size_t d = 0; d < D; ++d)
+            {
+                direction[d] = direction_generator();
+            }
+        } while (zx::mat::norm(direction) == T{});
+
+        const auto distance = static_cast<T>(std::pow(volume_generator(), T{ 1 } / static_cast<T>(D)));
+        return direction * (distance / zx::mat::length(direction));
+    };
+}
+
+using sample_t = int;
+
+template <std::size_t D, class T>
+zx::mat::array_t<sample_t, D> prepare_grid(const zx::mat::extent_t<D, T>& bounds, T cell_size)
+{
+    typename zx::mat::array_t<sample_t, D>::extent_type grid_extent;
+    for (std::size_t d = 0; d < D; ++d)
+    {
+        grid_extent[d] = static_cast<zx::mat::extent_base_t>(zx::mat::math::ceil(bounds[d] / cell_size));
+    }
+    return zx::mat::array_t<sample_t, D>{ grid_extent, sample_t{ -1 } };
+}
+
+struct poisson_fn
+{
+    template <std::size_t D, class T, zx::enable_if_t<(D > 0)> = 0>
+    std::vector<zx::mat::vector_t<D, T>> operator()(
+        const zx::mat::box_shape_t<D, T>& bounds, T radius, std::size_t k, zx::random::seed_t seed = {}) const
+    {
+        using sample_t = int;
+        using grid_t = zx::mat::array_t<sample_t, D>;
+
+        if (radius <= T{})
+        {
+            throw std::invalid_argument{ "Poisson radius must be positive" };
+        }
+
+        const auto cell_size = radius / zx::mat::math::sqrt(static_cast<T>(D));
+
+        grid_t grid = prepare_grid(zx::mat::size(bounds), cell_size);
+
+        const auto pos_generator = random_point(bounds, seed);
+        const auto point_generator = random_point<D, T>(radius, seed);
+
+        std::vector<zx::mat::vector_t<D, T>> points;
+        std::vector<sample_t> active;
+
+        auto get_grid_location = [&](const zx::mat::vector_t<D, T>& location) -> typename grid_t::location_type
+        {
+            typename grid_t::location_type result;
+            const auto relative_location = location - zx::mat::lower(bounds);
+
+            for (std::size_t d = 0; d < D; ++d)
+            {
+                result[d] = static_cast<zx::mat::location_base_t>(zx::mat::math::floor(relative_location[d] / cell_size));
+            }
+
+            return result;
+        };
+
+        auto add_point = [&](const zx::mat::vector_t<D, T>& point)
+        {
+            const auto sample = static_cast<sample_t>(points.size());
+            points.push_back(point);
+            active.push_back(sample);
+            grid[get_grid_location(point)] = sample;
+        };
+
+        const auto is_valid = [&](const zx::mat::vector_t<D, T>& candidate)
+        {
+            if (!zx::mat::contains(bounds, candidate))
+            {
+                return false;
+            }
+
+            const auto location = get_grid_location(candidate);
+            const auto search_radius = static_cast<zx::mat::location_base_t>(zx::mat::math::ceil(radius / cell_size));
+            typename grid_t::location_type search_lower;
+            typename grid_t::location_type search_upper;
+            for (std::size_t d = 0; d < D; ++d)
+            {
+                search_lower[d] = std::max(0, location[d] - search_radius);
+                search_upper[d] = std::min(grid.extent()[d] - 1, location[d] + search_radius);
+            }
+
+            auto neighbor = search_lower;
+            while (true)
+            {
+                const auto sample = grid[neighbor];
+                if (sample >= 0
+                    && zx::mat::contains(
+                        zx::mat::spherical_shape_t<D, T>{ points[static_cast<std::size_t>(sample)], radius }, candidate))
+                {
+                    return false;
+                }
+
+                std::size_t d = 0;
+                for (; d < D; ++d)
+                {
+                    if (neighbor[d] < search_upper[d])
+                    {
+                        ++neighbor[d];
+                        break;
+                    }
+                    neighbor[d] = search_lower[d];
+                }
+                if (d == D)
+                {
+                    break;
+                }
+            }
+            return true;
+        };
+
+        add_point(pos_generator());
+
+        while (!active.empty())
+        {
+            const auto active_index = zx::random::uniform(std::size_t{ 0 }, active.size() - 1, seed)();
+            const auto center = points[static_cast<std::size_t>(active[active_index])];
+            bool found = false;
+
+            for (std::size_t attempt = 0; attempt < k; ++attempt)
+            {
+                const auto candidate = center + point_generator();
+                if (is_valid(candidate))
+                {
+                    add_point(candidate);
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                active[active_index] = active.back();
+                active.pop_back();
+            }
+        }
+
+        return points;
+    }
+};
+
+constexpr inline auto poisson = poisson_fn{};
 
 struct perlin_fn
 {
@@ -85,10 +275,10 @@ struct perlin_fn
         return t * t * t * (t * (t * 6 - 15) + 10);
     }
 
-    template <class R, class T>
-    static constexpr auto lerp(R ratio, T a, T b) -> T
+    template <class R>
+    static constexpr auto lerp(R ratio)
     {
-        return a + ratio * (b - a);
+        return [=](auto a, auto b) { return a + ratio * (b - a); };
     }
 
     template <std::size_t D, class T>
@@ -121,7 +311,7 @@ struct perlin_fn
             std::array<T, (D2 / 2)> next{};
             for (std::size_t i = 0; i < next.size(); ++i)
             {
-                next[i] = lerp(faded[D - 1], values[2 * i + 0], values[2 * i + 1]);
+                next[i] = lerp(faded[D - 1])(values[2 * i + 0], values[2 * i + 1]);
             }
 
             std::array<T, D - 1> remaining_faded{};
@@ -135,7 +325,7 @@ struct perlin_fn
     }
 };
 
-static constexpr inline perlin_fn perlin = {};
+static constexpr inline auto perlin = perlin_fn{};
 
 template <class In, class Out>
 struct interpolate_fn
@@ -154,10 +344,10 @@ void run(const std::vector<std::string_view>&)
 {
     using namespace zx;
 
-    std::function<zx::mat::vector_t<2, float>()> f
-        = random::invoke(mat::from_polar, random::uniform(0.F, 1.F), random::uniform(0.F, 2 * mat::math::pi<float>));
-
-    std::cout << f() << std::endl;
+    for (const auto p : poisson(mat::box::from_lower_upper(mat::point(0.F, 0.F), mat::point(100.F, 100.F)), 5.F, 30))
+    {
+        std::cout << p << std::endl;
+    }
 
     const auto permutations = std::invoke(
         []() -> std::vector<int>
@@ -177,8 +367,7 @@ void run(const std::vector<std::string_view>&)
     {
         mat::array_t<float, 2> result(extent);
         mat::detail::for_each(
-            result.shape(),
-            [&](const mat::location_t<2>& loc) { result[loc] = perlin(loc.to<float>() / 20.F, get_permutation); });
+            result.shape(), [&](const mat::location_t<2>& loc) { result[loc] = perlin(loc / 20.F, get_permutation); });
         float min_value = std::numeric_limits<float>::max();
         float max_value = std::numeric_limits<float>::lowest();
         for (auto v : result)

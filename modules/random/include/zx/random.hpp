@@ -4,6 +4,8 @@
 #include <optional>
 #include <random>
 #include <tuple>
+#include <type_traits>
+#include <utility>
 
 namespace zx
 {
@@ -33,7 +35,7 @@ struct uniform_fn
     template <class T>
     struct impl_t<T, std::enable_if_t<std::is_floating_point_v<T>>>
     {
-        impl_t(T lo, T up, seed_t seed = seed_t{}) : m_rng{ seed() }, m_dist{ lo, up } { }
+        impl_t(T lo, T up, seed_t seed) : m_rng{ seed() }, m_dist{ lo, up } { }
 
         T operator()() const { return m_dist(m_rng); }
 
@@ -45,7 +47,7 @@ struct uniform_fn
     template <class T>
     struct impl_t<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool>>>
     {
-        impl_t(T lo, T up, seed_t seed = seed_t{}) : m_rng{ seed() }, m_dist{ lo, up } { }
+        impl_t(T lo, T up, seed_t seed) : m_rng{ seed() }, m_dist{ lo, up } { }
 
         T operator()() const { return m_dist(m_rng); }
 
@@ -58,6 +60,29 @@ struct uniform_fn
     impl_t<T> operator()(T lo, T up, seed_t seed = seed_t{}) const
     {
         return impl_t<T>{ lo, up, seed };
+    }
+};
+
+struct normal_fn
+{
+    template <class T>
+    struct impl_t
+    {
+        static_assert(std::is_floating_point_v<T>, "normal distribution requires a floating-point type");
+
+        impl_t(T mean, T standard_deviation, seed_t seed) : m_rng{ seed() }, m_dist{ mean, standard_deviation } { }
+
+        T operator()() const { return m_dist(m_rng); }
+
+    private:
+        mutable std::mt19937 m_rng;
+        mutable std::normal_distribution<T> m_dist;
+    };
+
+    template <class T>
+    impl_t<T> operator()(T mean, T standard_deviation, seed_t seed = seed_t{}) const
+    {
+        return impl_t<T>{ mean, standard_deviation, seed };
     }
 };
 
@@ -86,6 +111,7 @@ struct invoke_fn
 }  // namespace detail
 
 constexpr inline auto uniform = detail::uniform_fn{};
+constexpr inline auto normal = detail::normal_fn{};
 constexpr inline auto invoke = detail::invoke_fn{};
 
 }  // namespace random
