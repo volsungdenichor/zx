@@ -19,6 +19,26 @@ TEST(box, parameterized_construction)
     EXPECT_THAT(box, (zx::mat::rectangle_t<int>{ zx::mat::interval_t<int>{ 1, 5 }, zx::mat::interval_t<int>{ 10, 20 } }));
 }
 
+TEST(box, construction_from_center_and_asymmetric_radius)
+{
+    EXPECT_THAT(
+        zx::mat::box::from_center_radius(
+            zx::mat::point(10, 20), zx::mat::vector(2, 3), zx::mat::vector(4, 5)),
+        (zx::mat::rectangle_t<int>{ zx::mat::interval_t<int>{ 8, 15 }, zx::mat::interval_t<int>{ 17, 26 } }));
+}
+
+TEST(box, construction_from_center_and_radius)
+{
+    EXPECT_THAT(
+        zx::mat::box::from_center_radius(zx::mat::point(10, 20), zx::mat::vector(2, 3)),
+        (zx::mat::rectangle_t<int>{ zx::mat::interval_t<int>{ 8, 13 }, zx::mat::interval_t<int>{ 17, 24 } }));
+
+    EXPECT_THAT(
+        zx::mat::box::from_center_radius(zx::mat::point(10.0, 20.0), zx::mat::vector(2.0, 3.0)),
+        (zx::mat::rectangle_t<double>{
+            zx::mat::interval_t<double>{ 8.0, 12.0 }, zx::mat::interval_t<double>{ 17.0, 23.0 } }));
+}
+
 TEST(box, translation)
 {
     EXPECT_THAT(

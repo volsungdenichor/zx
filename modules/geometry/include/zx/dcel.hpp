@@ -126,7 +126,7 @@ public:
             const halfedge_id_type first_id;
             mutable bool done = false;
 
-            maybe_t<halfedge_t> operator()()
+            maybe_t<halfedge_t> operator()() const
             {
                 if (done)
                 {
@@ -159,7 +159,7 @@ public:
                 const halfedge_id_type first_id;
                 mutable bool done = false;
 
-                maybe_t<halfedge_t> operator()()
+                maybe_t<halfedge_t> operator()() const
                 {
                     if (done)
                     {
@@ -185,7 +185,7 @@ public:
                 const halfedge_id_type first_id;
                 mutable bool done = false;
 
-                maybe_t<halfedge_t> operator()()
+                maybe_t<halfedge_t> operator()() const
                 {
                     if (done)
                     {
@@ -211,7 +211,7 @@ public:
                 const halfedge_id_type first_id;
                 mutable bool done = false;
 
-                maybe_t<face_t> operator()()
+                maybe_t<face_t> operator()() const
                 {
                     while (true)
                     {
@@ -259,7 +259,7 @@ public:
                 const halfedge_id_type first_id;
                 mutable bool done = false;
 
-                maybe_t<halfedge_t> operator()()
+                maybe_t<halfedge_t> operator()() const
                 {
                     if (done)
                     {
@@ -285,7 +285,7 @@ public:
                 const halfedge_id_type first_id;
                 mutable bool done = false;
 
-                maybe_t<vertex_t> operator()()
+                maybe_t<vertex_t> operator()() const
                 {
                     if (done)
                     {
@@ -311,7 +311,7 @@ public:
                 const halfedge_id_type first_id;
                 mutable bool done = false;
 
-                maybe_t<face_t> operator()()
+                maybe_t<face_t> operator()() const
                 {
                     while (true)
                     {

@@ -140,6 +140,25 @@ struct interval
     {
         return from_lower_extent(center - extent / 2, extent);
     }
+
+    template <class T>
+    static constexpr interval_t<T> from_center_radius(T center, T left, T right)
+    {
+        if constexpr (std::is_integral_v<T>)
+        {
+            return from_lower_upper(center - left, center + right + 1);
+        }
+        else
+        {
+            return from_lower_upper(center - left, center + right);
+        }
+    }
+
+    template <class T>
+    static constexpr interval_t<T> from_center_radius(T center, T radius)
+    {
+        return from_center_radius(center, radius, radius);
+    }
 };
 
 struct box
@@ -173,6 +192,29 @@ struct box
         for (std::size_t d = 0; d < D; ++d)
         {
             result[d] = interval::from_center_extent(center[d], extent[d]);
+        }
+        return result;
+    }
+
+    template <std::size_t D, class T>
+    static constexpr box_shape_t<D, T> from_center_radius(
+        const point_t<D, T>& center, const vector_t<D, T>& left, const vector_t<D, T>& right)
+    {
+        box_shape_t<D, T> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = interval::from_center_radius(center[d], left[d], right[d]);
+        }
+        return result;
+    }
+
+    template <std::size_t D, class T>
+    static constexpr box_shape_t<D, T> from_center_radius(const point_t<D, T>& center, const vector_t<D, T>& radius)
+    {
+        box_shape_t<D, T> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = interval::from_center_radius(center[d], radius[d]);
         }
         return result;
     }

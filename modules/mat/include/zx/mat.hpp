@@ -235,10 +235,27 @@ struct clamp_fn
         return std::min(upper(item), std::max(lower(item), value));
     }
 
+    template <class T>
+    constexpr auto operator()(const interval_t<T>& item, const interval_t<T>& value) const -> interval_t<T>
+    {
+        return { (*this)(item, lower(value)), (*this)(item, upper(value)) };
+    }
+
     template <std::size_t D, class T>
     constexpr auto operator()(const box_shape_t<D, T>& item, const point_t<D, T>& value) const -> point_t<D, T>
     {
         point_t<D, T> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(item[d], value[d]);
+        }
+        return result;
+    }
+
+    template <std::size_t D, class T>
+    constexpr auto operator()(const box_shape_t<D, T>& item, const box_shape_t<D, T>& value) const -> box_shape_t<D, T>
+    {
+        box_shape_t<D, T> result;
         for (std::size_t d = 0; d < D; ++d)
         {
             result[d] = (*this)(item[d], value[d]);
@@ -251,31 +268,33 @@ inline constexpr auto clamp = clamp_fn{};
 struct extend_fn
 {
     template <class T>
+    constexpr auto operator()(const interval_t<T>& item, T left, T right) const -> interval_t<T>
+    {
+        return { item[0] - left, item[1] + right };
+    }
+
+    template <class T>
     constexpr auto operator()(const interval_t<T>& item, T value) const -> interval_t<T>
     {
-        return { item[0] - value, item[1] + value };
+        return (*this)(item, value, value);
+    }
+
+    template <std::size_t D, class T>
+    constexpr auto operator()(const box_shape_t<D, T>& item, const vector_t<D, T>& left, const vector_t<D, T>& right) const
+        -> box_shape_t<D, T>
+    {
+        box_shape_t<D, T> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(item[d], left[d], right[d]);
+        }
+        return result;
     }
 
     template <std::size_t D, class T>
     constexpr auto operator()(const box_shape_t<D, T>& item, const vector_t<D, T>& value) const -> box_shape_t<D, T>
     {
-        box_shape_t<D, T> result;
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = (*this)(item[d], value[d]);
-        }
-        return result;
-    }
-
-    template <std::size_t D, class T>
-    constexpr auto operator()(const box_shape_t<D, T>& item, T value) const -> box_shape_t<D, T>
-    {
-        box_shape_t<D, T> result;
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = (*this)(item[d], value);
-        }
-        return result;
+        return (*this)(item, value, value);
     }
 };
 
@@ -1119,6 +1138,7 @@ using detail::cross;
 using detail::distance;
 using detail::dot;
 using detail::extend;
+using detail::floor;
 using detail::floor_and_fractional_part;
 using detail::fractional_part;
 using detail::incenter;
