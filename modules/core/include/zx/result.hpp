@@ -1,5 +1,6 @@
 #pragma once
 
+#include <exception>
 #include <functional>
 #include <optional>
 #include <stdexcept>
@@ -813,38 +814,81 @@ std::ostream& operator<<(std::ostream& os, const result_t<void, E>& result)
     return os;
 }
 
-template <class Func, class... Args>
-auto try_invoke(Func&& func, Args&&... args) noexcept -> result_t<std::invoke_result_t<Func, Args...>, std::exception_ptr>
+namespace detail
 {
-    try
-    {
-        if constexpr (!std::is_void_v<std::invoke_result_t<Func, Args...>>)
-        {
-            return std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
-        }
-        else
-        {
-            std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
-            return {};
-        }
-    }
-    catch (...)
-    {
-        return error(std::current_exception());
-    }
-}
 
-template <class T, class... Args>
-auto try_create(Args&&... args) noexcept -> result_t<T, std::exception_ptr>
+struct try_invoke_fn
 {
-    try
+    template <class Func, class... Args>
+    auto operator()(Func&& func, Args&&... args) const noexcept
+        -> result_t<std::invoke_result_t<Func, Args...>, std::exception_ptr>
     {
-        return T{ std::forward<Args>(args)... };
+        try
+        {
+            if constexpr (!std::is_void_v<std::invoke_result_t<Func, Args...>>)
+            {
+                return std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
+            }
+            else
+            {
+                std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
+                return {};
+            }
+        }
+        catch (...)
+        {
+            return error(std::current_exception());
+        }
     }
-    catch (...)
+};
+
+template <class T>
+struct try_create_fn
+{
+    template <class... Args>
+    auto operator()(Args&&... args) const noexcept -> result_t<T, std::exception_ptr>
     {
-        return error(std::current_exception());
+        try
+        {
+            return T{ std::forward<Args>(args)... };
+        }
+        catch (...)
+        {
+            return error(std::current_exception());
+        }
     }
-}
+};
+
+struct forward_error_fn
+{
+    template <class T, class E>
+    auto operator()(result_t<T, E>&& result) const
+    {
+        if (result)
+        {
+            throw std::runtime_error("forward_error called with a result that has a value");
+        }
+        return error(std::move(result).error());
+    }
+
+    template <class T, class E>
+    auto operator()(const result_t<T, E>& result) const
+    {
+        if (result)
+        {
+            throw std::runtime_error("forward_error called with a result that has a value");
+        }
+        return error(result.error());
+    }
+};
+
+}  // namespace detail
+
+template <class T>
+constexpr inline auto try_create = detail::try_create_fn<T>{};
+
+constexpr inline auto try_invoke = detail::try_invoke_fn{};
+
+constexpr inline auto forward_error = detail::forward_error_fn{};
 
 }  // namespace zx

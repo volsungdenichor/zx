@@ -2,6 +2,7 @@
 
 #include <bitset>
 #include <functional>
+#include <limits>
 #include <tuple>
 #include <zx/type_traits.hpp>
 
@@ -1230,6 +1231,63 @@ struct sum_fn
     }
 };
 
+template <class T>
+struct min_value_fn
+{
+    struct reducer_t
+    {
+        template <class Arg>
+        step_t reduce(T& state, const Arg& arg) const
+        {
+            state = std::min(state, arg);
+            return step_t::loop_continue;
+        }
+    };
+
+    constexpr auto operator()() const -> reductor_t<T, reducer_t> { return { std::numeric_limits<T>::max(), reducer_t{} }; }
+};
+
+template <class T>
+struct max_value_fn
+{
+    struct reducer_t
+    {
+        template <class Arg>
+        step_t reduce(T& state, const Arg& arg) const
+        {
+            state = std::max(state, arg);
+            return step_t::loop_continue;
+        }
+    };
+
+    constexpr auto operator()() const -> reductor_t<T, reducer_t>
+    {
+        return { std::numeric_limits<T>::lowest(), reducer_t{} };
+    }
+};
+
+template <class T>
+struct min_max_value_fn
+{
+    struct reducer_t
+    {
+        template <class Arg>
+        step_t reduce(std::pair<T, T>& state, const Arg& arg) const
+        {
+            static const auto min = typename min_value_fn<T>::reducer_t{};
+            static const auto max = typename max_value_fn<T>::reducer_t{};
+            min.reduce(state.first, arg);
+            max.reduce(state.second, arg);
+            return step_t::loop_continue;
+        }
+    };
+
+    constexpr auto operator()() const -> reductor_t<std::pair<T, T>, reducer_t>
+    {
+        return { std::pair<T, T>{ std::numeric_limits<T>::max(), std::numeric_limits<T>::lowest() }, reducer_t{} };
+    }
+};
+
 struct count_fn
 {
     struct reducer_t
@@ -1522,6 +1580,15 @@ inline constexpr auto out = detail::out_fn{};
 inline constexpr auto for_each = detail::for_each_fn<false>{};
 inline constexpr auto for_each_indexed = detail::for_each_fn<true>{};
 
+template <class T>
+inline constexpr auto min_max_value = detail::min_max_value_fn<T>{};
+
+template <class T>
+inline constexpr auto min_value = detail::min_value_fn<T>{};
+
+template <class T>
+inline constexpr auto max_value = detail::max_value_fn<T>{};
+
 }  // namespace reductors
 
 using generators::chain;
@@ -1559,6 +1626,9 @@ using reductors::for_each;
 using reductors::for_each_indexed;
 using reductors::fork;
 using reductors::into;
+using reductors::max_value;
+using reductors::min_max_value;
+using reductors::min_value;
 using reductors::none_of;
 using reductors::out;
 using reductors::partition;

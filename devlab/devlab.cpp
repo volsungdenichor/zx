@@ -35,40 +35,33 @@ struct interpolate_fn
     }
 };
 
-struct min_max_fn
+template <class Clock = std::chrono::high_resolution_clock, class Func, class... Args>
+auto time_it(Func&& func, Args&&... args) -> std::pair<std::invoke_result_t<Func, Args...>, typename Clock::duration>
 {
-    template <class Iter, class T = zx::iter_value_t<Iter>>
-    auto operator()(Iter begin, Iter end) const -> std::pair<T, T>
-    {
-        if (begin == end)
-        {
-            throw std::invalid_argument{ "Range cannot be empty" };
-        }
-        T min_value = *begin;
-        T max_value = min_value;
-        for (++begin; begin != end; ++begin)
-        {
-            min_value = std::min(min_value, *begin);
-            max_value = std::max(max_value, *begin);
-        }
-        return { min_value, max_value };
-    }
+    const auto start = Clock::now();
+    const auto result = std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
+    const auto end = Clock::now();
+    return { result, end - start };
+}
 
-    template <class Range>
-    auto operator()(Range&& range) const
+template <class Clock = std::chrono::high_resolution_clock, class Func, class... Args>
+auto try_time_it(Func&& func, Args&&... args)
+    -> zx::result_t<std::pair<std::invoke_result_t<Func, Args...>, typename Clock::duration>, std::exception_ptr>
+{
+    auto [result, duration] = time_it<Clock>(zx::try_invoke, std::forward<Func>(func), std::forward<Args>(args)...);
+    if (!result)
     {
-        return (*this)(std::begin(range), std::end(range));
+        return zx::forward_error(std::move(result));
     }
-};
-
-static constexpr inline auto min_max = min_max_fn{};
+    return std::pair{ *std::move(result), duration };
+}
 
 /*
 cmake --preset ninja-release -DZX_BUILD_DEVLAB=ON
 cmake --build --preset ninja-release --target zx_devlab
 ./build/ninja-release/devlab/zx_devlab
 */
-void run(const std::vector<std::string_view>&)
+int run(const std::vector<std::string_view>&)
 {
     using namespace zx;
 
@@ -96,8 +89,8 @@ void run(const std::vector<std::string_view>&)
         mat::array_t<float, 2> result(extent);
         mat::detail::for_each(
             result.shape(), [&](const mat::location_t<2>& loc) { result[loc] = perlin(loc / 20.F, get_permutation); });
-        const auto normalize = interpolate_fn<float, float>{ min_max(result), { 0.F, 255.F } };
-        std::transform(std::begin(result), std::end(result), std::begin(result), normalize);
+        const auto normalize = interpolate_fn<float, float>{ zx::from(result) | zx::min_max_value<float>(), { 0.F, 255.F } };
+        zx::from(result) | zx::transform(normalize) | zx::copy_to(result.begin());
         mat::rgb_image_t res(extent);
         mat::detail::for_each(
             res.data().shape(),
@@ -137,6 +130,7 @@ void run(const std::vector<std::string_view>&)
         });
 
     mat::save_bitmap(mat::flip_horizontal(result.view()), mat::filepath_t{ "/home/krzysiek/out.bmp" });
+    return 0;
 }
 
 struct exception_handler_t
@@ -185,18 +179,17 @@ int main(int argc, char* argv[])
 {
     const auto handle_exception = exception_handler_t{ [](int level, std::string_view message)
                                                        { zx::format_to(std::cerr, std::string(level * 2, ' '), message); } };
-    try
+
+    if (auto res = try_time_it(run, std::vector<std::string_view>(argv, argv + argc)))
     {
-        const auto start = std::chrono::steady_clock::now();
-        run(std::vector<std::string_view>(argv, argv + argc));
-        const auto end = std::chrono::steady_clock::now();
-        const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        std::cerr << "Execution time: " << duration << " ms" << std::endl;
-        return 0;
+        const auto [result, duration] = *res;
+        std::cerr << "Execution time: " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << " ms"
+                  << std::endl;
+        return result;
     }
-    catch (...)
+    else
     {
-        handle_exception(std::current_exception());
+        handle_exception(res.error());
         return -1;
     }
 }
