@@ -144,6 +144,24 @@ using location_t = point_t<D, location_base_t>;
 template <std::size_t D>
 using bounds_t = box_shape_t<D, extent_base_t>;
 
+struct to_slice_fn
+{
+    slice_base_t operator()(const interval_type& i) const { return slice_base_t{ lower(i), upper(i) }; }
+
+    template <std::size_t D>
+    vector_t<D, slice_base_t> operator()(const bounds_t<D>& b) const
+    {
+        vector_t<D, slice_base_t> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(b[d]);
+        }
+        return result;
+    }
+};
+
+constexpr inline auto to_slice = to_slice_fn{};
+
 template <std::size_t D, class...>
 struct shape_t : md_base_t<D, dim_t, shape_t>
 {
@@ -455,6 +473,8 @@ struct array_view_base_t
         return array_view_base_t{ from_offset(offset), new_shape };
     }
 
+    array_view_base_t<T, D> region(const bounds_type& b) const { return slice(to_slice(clamp(bounds(), b))); }
+
     array_view_base_t<T, D - 1> sub(std::size_t d, location_base_t n) const
     {
         const location_base_t adjusted_loc = m_shape.dim(d).adjust_location(n);
@@ -545,6 +565,8 @@ struct array_view_base_t<T, 1>
         const auto [new_shape, new_start] = m_shape.slice(s);
         return array_view_base_t{ from_offset(new_start), new_shape };
     }
+
+    array_view_base_t region(const bounds_type& b) const { return slice(to_slice(clamp(bounds(), b))); }
 
     template <class T_ = T, enable_if_t<!std::is_const_v<T_>> = 0>
     void fill(const value_type& value) const
@@ -673,6 +695,9 @@ struct array_t
     mut_view_type slice(const slice_type& s) { return mut_view().slice(s); }
     view_type slice(const slice_type& s) const { return view().slice(s); }
 
+    mut_view_type region(const bounds_type& b) { return mut_view().region(b); }
+    view_type region(const bounds_type& b) const { return view().region(b); }
+
     iterator begin() { return mut_view().begin(); }
     iterator end() { return mut_view().end(); }
 
@@ -757,24 +782,6 @@ struct adjust_copy_bounds_fn
 };
 
 inline constexpr auto adjust_copy_bounds = adjust_copy_bounds_fn{};
-
-struct to_slice_fn
-{
-    slice_base_t operator()(const interval_type& bounds) const { return slice_base_t{ lower(bounds), upper(bounds) }; }
-
-    template <std::size_t D>
-    vector_t<D, slice_base_t> operator()(const bounds_t<D>& bounds) const
-    {
-        vector_t<D, slice_base_t> result = {};
-        for (std::size_t d = 0; d < D; ++d)
-        {
-            result[d] = (*this)(bounds[d]);
-        }
-        return result;
-    }
-};
-
-inline constexpr auto to_slice = to_slice_fn{};
 
 struct copy_fn
 {

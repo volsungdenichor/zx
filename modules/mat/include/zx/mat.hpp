@@ -265,6 +265,7 @@ struct clamp_fn
 };
 
 inline constexpr auto clamp = clamp_fn{};
+
 struct extend_fn
 {
     template <class T>
