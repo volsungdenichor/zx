@@ -2,6 +2,8 @@
 
 #include <forward_list>
 #include <iterator>
+#include <ostream>
+#include <string>
 #include <vector>
 #include <zx/type_traits.hpp>
 
@@ -109,4 +111,38 @@ TEST(type_traits, is_input_iterator)
 
     EXPECT_THAT((zx::is_input_iterator<std::forward_list<int>::iterator>::value), testing::IsTrue());
     EXPECT_THAT((zx::is_input_iterator<std::istream_iterator<int>>::value), testing::IsTrue());
+}
+
+namespace
+{
+
+struct streamable
+{
+    friend std::ostream& operator<<(std::ostream& os, const streamable&) { return os; }
+};
+
+struct not_streamable
+{
+};
+
+}  // namespace
+
+TEST(type_traits, has_ostream_operator)
+{
+    EXPECT_THAT((zx::has_ostream_operator<int>::value), testing::IsTrue());
+    EXPECT_THAT((zx::has_ostream_operator<double>::value), testing::IsTrue());
+    EXPECT_THAT((zx::has_ostream_operator<std::string>::value), testing::IsTrue());
+    EXPECT_THAT((zx::has_ostream_operator<const char*>::value), testing::IsTrue());
+    EXPECT_THAT((zx::has_ostream_operator<streamable>::value), testing::IsTrue());
+
+    EXPECT_THAT((zx::has_ostream_operator<not_streamable>::value), testing::IsFalse());
+}
+
+TEST(type_traits, has_ostream_operator_excludes_implicit_conversions)
+{
+    const auto captureless_lambda = []() { return 42; };
+    const auto capturing_lambda = [&captureless_lambda]() { return captureless_lambda(); };
+
+    EXPECT_THAT((zx::has_ostream_operator<decltype(captureless_lambda)>::value), testing::IsFalse());
+    EXPECT_THAT((zx::has_ostream_operator<decltype(capturing_lambda)>::value), testing::IsFalse());
 }

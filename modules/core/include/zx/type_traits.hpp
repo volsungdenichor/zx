@@ -43,11 +43,18 @@ struct always_false : std::false_type
 {
 };
 
-template <class T>
-using has_ostream_operator_impl = decltype(std::declval<std::ostream&>() << std::declval<const T&>());
+namespace detail
+{
 
 template <class T>
-struct has_ostream_operator : is_detected<has_ostream_operator_impl, T>
+using has_ostream_operator_impl = decltype(operator<<(std::declval<std::ostream&>(), std::declval<const T&>()));
+
+}  // namespace detail
+
+template <class T>
+struct has_ostream_operator : std::bool_constant<
+                                  is_detected<detail::has_ostream_operator_impl, T>::value
+                                  || std::is_arithmetic_v<std::decay_t<T>> || std::is_pointer_v<std::decay_t<T>>>
 {
 };
 
