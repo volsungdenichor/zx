@@ -113,9 +113,6 @@ TEST(type_traits, is_input_iterator)
     EXPECT_THAT((zx::is_input_iterator<std::istream_iterator<int>>::value), testing::IsTrue());
 }
 
-namespace
-{
-
 struct streamable
 {
     friend std::ostream& operator<<(std::ostream& os, const streamable&) { return os; }
@@ -124,8 +121,6 @@ struct streamable
 struct not_streamable
 {
 };
-
-}  // namespace
 
 TEST(type_traits, has_ostream_operator)
 {
