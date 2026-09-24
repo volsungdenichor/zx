@@ -1,0 +1,13 @@
+CompileFlags:
+  CompilationDatabase: build/ninja-release
+  Add:
+    - -std=c++17
+    - -Imodules/core/include
+    - -Imodules/sequence/include
+    - -Imodules/mat/include
+    - -Imodules/geometry/include
+    - -Imodules/nested_text/include
+    - -Imodules/yield/include
+    - -Imodules/predicates/include
+    - -Imodules/random/include
+    - -Itests/include

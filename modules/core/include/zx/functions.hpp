@@ -1,5 +1,8 @@
 #pragma once
 
+#include <functional>
+#include <stdexcept>
+#include <tuple>
 #include <utility>
 #include <zx/type_traits.hpp>
 
@@ -81,6 +84,7 @@ struct proj_fn
         }
     };
 
+public:
     template <class Func, class Proj>
     constexpr auto operator()(Func&& func, Proj&& proj) const
     {
@@ -95,6 +99,73 @@ struct cast_fn
     constexpr T operator()(U&& value) const
     {
         return static_cast<T>(std::forward<U>(value));
+    }
+};
+
+struct overloaded_fn
+{
+private:
+    template <class T>
+    struct exact_arg_t
+    {
+        T value;
+
+        constexpr operator T() && noexcept { return std::forward<T>(value); }
+    };
+
+    template <class... Funcs>
+    struct overload_set_t : Funcs...
+    {
+        using Funcs::operator()...;
+
+        constexpr explicit overload_set_t(Funcs... funcs) : Funcs(std::move(funcs))... { }
+    };
+
+    template <class... Funcs>
+    struct impl_t
+    {
+        overload_set_t<Funcs...> m_funcs;
+
+        template <class... Args>
+        auto operator()(Args&&... args) const -> decltype(auto)
+        {
+            if constexpr (std::is_invocable_v<overload_set_t<Funcs...>, const impl_t&, exact_arg_t<Args&&>...>)
+            {
+                return std::invoke(m_funcs, *this, exact_arg_t<Args&&>{ std::forward<Args>(args) }...);
+            }
+            else
+            {
+                return call(*this, std::forward<Args>(args)...);
+            }
+        }
+
+        template <std::size_t I = 0, class... Args>
+        auto call(const impl_t& self, Args&&... args) const -> decltype(auto)
+        {
+            if constexpr (I == sizeof...(Funcs))
+            {
+                static_assert(always_false<Args...>::value, "No overloaded function matches the given arguments");
+            }
+            else
+            {
+                using Func = std::tuple_element_t<I, std::tuple<Funcs...>>;
+                if constexpr (std::is_invocable_v<Func, const impl_t&, Args...>)
+                {
+                    return std::invoke(static_cast<const Func&>(self.m_funcs), self, std::forward<Args>(args)...);
+                }
+                else
+                {
+                    return call<I + 1>(self, std::forward<Args>(args)...);
+                }
+            }
+        }
+    };
+
+public:
+    template <class... Funcs>
+    constexpr auto operator()(Funcs&&... funcs) const
+    {
+        return impl_t<std::decay_t<Funcs>...>{ overload_set_t<std::decay_t<Funcs>...>{ std::forward<Funcs>(funcs)... } };
     }
 };
 
@@ -114,5 +185,7 @@ inline constexpr auto proj = detail::proj_fn{};
 
 template <class T>
 inline constexpr auto cast = detail::cast_fn<T>{};
+
+inline constexpr auto overloaded = detail::overloaded_fn{};
 
 }  // namespace zx

@@ -13,6 +13,7 @@
             "binaryDir": "${sourceDir}/build/ninja-debug",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
                 "ZX_BUILD_ALL": "ON",
                 "ZX_BUILD_TESTS": "ON",
                 "ZX_BUILD_BENCHMARKS": "OFF"
@@ -25,6 +26,7 @@
             "binaryDir": "${sourceDir}/build/ninja-release",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
                 "ZX_BUILD_ALL": "ON",
                 "ZX_BUILD_TESTS": "ON",
                 "ZX_BUILD_BENCHMARKS": "OFF"

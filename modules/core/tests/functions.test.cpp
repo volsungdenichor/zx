@@ -55,3 +55,23 @@ TEST(functions, cast)
     EXPECT_THAT(cast_to_int(42.5), 42);
     EXPECT_THAT(cast_to_int(3.14f), 3);
 }
+
+TEST(functions, overloaded)
+{
+    using namespace std::literals;
+    const auto func = zx::overloaded(
+        [](const auto& self, int x) -> int { return x >= 2 ? self(x - 1) + self(x - 2) : 1; },
+        [](const auto&, double) -> int { return 666; },
+        [](const auto& self, const std::string& s) -> int { return self(s.size()); });
+
+    EXPECT_THAT(func(1), 1);
+    EXPECT_THAT(func(2), 2);
+    EXPECT_THAT(func(3), 3);
+    EXPECT_THAT(func(4), 5);
+    EXPECT_THAT(func(5), 8);
+    EXPECT_THAT(func(6), 13);
+    EXPECT_THAT(func(""s), 1);
+    EXPECT_THAT(func("C++"s), 3);
+    EXPECT_THAT(func("Hello"s), 8);
+    EXPECT_THAT(func(3.14), 666);
+}
