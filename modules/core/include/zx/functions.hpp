@@ -34,6 +34,24 @@ struct is_maybe_dereferenceable : std::conjunction<std::is_constructible<bool, T
 {
 };
 
+struct as_signed_fn
+{
+    template <class T>
+    constexpr auto operator()(T value) const -> std::make_signed_t<T>
+    {
+        return static_cast<std::make_signed_t<T>>(value);
+    }
+};
+
+struct as_unsigned_fn
+{
+    template <class T>
+    constexpr auto operator()(T value) const -> std::make_unsigned_t<T>
+    {
+        return static_cast<std::make_unsigned_t<T>>(value);
+    }
+};
+
 template <std::size_t N>
 struct get_element_fn
 {
@@ -186,6 +204,8 @@ inline constexpr auto proj = detail::proj_fn{};
 template <class T>
 inline constexpr auto cast = detail::cast_fn<T>{};
 
+inline constexpr auto as_signed = detail::as_signed_fn{};
+inline constexpr auto as_unsigned = detail::as_unsigned_fn{};
 inline constexpr auto overloaded = detail::overloaded_fn{};
 
 }  // namespace zx

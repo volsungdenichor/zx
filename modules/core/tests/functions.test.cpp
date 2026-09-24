@@ -1,5 +1,7 @@
 #include <gmock/gmock.h>
 
+#include <cstddef>
+#include <string>
 #include <zx/functions.hpp>
 
 TEST(functions, identity)
@@ -62,7 +64,7 @@ TEST(functions, overloaded)
     const auto func = zx::overloaded(
         [](const auto& self, int x) -> int { return x >= 2 ? self(x - 1) + self(x - 2) : 1; },
         [](const auto&, double) -> int { return 666; },
-        [](const auto& self, const std::string& s) -> int { return self(s.size()); });
+        [](const auto& self, const std::string& s) -> int { return self(static_cast<int>(s.size())); });
 
     EXPECT_THAT(func(1), 1);
     EXPECT_THAT(func(2), 2);
@@ -74,4 +76,17 @@ TEST(functions, overloaded)
     EXPECT_THAT(func("C++"s), 3);
     EXPECT_THAT(func("Hello"s), 8);
     EXPECT_THAT(func(3.14), 666);
+}
+
+TEST(functions, as_signed)
+{
+    EXPECT_THAT(zx::as_signed(42u), 42);
+    testing::StaticAssertTypeEq<decltype(zx::as_signed(42u)), int>();
+    testing::StaticAssertTypeEq<decltype(zx::as_signed(std::string{}.size())), std::ptrdiff_t>();
+}
+
+TEST(functions, as_unsigned)
+{
+    EXPECT_THAT(zx::as_unsigned(42), 42u);
+    testing::StaticAssertTypeEq<decltype(zx::as_unsigned(42)), unsigned int>();
 }
