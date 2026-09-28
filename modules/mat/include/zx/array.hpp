@@ -2,9 +2,9 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <numeric>
 #include <optional>
-#include <sstream>
 #include <tuple>
 #include <zx/algorithm.hpp>
 #include <zx/format.hpp>
