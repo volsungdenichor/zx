@@ -7,6 +7,7 @@
 #include <ostream>
 #include <vector>
 #include <zx/function_ref.hpp>
+#include <zx/mat/box_shape.hpp>
 
 namespace zx
 {
