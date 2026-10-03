@@ -16,21 +16,6 @@ namespace mat
 namespace detail
 {
 
-constexpr struct eq_fn
-{
-    template <class... Its, std::size_t... Is>
-    bool operator()(const std::tuple<Its...>& lhs, const std::tuple<Its...>& rhs, std::index_sequence<Is...>) const
-    {
-        return ((std::get<Is>(lhs) == std::get<Is>(rhs)) && ...);
-    }
-
-    template <class... Its>
-    bool operator()(const std::tuple<Its...>& lhs, const std::tuple<Its...>& rhs) const
-    {
-        return (*this)(lhs, rhs, std::make_index_sequence<sizeof...(Its)>{});
-    }
-} eq = {};
-
 constexpr struct inc_fn
 {
     template <class... Its, std::size_t... Is>
@@ -51,7 +36,7 @@ constexpr Out map_into(Out out, Func func, Ranges&&... ranges)
 {
     auto begin = std::tuple{ std::begin(out), std::begin(ranges)... };
     const auto end = std::tuple{ std::end(out), std::end(ranges)... };
-    for (; !eq(begin, end); inc(begin))
+    for (; begin != end; inc(begin))
     {
         std::apply([&](auto in, auto... iters) { *in = std::invoke(func, *iters...); }, begin);
     }
@@ -63,7 +48,7 @@ constexpr InOut& map(Func func, InOut& in_out, Ranges&&... ranges)
 {
     auto begin = std::tuple{ std::begin(in_out), std::begin(ranges)... };
     const auto end = std::tuple{ std::end(in_out), std::end(ranges)... };
-    for (; !eq(begin, end); inc(begin))
+    for (; begin != end; inc(begin))
     {
         std::apply(
             [&](auto head, auto... tail)
