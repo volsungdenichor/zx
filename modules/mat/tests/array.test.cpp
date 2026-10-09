@@ -2,6 +2,8 @@
 
 #include <zx/array.hpp>
 
+#include "zx/mat/box_shape.hpp"
+
 template <class T>
 zx::mat::stride_base_t stride_of(zx::mat::location_base_t n)
 {
@@ -288,12 +290,13 @@ TEST(array, array_2d_copy_with_positive_location)
 
     EXPECT_THAT(
         dst.m_data,
-        testing::ElementsAreArray({
-            -1, -1, -1, -1, -1,  // row 0
-            -1, -1, 0,  1,  2,   // row 1
-            -1, -1, 4,  5,  6,   // row 2
-            -1, -1, 8,  9,  10   // row 3
-        }));
+        testing::ElementsAreArray(
+            {
+                -1, -1, -1, -1, -1,  // row 0
+                -1, -1, 0,  1,  2,   // row 1
+                -1, -1, 4,  5,  6,   // row 2
+                -1, -1, 8,  9,  10   // row 3
+            }));
 }
 
 TEST(array, array_2d_copy_with_negative_location)
@@ -311,12 +314,13 @@ TEST(array, array_2d_copy_with_negative_location)
 
     EXPECT_THAT(
         dst.m_data,
-        testing::ElementsAreArray({
-            6,  7,  -1, -1, -1,  // row 0
-            10, 11, -1, -1, -1,  // row 1
-            -1, -1, -1, -1, -1,  // row 2
-            -1, -1, -1, -1, -1   // row 3
-        }));
+        testing::ElementsAreArray(
+            {
+                6,  7,  -1, -1, -1,  // row 0
+                10, 11, -1, -1, -1,  // row 1
+                -1, -1, -1, -1, -1,  // row 2
+                -1, -1, -1, -1, -1   // row 3
+            }));
 }
 
 TEST(array, array_2d_copy_bounds_adjustment)
@@ -338,12 +342,12 @@ TEST(array, array_2d_adjust_copy_bounds)
     zx::mat::array_t<int, 2> src{ { 3, 4 } };
     zx::mat::array_t<int, 2> dst{ { 4, 5 } };
 
-    const zx::mat::bounds_t<2> src_box{ {
+    const zx::mat::rectangle_t<zx::mat::extent_base_t, zx::mat::matrix_space_t> src_box{ {
         zx::mat::interval_t<zx::mat::extent_base_t>{ 0, 3 },
         zx::mat::interval_t<zx::mat::extent_base_t>{ 0, 4 },
     } };
 
-    const zx::mat::bounds_t<2> dst_box{ {
+    const zx::mat::rectangle_t<zx::mat::extent_base_t, zx::mat::matrix_space_t> dst_box{ {
         zx::mat::interval_t<zx::mat::extent_base_t>{ -1, 2 },
         zx::mat::interval_t<zx::mat::extent_base_t>{ 2, 6 },
     } };

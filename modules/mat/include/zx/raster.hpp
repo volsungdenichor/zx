@@ -7,6 +7,8 @@
 #include <vector>
 #include <zx/array.hpp>
 
+#include "zx/function_ref.hpp"
+
 namespace zx
 {
 namespace mat
@@ -14,7 +16,7 @@ namespace mat
 
 struct raster_t
 {
-    using shape_t = std::map<location_base_t, std::vector<interval_type>>;
+    using shape_t = std::map<location_base_t, std::vector<bounds_base_t>>;
 
     using shape_list_t = std::vector<shape_t>;
     using const_iterator = shape_list_t::const_iterator;
@@ -54,7 +56,7 @@ struct raster_t
     raster_t outline(location_base_t radius) const { return dilate(radius) - *this; }
 
 private:
-    static bool cmp(const interval_type& lhs, const interval_type& rhs)
+    static bool cmp(const bounds_base_t& lhs, const bounds_base_t& rhs)
     {
         return (lhs[0] < rhs[0]) || (lhs[0] == rhs[0] && lhs[1] < rhs[1]);
     }
@@ -68,9 +70,9 @@ private:
             {
                 continue;
             }
-            std::vector<interval_type> v = span;
+            std::vector<bounds_base_t> v = span;
             std::sort(v.begin(), v.end(), &cmp);
-            std::vector<interval_type> merged = { v[0] };
+            std::vector<bounds_base_t> merged = { v[0] };
             for (std::size_t i = 1; i < v.size(); ++i)
             {
                 auto& last = merged.back();
@@ -126,7 +128,7 @@ private:
             const auto& rhs_spans = it->second;
             std::size_t i = 0;
             std::size_t j = 0;
-            std::vector<interval_type> row;
+            std::vector<bounds_base_t> row;
             while (i < lhs_spans.size() && j < rhs_spans.size())
             {
                 const auto lo = std::max(lhs_spans[i][0], rhs_spans[j][0]);
@@ -171,7 +173,7 @@ private:
             }
 
             const auto& rhs_spans = it->second;
-            std::vector<interval_type> row;
+            std::vector<bounds_base_t> row;
             std::size_t j = 0;
             for (const auto& span : lhs_spans)
             {
@@ -289,7 +291,7 @@ private:
         struct row_t
         {
             location_base_t y = 0;
-            std::vector<interval_type> spans;
+            std::vector<bounds_base_t> spans;
             std::vector<std::size_t> ids;
         };
 
@@ -404,7 +406,7 @@ struct rasterize_fn
         for (location_base_t y = shape[0].get(side_t::lower); y < shape[0].get(side_t::upper); ++y)
         {
             raster_shape.emplace(
-                y, std::vector<interval_type>{ { shape[1].get(side_t::lower), shape[1].get(side_t::upper) } });
+                y, std::vector<bounds_base_t>{ { shape[1].get(side_t::lower), shape[1].get(side_t::upper) } });
         }
 
         return raster_t{ { raster_shape } };
@@ -415,9 +417,9 @@ struct rasterize_fn
         raster_t::shape_t raster_shape;
         const auto center = shape.center;
 
-        auto output_row = [&](location_base_t y, interval_type interval)
+        auto output_row = [&](location_base_t y, bounds_base_t interval)
         {
-            auto [it, inserted] = raster_shape.emplace(y, std::vector<interval_type>{});
+            auto [it, inserted] = raster_shape.emplace(y, std::vector<bounds_base_t>{});
             if (inserted || it->second.empty())
             {
                 it->second.push_back(interval);
@@ -455,11 +457,11 @@ struct rasterize_fn
     }
 
     raster_t operator()(
-        const rectangle_t<location_base_t>& area, zx::function_ref<bool(const location_t<2>&)> predicate) const
+        const rectangle_t<location_base_t>& area, zx::function_ref<bool(const point_t<2, location_base_t>&)> predicate) const
     {
         raster_t::shape_t raster_shape;
 
-        const auto output_interval = [&](location_base_t y, interval_type interval) { raster_shape[y].push_back(interval); };
+        const auto output_interval = [&](location_base_t y, bounds_base_t interval) { raster_shape[y].push_back(interval); };
 
         for (location_base_t y = area[0].get(side_t::lower); y < area[0].get(side_t::upper); ++y)
         {
@@ -468,7 +470,7 @@ struct rasterize_fn
 
             for (location_base_t x = area[1].get(side_t::lower); x < area[1].get(side_t::upper); ++x)
             {
-                const location_t<2> loc{ y, x };
+                const point_t<2, location_base_t> loc{ y, x };
                 if (predicate(loc))
                 {
                     if (!in_interval)

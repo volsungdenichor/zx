@@ -9,6 +9,9 @@
 #include <zx/function_ref.hpp>
 #include <zx/raster.hpp>
 
+#include "zx/mat/box_shape.hpp"
+#include "zx/mat/matrix.hpp"
+
 namespace zx
 {
 namespace mat
@@ -31,6 +34,13 @@ struct filepath_t
 template <extent_base_t Channels>
 struct image_base_t
 {
+    using space_type = matrix_space_t;
+
+    using extent_type = extent_t<2, extent_base_t, space_type>;
+    using location_type = point_t<2, location_base_t, space_type>;
+    using bounds_type = rectangle_t<extent_base_t, space_type>;
+    using slice_type = vector_t<2, slice_base_t, space_type>;
+
     using color_type = channel_color_base_t<byte_t, static_cast<std::size_t>(Channels)>;
     using storage_type = array_t<byte_t, 3>;
     using channel_type = array_t<byte_t, 2>;
@@ -74,11 +84,6 @@ struct image_base_t
     {
         using color_type = typename image_base_t::color_type;
 
-        using extent_type = extent_t<2, extent_base_t>;
-        using location_type = location_t<2>;
-        using bounds_type = bounds_t<2>;
-        using slice_type = vector_t<2, slice_base_t>;
-
         using data_type = storage_type::view_type;
         data_type m_data;
 
@@ -115,11 +120,6 @@ struct image_base_t
     {
         using color_type = typename image_base_t::color_type;
 
-        using extent_type = extent_t<2, extent_base_t>;
-        using location_type = location_t<2>;
-        using bounds_type = bounds_t<2>;
-        using slice_type = vector_t<2, slice_base_t>;
-
         using data_type = storage_type::mut_view_type;
         data_type m_data;
 
@@ -145,11 +145,6 @@ struct image_base_t
 
         mut_view_type slice(const slice_type& s) const { return { m_data.slice({ s[0], s[1], slice_base_t{} }) }; }
     };
-
-    using extent_type = typename view_type::extent_type;
-    using location_type = typename view_type::location_type;
-    using bounds_type = typename view_type::bounds_type;
-    using slice_type = typename view_type::slice_type;
 
     view_type view() const { return view_type{ m_data.view() }; }
     mut_view_type mut_view() { return mut_view_type{ m_data.mut_view() }; }
@@ -181,10 +176,13 @@ struct image_base_t
 using rgb_image_t = image_base_t<3>;
 using rgba_image_t = image_base_t<4>;
 
-using mask_t = array_t<float, 2>;
+using mask_t = array_t<float, 2, rgb_image_t::space_type>;
 
-using segment_type = segment_t<2, location_base_t>;
-using circle_type = circle_t<location_base_t>;
+using segment_type = segment_t<2, location_base_t, rgb_image_t::space_type>;
+using circle_type = circle_t<location_base_t, rgb_image_t::space_type>;
+
+template <class T = location_base_t>
+using vector_type = vector_t<2, T, rgb_image_t::space_type>;
 
 namespace detail
 {
@@ -493,7 +491,7 @@ using color_filter_t = function_ref<rgb_color_t(const rgb_color_t&)>;
 using binary_color_filter_t = function_ref<rgb_color_t(const rgb_color_t&, const rgb_color_t&)>;
 
 template <std::size_t D>
-void for_each(const shape_t<D>& shape, function_ref<void(const location_t<2>&)> func)
+void for_each(const shape_t<D>& shape, function_ref<void(const rgb_image_t::location_type&)> func)
 {
     const extent_base_t h = shape[0].extent;
     const extent_base_t w = shape[1].extent;
@@ -502,7 +500,7 @@ void for_each(const shape_t<D>& shape, function_ref<void(const location_t<2>&)> 
     {
         for (location_base_t x = 0; x < w; ++x)
         {
-            func(location_t<2>{ y, x });
+            func(rgb_image_t::location_type{ y, x });
         }
     }
 }
@@ -534,8 +532,8 @@ struct with_fn
 
 struct rotate_fn
 {
-    template <class T>
-    auto operator()(array_view_base_t<T, 2> image, int degrees) const -> array_view_base_t<T, 2>
+    template <class T, class Space>
+    auto operator()(array_view_base_t<T, 2, Space> image, int degrees) const -> array_view_base_t<T, 2, Space>
     {
         const auto [shape, offset] = new_shape_and_offset(image.shape(), normalize_quarter_turns(degrees));
         return { image.from_offset(offset), shape };
@@ -564,7 +562,8 @@ struct rotate_fn
         return (turns % 4 + 4) % 4;
     }
 
-    static auto new_shape_and_offset(const shape_t<2>& src, int turns) -> std::pair<shape_t<2>, flat_offset_t>
+    template <class Space>
+    static auto new_shape_and_offset(const shape_t<2, Space>& src, int turns) -> std::pair<shape_t<2, Space>, flat_offset_t>
     {
         if (src[0].extent == 0 || src[1].extent == 0 || turns == 0)
         {
@@ -576,20 +575,21 @@ struct rotate_fn
         {
             case 0: return { src, 0 };
             case 1:
-                return std::pair{ shape_t<2>{ src[1], src[0].flip() },
+                return std::pair{ shape_t<2, Space>{ src[1], src[0].flip() },
                                   src.flat_offset(bounds.get({ side_t::last, side_t::first })) };
 
             case 2:
-                return std::pair{ shape_t<2>{ src[0].flip(), src[1].flip() },
+                return std::pair{ shape_t<2, Space>{ src[0].flip(), src[1].flip() },
                                   src.flat_offset(bounds.get({ side_t::last, side_t::last })) };
             case 3:
-                return std::pair{ shape_t<2>{ src[1].flip(), src[0] },
+                return std::pair{ shape_t<2, Space>{ src[1].flip(), src[0] },
                                   src.flat_offset(bounds.get({ side_t::first, side_t::last })) };
         }
         return { src, 0 };
     }
 
-    static auto new_shape_and_offset(const shape_t<3>& src, int turns) -> std::pair<shape_t<3>, flat_offset_t>
+    template <class Space>
+    static auto new_shape_and_offset(const shape_t<3, Space>& src, int turns) -> std::pair<shape_t<3, Space>, flat_offset_t>
     {
         if (src[0].extent == 0 || src[1].extent == 0 || turns == 0)
         {
@@ -601,14 +601,14 @@ struct rotate_fn
         {
             case 0: return { src, 0 };
             case 1:
-                return std::pair{ shape_t<3>{ src[1], src[0].flip(), src[2] },
+                return std::pair{ shape_t<3, Space>{ src[1], src[0].flip(), src[2] },
                                   src.flat_offset(bounds.get({ side_t::last, side_t::first, side_t::first })) };
 
             case 2:
-                return std::pair{ shape_t<3>{ src[0].flip(), src[1].flip(), src[2] },
+                return std::pair{ shape_t<3, Space>{ src[0].flip(), src[1].flip(), src[2] },
                                   src.flat_offset(bounds.get({ side_t::last, side_t::last, side_t::first })) };
             case 3:
-                return std::pair{ shape_t<3>{ src[1].flip(), src[0], src[2] },
+                return std::pair{ shape_t<3, Space>{ src[1].flip(), src[0], src[2] },
                                   src.flat_offset(bounds.get({ side_t::first, side_t::last, side_t::first })) };
         }
         return { src, 0 };
@@ -620,8 +620,8 @@ struct flip_fn
 {
     static_assert(D < 2, "flip: axis out of range");
 
-    template <class T>
-    auto operator()(const array_view_base_t<T, 2>& image) const -> array_view_base_t<T, 2>
+    template <class T, class Space>
+    auto operator()(const array_view_base_t<T, 2>& image) const -> array_view_base_t<T, 2, Space>
     {
         const auto [shape, offset] = new_shape_and_offset(image.shape());
         return { image.from_offset(offset), shape };
@@ -639,10 +639,11 @@ struct flip_fn
         return { { image.data().from_offset(offset), shape } };
     }
 
-    static auto new_shape_and_offset(const shape_t<2>& src) -> std::pair<shape_t<2>, flat_offset_t>
+    template <class Space>
+    static auto new_shape_and_offset(const shape_t<2, Space>& src) -> std::pair<shape_t<2, Space>, flat_offset_t>
     {
         const auto bounds = src.bounds();
-        shape_t<2> out_shape = src;
+        shape_t<2, Space> out_shape = src;
         out_shape[D] = src[D].flip();
 
         const flat_offset_t base_offset = D == 0 ? src.flat_offset(bounds.get({ side_t::last, side_t::first }))
@@ -650,10 +651,11 @@ struct flip_fn
         return { out_shape, base_offset };
     }
 
-    static auto new_shape_and_offset(const shape_t<3>& src) -> std::pair<shape_t<3>, flat_offset_t>
+    template <class Space>
+    static auto new_shape_and_offset(const shape_t<3, Space>& src) -> std::pair<shape_t<3, Space>, flat_offset_t>
     {
         const auto bounds = src.bounds();
-        shape_t<3> out_shape = src;
+        shape_t<3, Space> out_shape = src;
         out_shape[D] = src[D].flip();
 
         const flat_offset_t base_offset = D == 0
@@ -692,8 +694,8 @@ struct bresenham_line_fn
     {
         const auto direction = end - start;
 
-        vector_t<2, location_base_t> dist;
-        vector_t<2, location_base_t> dir;
+        vector_type<> dist;
+        vector_type<> dir;
 
         std::transform(direction.begin(), direction.end(), dist.begin(), math::abs);
         std::transform(direction.begin(), direction.end(), dir.begin(), math::sign);
@@ -712,8 +714,8 @@ struct bresenham_line_fn
 
     static void bresenham(
         rgb_image_t::location_type cur,
-        const vector_t<2, location_base_t>& dir,
-        const vector_t<2, location_base_t>& dist,
+        const vector_type<>& dir,
+        const vector_type<>& dist,
         int err,
         function_ref<bool(const rgb_image_t::location_type&)> output)
     {
@@ -758,14 +760,14 @@ struct bresenham_circle_fn
 
         while (cur[0] >= cur[1])
         {
-            output(point(center[0] + cur[0], center[1] + cur[1]));
-            output(point(center[0] + cur[1], center[1] + cur[0]));
-            output(point(center[0] - cur[1], center[1] + cur[0]));
-            output(point(center[0] - cur[0], center[1] + cur[1]));
-            output(point(center[0] - cur[0], center[1] - cur[1]));
-            output(point(center[0] - cur[1], center[1] - cur[0]));
-            output(point(center[0] + cur[1], center[1] - cur[0]));
-            output(point(center[0] + cur[0], center[1] - cur[1]));
+            output(rgb_image_t::location_type{ center[0] + cur[0], center[1] + cur[1] });
+            output(rgb_image_t::location_type{ center[0] + cur[1], center[1] + cur[0] });
+            output(rgb_image_t::location_type{ center[0] - cur[1], center[1] + cur[0] });
+            output(rgb_image_t::location_type{ center[0] - cur[0], center[1] + cur[1] });
+            output(rgb_image_t::location_type{ center[0] - cur[0], center[1] - cur[1] });
+            output(rgb_image_t::location_type{ center[0] - cur[1], center[1] - cur[0] });
+            output(rgb_image_t::location_type{ center[0] + cur[1], center[1] - cur[0] });
+            output(rgb_image_t::location_type{ center[0] + cur[0], center[1] - cur[1] });
 
             if (err <= 0)
             {
@@ -785,7 +787,7 @@ struct bresenham_circle_fn
 struct draw_rectangle_fn
 {
     void operator()(
-        const rgb_image_t::mut_view_type& image, const rectangle_t<location_base_t>& rect, color_filter_t color_filter) const
+        const rgb_image_t::mut_view_type& image, const rgb_image_t::bounds_type& rect, color_filter_t color_filter) const
     {
         for (const auto seg : segments(rect))
         {
@@ -813,7 +815,7 @@ struct draw_raster_fn
             {
                 for (location_base_t x = span[0]; x < span[1]; ++x)
                 {
-                    do_draw(location_t<2>{ y, x });
+                    do_draw(rgb_image_t::location_type{ y, x });
                 }
             }
         }
@@ -854,7 +856,7 @@ struct convolve_fn
 
         for_each(
             dst.shape(),
-            [&](const location_t<2>& loc)
+            [&](const rgb_image_t::location_type& loc)
             {
                 const auto region = src.slice({ { loc[0], loc[0] + kernel_size[0] }, { loc[1], loc[1] + kernel_size[1] } });
 
@@ -979,7 +981,7 @@ struct apply_kernel_t<2>
         const auto gx = accumulate(m_masks[0], region, 0.F, kernel_accumulator_t{});
         const auto gy = accumulate(m_masks[1], region, 0.F, kernel_accumulator_t{});
 
-        return length(vector_t<2, float>{ gx, gy });
+        return length(vector_type<float>{ gx, gy });
     }
 };
 
@@ -1037,27 +1039,27 @@ inline constexpr auto convolve = detail::convolve_fn{};
 
 struct mask
 {
-    static mask_t rect(extent_t<2, extent_base_t> size)
+    static mask_t rect(rgb_image_t::extent_type size)
     {
         mask_t mask{ size };
-        detail::for_each(mask.shape(), [&](const location_t<2>& loc) { mask[loc] = 1.F; });
+        detail::for_each(mask.shape(), [&](const rgb_image_t::location_type& loc) { mask[loc] = 1.F; });
         return mask;
     }
 
-    static mask_t square(extent_base_t size) { return rect(extent_t<2, extent_base_t>{ size, size }); }
+    static mask_t square(extent_base_t size) { return rect(rgb_image_t::extent_type{ size, size }); }
 
-    static mask_t ellipse(extent_t<2, extent_base_t> size)
+    static mask_t ellipse(rgb_image_t::extent_type size)
     {
         mask_t mask{ size };
         const auto center = size / 2.F;
-        const auto radius = vector_t<2, float>{
+        const auto radius = vector_type<float>{
             (center[0] > 0.F) ? center[0] : 1.F,
             (center[1] > 0.F) ? center[1] : 1.F,
         };
 
         detail::for_each(
             mask.shape(),
-            [&](const location_t<2>& loc)
+            [&](const rgb_image_t::location_type& loc)
             {
                 const auto delta = loc - center;
                 const float normalized_distance_squared
@@ -1068,7 +1070,7 @@ struct mask
         return mask;
     }
 
-    static mask_t circle(extent_base_t size) { return ellipse(extent_t<2, extent_base_t>{ size, size }); }
+    static mask_t circle(extent_base_t size) { return ellipse(rgb_image_t::extent_type{ size, size }); }
 };
 
 struct kernel
@@ -1102,7 +1104,7 @@ struct kernel
 
         detail::for_each(
             mask.shape(),
-            [&](const location_t<2>& loc)
+            [&](const rgb_image_t::location_type& loc)
             {
                 const float dx = static_cast<float>(loc[1]) - mean;
                 const float dy = static_cast<float>(loc[0]) - mean;
@@ -1161,7 +1163,7 @@ private:
 
         mask_t mask{ { N, N } };
         auto it = values.begin();
-        detail::for_each(mask.shape(), [&](const location_t<2>& loc) { mask[loc] = *it++; });
+        detail::for_each(mask.shape(), [&](const rgb_image_t::location_type& loc) { mask[loc] = *it++; });
         return mask;
     }
 };

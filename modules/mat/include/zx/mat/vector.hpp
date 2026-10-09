@@ -314,7 +314,7 @@ constexpr auto operator+=(vector_t<D, L, Space>& lhs, const vector_t<D, R, Space
 template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::plus<>, L, R>>
 constexpr auto operator+(const vector_t<D, L, Space>& lhs, const vector_t<D, R, Space>& rhs) -> vector_t<D, Res, Space>
 {
-    return detail::map_into(vector_t<D, Res>{}, std::plus<>{}, lhs, rhs);
+    return detail::map_into(vector_t<D, Res, Space>{}, std::plus<>{}, lhs, rhs);
 }
 
 template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::minus<>, L, R>>
@@ -326,7 +326,7 @@ constexpr auto operator-=(vector_t<D, L, Space>& lhs, const vector_t<D, R, Space
 template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::minus<>, L, R>>
 constexpr auto operator-(const vector_t<D, L, Space>& lhs, const vector_t<D, R, Space>& rhs) -> vector_t<D, Res, Space>
 {
-    return detail::map_into(vector_t<D, Res>{}, std::minus<>{}, lhs, rhs);
+    return detail::map_into(vector_t<D, Res, Space>{}, std::minus<>{}, lhs, rhs);
 }
 
 template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
@@ -338,7 +338,7 @@ constexpr auto operator*=(vector_t<D, L, Space>& lhs, R rhs) -> vector_t<D, L, S
 template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
 constexpr auto operator*(const vector_t<D, L, Space>& lhs, R rhs) -> vector_t<D, Res, Space>
 {
-    return detail::map_into(vector_t<D, Res>{}, detail::bind_back(std::multiplies<>{}, rhs), lhs);
+    return detail::map_into(vector_t<D, Res, Space>{}, detail::bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
 template <class L, std::size_t D, class R, class Space, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
@@ -356,7 +356,7 @@ constexpr auto operator/=(vector_t<D, L, Space>& lhs, R rhs) -> vector_t<D, L, S
 template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::divides<>, L, R>>
 constexpr auto operator/(const vector_t<D, L, Space>& lhs, R rhs) -> vector_t<D, Res, Space>
 {
-    return detail::map_into(vector_t<D, Res>{}, detail::bind_back(std::divides<>{}, rhs), lhs);
+    return detail::map_into(vector_t<D, Res, Space>{}, detail::bind_back(std::divides<>{}, rhs), lhs);
 }
 
 template <std::size_t D, class L, class R, class Space, class = std::invoke_result_t<std::equal_to<>, L, R>>

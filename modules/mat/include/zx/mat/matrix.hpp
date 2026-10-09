@@ -14,14 +14,19 @@ namespace zx
 
 namespace mat
 {
+
+struct matrix_space_t
+{
+};
+
 template <std::size_t R, std::size_t C, class T>
 struct matrix_view_t
 {
     using size_type = std::size_t;
     using volume_type = std::size_t;
 
-    using extents_type = vector_t<2, size_type>;
-    using location_type = vector_t<2, size_type>;
+    using extents_type = vector_t<2, size_type, matrix_space_t>;
+    using location_type = vector_t<2, size_type, matrix_space_t>;
 
     using pointer = T*;
     using reference = T&;
