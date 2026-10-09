@@ -239,9 +239,9 @@ struct shape_t : md_base_t<D, dim_t>
     }
 
     template <std::size_t D_ = D, enable_if_t<(D_ > 1)> = 0>
-    shape_t<D - 1> erase(std::size_t index) const
+    shape_t<D - 1, Space> erase(std::size_t index) const
     {
-        typename shape_t<D - 1>::dims_type result = {};
+        typename shape_t<D - 1, Space>::dims_type result = {};
         for (std::size_t i = 0, j = 0; i < D; ++i)
         {
             if (i != index)
@@ -249,7 +249,7 @@ struct shape_t : md_base_t<D, dim_t>
                 result[j++] = dim(i);
             }
         }
-        return shape_t<D - 1>{ result };
+        return shape_t<D - 1, Space>{ result };
     }
 };
 
