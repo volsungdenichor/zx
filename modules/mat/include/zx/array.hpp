@@ -163,7 +163,7 @@ struct to_slice_fn
 constexpr inline auto to_slice = to_slice_fn{};
 
 template <std::size_t D, class...>
-struct shape_t : md_base_t<D, dim_t, shape_t>
+struct shape_t : md_base_t<D, dim_t>
 {
     using extent_type = extent_t<D, extent_base_t>;
     using stride_type = stride_t<D>;
@@ -173,7 +173,7 @@ struct shape_t : md_base_t<D, dim_t, shape_t>
 
     using dims_type = std::array<dim_t, D>;
 
-    using base_t = md_base_t<D, dim_t, shape_t>;
+    using base_t = md_base_t<D, dim_t>;
     using base_t::base_t;
 
     const dim_t& dim(std::size_t d) const { return (*this)[d]; }

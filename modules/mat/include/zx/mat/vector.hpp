@@ -69,11 +69,10 @@ constexpr auto bind_back(Op op, Arg arg)
 
 }  // namespace detail
 
-template <std::size_t D, class T, template <std::size_t, class...> class Self>
+template <std::size_t D, class T>
 struct md_base_t : public std::array<T, D>
 {
     using base_t = std::array<T, D>;
-    using self_type = Self<D, T>;
     using base_t::base_t;
 
     constexpr md_base_t() : base_t{} { std::fill(this->begin(), this->end(), T{}); }
@@ -120,19 +119,12 @@ struct md_base_t : public std::array<T, D>
         os << "]";
         return os;
     }
-
-    friend bool operator==(const self_type& lhs, const self_type& rhs)
-    {
-        return std::equal(lhs.begin(), lhs.end(), rhs.begin());
-    }
-
-    friend bool operator!=(const self_type& lhs, const self_type& rhs) { return !(lhs == rhs); }
 };
 
 template <std::size_t D, class T>
-struct vector_t : public md_base_t<D, T, vector_t>
+struct vector_t : public md_base_t<D, T>
 {
-    using base_t = md_base_t<D, T, vector_t>;
+    using base_t = md_base_t<D, T>;
 
     using base_t::base_t;
 

@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <limits>
 #include <numeric>
-#include <optional>
 #include <zx/iterator_range.hpp>
 #include <zx/iterators.hpp>
 #include <zx/mat/math.hpp>

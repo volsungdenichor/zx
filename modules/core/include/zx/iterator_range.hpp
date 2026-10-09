@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cstring>
-#include <iostream>
 #include <optional>
 #include <utility>
 #include <zx/maybe.hpp>

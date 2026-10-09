@@ -100,9 +100,9 @@ constexpr auto operator-(const interval_t<T>& lhs, U rhs) -> interval_t<Res>
 }
 
 template <std::size_t D, class T>
-struct box_shape_t : public md_base_t<D, interval_t<T>, box_shape_t>
+struct box_shape_t : public md_base_t<D, interval_t<T>>
 {
-    using base_t = md_base_t<D, interval_t<T>, box_shape_t>;
+    using base_t = md_base_t<D, interval_t<T>>;
     using base_t::base_t;
 
     constexpr point_t<D, T> get(side_t side) const
