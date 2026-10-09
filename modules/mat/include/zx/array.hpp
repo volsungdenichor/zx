@@ -309,10 +309,10 @@ struct shape_t<1>
 namespace detail
 {
 
-template <class T, std::size_t D>
+template <class T, std::size_t D, class Space>
 struct flat_iter_impl
 {
-    flat_iter_impl(T* data = {}, shape_t<D> shape = {}, volume_t index = 0)
+    flat_iter_impl(T* data = {}, shape_t<D, Space> shape = {}, volume_t index = 0)
         : m_data{ to_byte_ptr(data) }
         , m_shape{ std::move(shape) }
         , m_index{ index }
@@ -359,15 +359,15 @@ struct flat_iter_impl
     }
 
     byte_ptr m_data;
-    shape_t<D> m_shape;
+    shape_t<D, Space> m_shape;
     std::array<volume_t, D> m_pitch = {};
     volume_t m_index;
 };
 
-template <class T>
-struct flat_iter_impl<T, 1>
+template <class T, class Space>
+struct flat_iter_impl<T, 1, Space>
 {
-    flat_iter_impl(T* data = {}, shape_t<1> shape = {}, volume_t index = 0)
+    flat_iter_impl(T* data = {}, shape_t<1, Space> shape = {}, volume_t index = 0)
         : m_data{ to_byte_ptr(data) }
         , m_shape{ std::move(shape) }
         , m_index{ index }
@@ -401,7 +401,7 @@ struct flat_iter_impl<T, 1>
     }
 
     byte_ptr m_data;
-    shape_t<1> m_shape;
+    shape_t<1, Space> m_shape;
     volume_t m_index;
 };
 
@@ -411,11 +411,11 @@ template <class T, std::size_t D, class Space = matrix_space_t>
 struct array_view_base_t
 {
     using value_type = std::remove_const_t<T>;
-    using shape_type = shape_t<D>;
+    using shape_type = shape_t<D, Space>;
     using pointer = T*;
     using reference = T&;
 
-    using iterator = iterator_interface<detail::flat_iter_impl<T, D>>;
+    using iterator = iterator_interface<detail::flat_iter_impl<T, D, Space>>;
 
     using location_type = typename shape_type::location_type;
     using extent_type = typename shape_type::extent_type;
@@ -506,11 +506,11 @@ template <class T, class Space>
 struct array_view_base_t<T, 1, Space>
 {
     using value_type = std::remove_const_t<T>;
-    using shape_type = shape_t<1>;
+    using shape_type = shape_t<1, Space>;
     using pointer = T*;
     using reference = T&;
 
-    using iterator = iterator_interface<detail::flat_iter_impl<T, 1>>;
+    using iterator = iterator_interface<detail::flat_iter_impl<T, 1, Space>>;
 
     using location_type = typename shape_type::location_type;
     using extent_type = typename shape_type::extent_type;

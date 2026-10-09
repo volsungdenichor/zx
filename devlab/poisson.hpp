@@ -4,6 +4,7 @@
 
 #include "zx/array.hpp"
 #include "zx/let.hpp"
+#include "zx/mat/vector.hpp"
 #include "zx/maybe.hpp"
 #include "zx/random.hpp"
 #include "zx/yield.hpp"
@@ -71,14 +72,14 @@ supplier_t<zx::mat::vector_t<D, T>> random_point(T radius, zx::random::seed_t se
 using sample_t = int;
 
 template <std::size_t D, class T>
-zx::mat::array_t<sample_t, D> prepare_grid(const zx::mat::extent_t<D, T>& bounds, T cell_size)
+zx::mat::array_t<sample_t, D, zx::mat::cartesian_space_t> prepare_grid(const zx::mat::extent_t<D, T>& bounds, T cell_size)
 {
-    typename zx::mat::array_t<sample_t, D>::extent_type grid_extent;
+    typename zx::mat::array_t<sample_t, D, zx::mat::cartesian_space_t>::extent_type grid_extent;
     for (std::size_t d = 0; d < D; ++d)
     {
         grid_extent[d] = static_cast<zx::mat::extent_base_t>(zx::mat::math::ceil(bounds[d] / cell_size));
     }
-    return zx::mat::array_t<sample_t, D>{ grid_extent, sample_t{ -1 } };
+    return zx::mat::array_t<sample_t, D, zx::mat::cartesian_space_t>{ grid_extent, sample_t{ -1 } };
 }
 
 struct poisson_fn
@@ -88,7 +89,7 @@ struct poisson_fn
         const zx::mat::box_shape_t<D, T>& bounds, T radius, std::size_t k, zx::random::seed_t seed = {}) const
     {
         using sample_t = int;
-        using grid_t = zx::mat::array_t<sample_t, D>;
+        using grid_t = zx::mat::array_t<sample_t, D, zx::mat::cartesian_space_t>;
 
         if (radius <= T{})
         {
@@ -106,9 +107,8 @@ struct poisson_fn
         const auto get_grid_location = [&](const zx::mat::point_t<D, T>& location) -> typename grid_t::location_type
         { return zx::mat::floor((location - zx::mat::lower(bounds)) / cell_size).template to<zx::mat::location_base_t>(); };
 
-        const auto make_surrounding = [&](const zx::mat::point_t<D, T>& point) {
-            return zx::mat::spherical_shape_t<D, T>{ point, radius };
-        };
+        const auto make_surrounding
+            = [&](const zx::mat::point_t<D, T>& point) { return zx::mat::spherical_shape_t<D, T>{ point, radius }; };
 
         static const auto surrounding_contains = [](const zx::mat::point_t<D, T>& candidate)
         {
