@@ -24,7 +24,7 @@ TEST(triangle_t, ostream)
     std::ostringstream os;
     os << t;
 
-    EXPECT_THAT(os.str(), "([1 2 3] [4 5 6] [7 8 9])");
+    EXPECT_THAT(os.str(), "[[1 2 3] [4 5 6] [7 8 9]]");
 }
 
 TEST(triangle_t, translate)
@@ -93,7 +93,7 @@ TEST(quad_t, ostream)
     std::ostringstream os;
     os << q;
 
-    EXPECT_THAT(os.str(), "([1 2] [3 4] [5 6] [7 8])");
+    EXPECT_THAT(os.str(), "[[1 2] [3 4] [5 6] [7 8]]");
 }
 
 TEST(quad_t, translate)

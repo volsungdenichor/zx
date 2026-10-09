@@ -37,7 +37,7 @@ namespace detail
 
 struct circle_fn
 {
-    template <class T, class Space = cartesian_space_t>
+    template <class T, class Space>
     constexpr auto operator()(const point_t<2, T, Space>& center, T radius) const -> circle_t<T, Space>
     {
         return { center, radius };
@@ -46,7 +46,7 @@ struct circle_fn
 
 struct sphere_fn
 {
-    template <class T, class Space = cartesian_space_t>
+    template <class T, class Space>
     constexpr auto operator()(const point_t<3, T, Space>& center, T radius) const -> sphere_t<T, Space>
     {
         return { center, radius };

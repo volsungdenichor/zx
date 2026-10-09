@@ -163,16 +163,7 @@ std::ostream& operator<<(std::ostream& os, const matrix_view_t<R, C, T>& item)
         {
             os << " ";
         }
-        os << "[";
-        for (std::size_t c = 0; c < item.column_count(); ++c)
-        {
-            if (c != 0)
-            {
-                os << " ";
-            }
-            os << row[static_cast<std::ptrdiff_t>(c)];
-        }
-        os << "]";
+        detail::serialize(os, row);
     }
     os << "]";
     return os;

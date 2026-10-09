@@ -71,6 +71,25 @@ constexpr auto bind_back(Op op, Arg arg)
     return std::bind(std::move(op), std::placeholders::_1, std::move(arg));
 }
 
+template <class T>
+std::ostream& serialize(std::ostream& os, const T& item)
+{
+    const auto b = std::begin(item);
+    const auto e = std::end(item);
+    os << "[";
+
+    for (auto it = b; it != e; ++it)
+    {
+        if (it != b)
+        {
+            os << " ";
+        }
+        os << *it;
+    }
+    os << "]";
+    return os;
+}
+
 }  // namespace detail
 
 template <std::size_t D, class T>
@@ -109,20 +128,7 @@ struct md_base_t : public std::array<T, D>
 
     constexpr explicit md_base_t(const base_t& other) : base_t(other) { }
 
-    friend std::ostream& operator<<(std::ostream& os, const md_base_t& item)
-    {
-        os << "[";
-        for (std::size_t i = 0; i < D; ++i)
-        {
-            if (i != 0)
-            {
-                os << " ";
-            }
-            os << item[i];
-        }
-        os << "]";
-        return os;
-    }
+    friend std::ostream& operator<<(std::ostream& os, const md_base_t& item) { return detail::serialize(os, item); }
 };
 
 template <std::size_t D, class T, class Space = cartesian_space_t>

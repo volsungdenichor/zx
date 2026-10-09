@@ -65,8 +65,8 @@ struct ApproxEqualFn
             return std::nullopt;
         }
 
-        template <std::size_t D, class T, class U>
-        auto operator()(const zx::mat::vector_t<D, T>& actual, const zx::mat::vector_t<D, U>& expected) const
+        template <std::size_t D, class T, class U, class Space>
+        auto operator()(const zx::mat::vector_t<D, T, Space>& actual, const zx::mat::vector_t<D, U, Space>& expected) const
             -> std::optional<std::string>
         {
             for (std::size_t d = 0; d < D; ++d)
@@ -80,8 +80,8 @@ struct ApproxEqualFn
             return std::nullopt;
         }
 
-        template <std::size_t D, class T, class U>
-        auto operator()(const zx::mat::segment_t<D, T>& actual, const zx::mat::segment_t<D, U>& expected) const
+        template <std::size_t D, class T, class U, class Space>
+        auto operator()(const zx::mat::segment_t<D, T, Space>& actual, const zx::mat::segment_t<D, U, Space>& expected) const
             -> std::optional<std::string>
         {
             for (std::size_t i = 0; i < 2; ++i)
@@ -95,10 +95,10 @@ struct ApproxEqualFn
             return std::nullopt;
         }
 
-        template <std::size_t D, std::size_t N, class T, class U>
+        template <std::size_t D, std::size_t N, class T, class U, class Space>
         auto operator()(
-            const zx::mat::polygonal_shape_t<D, T, N>& actual, const zx::mat::polygonal_shape_t<D, U, N>& expected) const
-            -> std::optional<std::string>
+            const zx::mat::polygonal_shape_t<D, T, N, Space>& actual,
+            const zx::mat::polygonal_shape_t<D, U, N, Space>& expected) const -> std::optional<std::string>
         {
             for (std::size_t n = 0; n < N; ++n)
             {
