@@ -287,11 +287,12 @@ template <
     std::size_t R,
     std::size_t C,
     class U,
+    class Space,
     enable_if_t<(R == D + 1 && C == D + 1)> = 0,
     class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const vector_t<D, T>& lhs, const matrix_t<R, C, U>& rhs) -> vector_t<D, Res>
+constexpr auto operator*(const vector_t<D, T, Space>& lhs, const matrix_t<R, C, U>& rhs) -> vector_t<D, Res, Space>
 {
-    vector_t<D, Res> result;
+    vector_t<D, Res, Space> result;
 
     for (std::size_t d = 0; d < D; ++d)
     {
@@ -307,9 +308,10 @@ template <
     std::size_t C,
     class T,
     class U,
+    class Space,
     enable_if_t<(R == D + 1 && C == D + 1)> = 0,
     class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*(const matrix_t<R, C, T>& lhs, const vector_t<D, U>& rhs) -> vector_t<D, Res>
+constexpr auto operator*(const matrix_t<R, C, T>& lhs, const vector_t<D, U, Space>& rhs) -> vector_t<D, Res, Space>
 {
     return rhs * lhs;
 }
@@ -320,9 +322,10 @@ template <
     std::size_t R,
     std::size_t C,
     class U,
+    class Space,
     enable_if_t<(R == D + 1 && C == D + 1)> = 0,
     class Res = std::invoke_result_t<std::multiplies<>, T, U>>
-constexpr auto operator*=(vector_t<D, T>& lhs, const matrix_t<R, C, U>& rhs) -> vector_t<D, T>&
+constexpr auto operator*=(vector_t<D, T, Space>& lhs, const matrix_t<R, C, U>& rhs) -> vector_t<D, T, Space>&
 {
     return lhs = lhs * rhs;
 }

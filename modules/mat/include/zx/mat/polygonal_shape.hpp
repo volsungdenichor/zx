@@ -2,14 +2,16 @@
 
 #include <zx/mat/matrix.hpp>
 
+#include "zx/mat/vector.hpp"
+
 namespace zx
 {
 
 namespace mat
 {
 
-template <std::size_t D, class T, std::size_t N>
-struct polygonal_shape_t : public std::array<point_t<D, T>, N>
+template <std::size_t D, class T, std::size_t N, class Space = cartesian_space_t>
+struct polygonal_shape_t : public std::array<point_t<D, T, Space>, N>
 {
     using base_t = std::array<point_t<D, T>, N>;
 
@@ -37,33 +39,35 @@ struct polygonal_shape_t : public std::array<point_t<D, T>, N>
     }
 };
 
-template <std::size_t D, class T>
-using triangle_t = polygonal_shape_t<D, T, 3>;
+template <std::size_t D, class T, class Space = cartesian_space_t>
+using triangle_t = polygonal_shape_t<D, T, 3, Space>;
 
-template <std::size_t D, class T>
-using quad_t = polygonal_shape_t<D, T, 4>;
+template <std::size_t D, class T, class Space = cartesian_space_t>
+using quad_t = polygonal_shape_t<D, T, 4, Space>;
 
 namespace detail
 {
 
 struct triangle_fn
 {
-    template <std::size_t D, class T>
-    constexpr auto operator()(const point_t<D, T>& p0, const point_t<D, T>& p1, const point_t<D, T>& p2) const
-        -> triangle_t<D, T>
+    template <std::size_t D, class T, class Space>
+    constexpr auto operator()(const point_t<D, T, Space>& p0, const point_t<D, T, Space>& p1, const point_t<D, T, Space>& p2)
+        const -> triangle_t<D, T, Space>
     {
-        return triangle_t<D, T>{ p0, p1, p2 };
+        return triangle_t<D, T, Space>{ p0, p1, p2 };
     }
 };
 
 struct quad_fn
 {
-    template <std::size_t D, class T>
+    template <std::size_t D, class T, class Space>
     constexpr auto operator()(
-        const point_t<D, T>& p0, const point_t<D, T>& p1, const point_t<D, T>& p2, const point_t<D, T>& p3) const
-        -> quad_t<D, T>
+        const point_t<D, T, Space>& p0,
+        const point_t<D, T, Space>& p1,
+        const point_t<D, T, Space>& p2,
+        const point_t<D, T, Space>& p3) const -> quad_t<D, T, Space>
     {
-        return quad_t<D, T>{ p0, p1, p2, p3 };
+        return quad_t<D, T, Space>{ p0, p1, p2, p3 };
     }
 };
 
@@ -72,15 +76,16 @@ struct quad_fn
 inline constexpr auto triangle = detail::triangle_fn{};
 inline constexpr auto quad = detail::quad_fn{};
 
-template <std::size_t D, class T>
-struct polygon_t : public std::vector<point_t<D, T>>
+template <std::size_t D, class T, class Space = cartesian_space_t>
+struct polygon_t : public std::vector<point_t<D, T, Space>>
 {
-    using base_t = std::vector<point_t<D, T>>;
+    using base_t = std::vector<point_t<D, T, Space>>;
+    using point_type = point_t<D, T, Space>;
 
     using base_t::base_t;
 
     template <std::size_t N>
-    polygon_t(const polygonal_shape_t<D, T, N>& polygonal_shape)
+    polygon_t(const polygonal_shape_t<D, T, N, Space>& polygonal_shape)
         : base_t(std::begin(polygonal_shape), std::end(polygonal_shape))
     {
     }
@@ -96,10 +101,11 @@ struct polygon_t : public std::vector<point_t<D, T>>
     }
 };
 
-template <std::size_t D, class T>
+template <std::size_t D, class T, class Space = cartesian_space_t>
 struct polyline_t : public std::vector<point_t<D, T>>
 {
     using base_t = std::vector<point_t<D, T>>;
+    using point_type = point_t<D, T, Space>;
 
     using base_t::base_t;
 
@@ -119,19 +125,19 @@ namespace detail
 
 struct polygon_fn
 {
-    template <std::size_t D, class T, class... Tail>
-    constexpr auto operator()(const point_t<D, T>& head, Tail&&... tail) const -> polygon_t<D, T>
+    template <std::size_t D, class T, class Space, class... Tail>
+    constexpr auto operator()(const point_t<D, T, Space>& head, Tail&&... tail) const -> polygon_t<D, T, Space>
     {
-        return polygon_t<D, T>{ head, std::forward<Tail>(tail)... };
+        return polygon_t<D, T, Space>{ head, std::forward<Tail>(tail)... };
     }
 };
 
 struct polyline_fn
 {
-    template <std::size_t D, class T, class... Tail>
-    constexpr auto operator()(const point_t<D, T>& head, Tail&&... tail) const -> polyline_t<D, T>
+    template <std::size_t D, class T, class Space, class... Tail>
+    constexpr auto operator()(const point_t<D, T, Space>& head, Tail&&... tail) const -> polyline_t<D, T, Space>
     {
-        return polyline_t<D, T>{ head, std::forward<Tail>(tail)... };
+        return polyline_t<D, T, Space>{ head, std::forward<Tail>(tail)... };
     }
 };
 

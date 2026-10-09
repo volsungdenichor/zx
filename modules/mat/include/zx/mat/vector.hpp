@@ -13,6 +13,10 @@ namespace zx
 namespace mat
 {
 
+struct cartesian_space_t
+{
+};
+
 namespace detail
 {
 
@@ -121,7 +125,7 @@ struct md_base_t : public std::array<T, D>
     }
 };
 
-template <std::size_t D, class T>
+template <std::size_t D, class T, class Space = cartesian_space_t>
 struct vector_t : public md_base_t<D, T>
 {
     using base_t = md_base_t<D, T>;
@@ -129,9 +133,9 @@ struct vector_t : public md_base_t<D, T>
     using base_t::base_t;
 
     template <class U>
-    vector_t<D, U> to() const
+    vector_t<D, U, Space> to() const
     {
-        vector_t<D, U> result;
+        vector_t<D, U, Space> result;
         for (std::size_t d = 0; d < D; ++d)
         {
             result[d] = static_cast<U>((*this)[d]);
@@ -154,10 +158,10 @@ struct vector_t : public md_base_t<D, T>
     }
 };
 
-template <std::size_t D, class T>
-constexpr auto insert(const vector_t<D, T>& v, std::size_t index, T value) -> vector_t<D + 1, T>
+template <std::size_t D, class T, class Space>
+constexpr auto insert(const vector_t<D, T, Space>& v, std::size_t index, T value) -> vector_t<D + 1, T, Space>
 {
-    vector_t<D + 1, T> result;
+    vector_t<D + 1, T, Space> result;
     for (std::size_t d = 0; d < index; ++d)
     {
         result[d] = v[d];
@@ -170,10 +174,10 @@ constexpr auto insert(const vector_t<D, T>& v, std::size_t index, T value) -> ve
     return result;
 }
 
-template <std::size_t D, class T, enable_if_t<(D > 1)> = 0>
-constexpr auto erase(const vector_t<D, T>& v, std::size_t index) -> vector_t<D - 1, T>
+template <std::size_t D, class T, class Space, enable_if_t<(D > 1)> = 0>
+constexpr auto erase(const vector_t<D, T, Space>& v, std::size_t index) -> vector_t<D - 1, T, Space>
 {
-    vector_t<D - 1, T> result;
+    vector_t<D - 1, T, Space> result;
     for (std::size_t d = 0; d < index; ++d)
     {
         result[d] = v[d];
@@ -185,35 +189,35 @@ constexpr auto erase(const vector_t<D, T>& v, std::size_t index) -> vector_t<D -
     return result;
 }
 
-template <std::size_t D, class T>
-constexpr auto append(const vector_t<D, T>& v, T value) -> vector_t<D + 1, T>
+template <std::size_t D, class T, class Space = cartesian_space_t>
+constexpr auto append(const vector_t<D, T, Space>& v, T value) -> vector_t<D + 1, T, Space>
 {
     return insert(v, D, value);
 }
 
-template <std::size_t D, class T>
-constexpr auto prepend(const vector_t<D, T>& v, T value) -> vector_t<D + 1, T>
+template <std::size_t D, class T, class Space = cartesian_space_t>
+constexpr auto prepend(const vector_t<D, T, Space>& v, T value) -> vector_t<D + 1, T, Space>
 {
     return insert(v, 0, value);
 }
 
-template <std::size_t D, class T>
-constexpr auto pop_back(const vector_t<D, T>& v) -> vector_t<D - 1, T>
+template <std::size_t D, class T, class Space = cartesian_space_t>
+constexpr auto pop_back(const vector_t<D, T, Space>& v) -> vector_t<D - 1, T, Space>
 {
     return erase(v, D - 1);
 }
 
-template <std::size_t D, class T>
-constexpr auto pop_front(const vector_t<D, T>& v) -> vector_t<D - 1, T>
+template <std::size_t D, class T, class Space = cartesian_space_t>
+constexpr auto pop_front(const vector_t<D, T, Space>& v) -> vector_t<D - 1, T, Space>
 {
     return erase(v, 0);
 }
 
-template <std::size_t D, class T>
-using point_t = vector_t<D, T>;
+template <std::size_t D, class T, class Space = cartesian_space_t>
+using point_t = vector_t<D, T, Space>;
 
-template <std::size_t D, class T>
-using extent_t = vector_t<D, T>;
+template <std::size_t D, class T, class Space = cartesian_space_t>
+using extent_t = vector_t<D, T, Space>;
 
 template <class T>
 vector_t(T, T) -> vector_t<2, T>;
@@ -289,80 +293,80 @@ inline constexpr auto from_polar = detail::polar_fn::from_fn{};
 inline constexpr auto from_cylindrical = detail::cylindrical_fn::from_fn{};
 inline constexpr auto from_spherical = detail::spherical_fn::from_fn{};
 
-template <std::size_t D, class T>
-constexpr auto operator+(const vector_t<D, T>& item) -> vector_t<D, T>
+template <std::size_t D, class T, class Space>
+constexpr auto operator+(const vector_t<D, T, Space>& item) -> vector_t<D, T, Space>
 {
     return item;
 }
 
-template <std::size_t D, class T>
-constexpr auto operator-(const vector_t<D, T>& item) -> vector_t<D, T>
+template <std::size_t D, class T, class Space>
+constexpr auto operator-(const vector_t<D, T, Space>& item) -> vector_t<D, T, Space>
 {
-    return detail::map_into(vector_t<D, T>{}, std::negate<>{}, item);
+    return detail::map_into(vector_t<D, T, Space>{}, std::negate<>{}, item);
 }
 
-template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::plus<>, L, R>>
-constexpr auto operator+=(vector_t<D, L>& lhs, const vector_t<D, R>& rhs) -> vector_t<D, L>&
+template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::plus<>, L, R>>
+constexpr auto operator+=(vector_t<D, L, Space>& lhs, const vector_t<D, R, Space>& rhs) -> vector_t<D, L, Space>&
 {
     return detail::map(std::plus<>{}, lhs, rhs);
 }
 
-template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::plus<>, L, R>>
-constexpr auto operator+(const vector_t<D, L>& lhs, const vector_t<D, R>& rhs) -> vector_t<D, Res>
+template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::plus<>, L, R>>
+constexpr auto operator+(const vector_t<D, L, Space>& lhs, const vector_t<D, R, Space>& rhs) -> vector_t<D, Res, Space>
 {
     return detail::map_into(vector_t<D, Res>{}, std::plus<>{}, lhs, rhs);
 }
 
-template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::minus<>, L, R>>
-constexpr auto operator-=(vector_t<D, L>& lhs, const vector_t<D, R>& rhs) -> vector_t<D, L>&
+template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::minus<>, L, R>>
+constexpr auto operator-=(vector_t<D, L, Space>& lhs, const vector_t<D, R, Space>& rhs) -> vector_t<D, L, Space>&
 {
     return detail::map(std::minus<>{}, lhs, rhs);
 }
 
-template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::minus<>, L, R>>
-constexpr auto operator-(const vector_t<D, L>& lhs, const vector_t<D, R>& rhs) -> vector_t<D, Res>
+template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::minus<>, L, R>>
+constexpr auto operator-(const vector_t<D, L, Space>& lhs, const vector_t<D, R, Space>& rhs) -> vector_t<D, Res, Space>
 {
     return detail::map_into(vector_t<D, Res>{}, std::minus<>{}, lhs, rhs);
 }
 
-template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
-constexpr auto operator*=(vector_t<D, L>& lhs, R rhs) -> vector_t<D, L>&
+template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
+constexpr auto operator*=(vector_t<D, L, Space>& lhs, R rhs) -> vector_t<D, L, Space>&
 {
     return detail::map(detail::bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
-template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
-constexpr auto operator*(const vector_t<D, L>& lhs, R rhs) -> vector_t<D, Res>
+template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
+constexpr auto operator*(const vector_t<D, L, Space>& lhs, R rhs) -> vector_t<D, Res, Space>
 {
     return detail::map_into(vector_t<D, Res>{}, detail::bind_back(std::multiplies<>{}, rhs), lhs);
 }
 
-template <class L, std::size_t D, class R, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
-constexpr auto operator*(L lhs, const vector_t<D, R>& rhs) -> vector_t<D, Res>
+template <class L, std::size_t D, class R, class Space, class Res = std::invoke_result_t<std::multiplies<>, L, R>>
+constexpr auto operator*(L lhs, const vector_t<D, R, Space>& rhs) -> vector_t<D, Res, Space>
 {
     return rhs * lhs;
 }
 
-template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::divides<>, L, R>>
-constexpr auto operator/=(vector_t<D, L>& lhs, R rhs) -> vector_t<D, L>&
+template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::divides<>, L, R>>
+constexpr auto operator/=(vector_t<D, L, Space>& lhs, R rhs) -> vector_t<D, L, Space>&
 {
     return detail::map(detail::bind_back(std::divides<>{}, rhs), lhs);
 }
 
-template <std::size_t D, class L, class R, class Res = std::invoke_result_t<std::divides<>, L, R>>
-constexpr auto operator/(const vector_t<D, L>& lhs, R rhs) -> vector_t<D, Res>
+template <std::size_t D, class L, class R, class Space, class Res = std::invoke_result_t<std::divides<>, L, R>>
+constexpr auto operator/(const vector_t<D, L, Space>& lhs, R rhs) -> vector_t<D, Res, Space>
 {
     return detail::map_into(vector_t<D, Res>{}, detail::bind_back(std::divides<>{}, rhs), lhs);
 }
 
-template <std::size_t D, class L, class R, class = std::invoke_result_t<std::equal_to<>, L, R>>
-constexpr bool operator==(const vector_t<D, L>& lhs, const vector_t<D, R>& rhs)
+template <std::size_t D, class L, class R, class Space, class = std::invoke_result_t<std::equal_to<>, L, R>>
+constexpr bool operator==(const vector_t<D, L, Space>& lhs, const vector_t<D, R, Space>& rhs)
 {
     return std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
 }
 
-template <std::size_t D, class L, class R, class = std::invoke_result_t<std::equal_to<>, L, R>>
-constexpr bool operator!=(const vector_t<D, L>& lhs, const vector_t<D, R>& rhs)
+template <std::size_t D, class L, class R, class Space, class = std::invoke_result_t<std::equal_to<>, L, R>>
+constexpr bool operator!=(const vector_t<D, L, Space>& lhs, const vector_t<D, R, Space>& rhs)
 {
     return !(lhs == rhs);
 }
@@ -373,33 +377,15 @@ constexpr bool operator!=(const vector_t<D, L>& lhs, const vector_t<D, R>& rhs)
 namespace std
 {
 
-template <size_t D, class T>
-struct tuple_size<zx::mat::vector_t<D, T>> : integral_constant<size_t, D>
+template <size_t D, class T, class Space>
+struct tuple_size<zx::mat::vector_t<D, T, Space>> : integral_constant<size_t, D>
 {
 };
 
-template <size_t I, size_t D, class T>
-struct tuple_element<I, zx::mat::vector_t<D, T>>
+template <size_t I, size_t D, class T, class Space>
+struct tuple_element<I, zx::mat::vector_t<D, T, Space>>
 {
     using type = T;
 };
-
-template <size_t I, size_t D, class T>
-constexpr T& get(zx::mat::vector_t<D, T>& item) noexcept
-{
-    return item[I];
-}
-
-template <size_t I, size_t D, class T>
-constexpr const T& get(const zx::mat::vector_t<D, T>& item) noexcept
-{
-    return item[I];
-}
-
-template <size_t I, size_t D, class T>
-constexpr T&& get(zx::mat::vector_t<D, T>&& item) noexcept
-{
-    return std::move(item[I]);
-}
 
 }  // namespace std
