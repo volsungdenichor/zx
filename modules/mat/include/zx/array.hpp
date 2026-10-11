@@ -30,23 +30,18 @@ using bounds_base_t = interval_t<extent_base_t>;
 using flat_offset_t = std::ptrdiff_t;
 using volume_t = std::ptrdiff_t;
 
-// Memory layout / iteration order of a Space:
-// - matrix_space_t: (row, column, ...) - the last axis varies fastest (row-major),
-// - cartesian_space_t: (x, y, ...) - the first axis varies fastest, i.e. (0, 0), (1, 0), ..., (0, 1), ...
 template <class Space>
 inline constexpr bool is_first_axis_fastest_v = false;
 
 template <>
 inline constexpr bool is_first_axis_fastest_v<cartesian_space_t> = true;
 
-// Returns the axis which is the i-th fastest varying one.
 template <std::size_t D, class Space>
 constexpr std::size_t nth_fastest_axis(std::size_t i)
 {
     return is_first_axis_fastest_v<Space> ? i : D - 1 - i;
 }
 
-// Indices of the horizontal and vertical axes of a 2D Space.
 template <class Space>
 struct planar_axes
 {

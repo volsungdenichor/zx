@@ -170,6 +170,12 @@ inline constexpr auto round = detail::round_fn{};
 template <class T>
 constexpr T pi = T{ 3.14159265358979323846 };
 
+template <class T>
+constexpr T two_pi = T{ 6.28318530717958647692 };
+
+template <class T>
+constexpr T half_pi = T{ 1.57079632679489661923 };
+
 }  // namespace math
 
 }  // namespace mat

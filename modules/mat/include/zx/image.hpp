@@ -11,6 +11,8 @@
 
 #include "zx/mat.hpp"
 #include "zx/mat/box_shape.hpp"
+#include "zx/mat/polygonal_shape.hpp"
+#include "zx/mat/vector.hpp"
 
 namespace zx
 {
@@ -751,15 +753,72 @@ struct draw_pixel_t
     }
 };
 
-struct bresenham_line_fn
+struct draw_fn
 {
     void operator()(
         const rgb_image_t::mut_view_type& image, const segment_type& seg, const color_filter_t& color_filter) const
     {
-        (*this)(seg[0], seg[1], draw_pixel_t{ image, color_filter });
+        bresenham_line(seg[0], seg[1], draw_pixel_t{ image, color_filter });
+    }
+
+    void operator()(const rgb_image_t::mut_view_type& image, const circle_type& circle, color_filter_t color_filter) const
+    {
+        bresenham_circle(circle.center, circle.radius, draw_pixel_t{ image, color_filter });
+    }
+
+    void operator()(const rgb_image_t::mut_view_type& image, const raster_t& raster, color_filter_t color_filter) const
+    {
+        const auto do_draw = draw_pixel_t{ image, color_filter };
+        for (const auto& shape : raster)
+        {
+            draw_raster_shape(shape, do_draw);
+        }
     }
 
     void operator()(
+        const rgb_image_t::mut_view_type& image, const rgb_image_t::bounds_type& rect, color_filter_t color_filter) const
+    {
+        for (const auto seg : segments(rect))
+        {
+            (*this)(image, seg, color_filter);
+        }
+    }
+
+    template <std::size_t N>
+    void operator()(
+        const rgb_image_t::mut_view_type& image,
+        const polygonal_shape_t<2, location_base_t, N, cartesian_space_t>& polygon,
+        color_filter_t color_filter) const
+    {
+        for (const auto seg : segments(polygon))
+        {
+            (*this)(image, seg, color_filter);
+        }
+    }
+
+    void operator()(
+        const rgb_image_t::mut_view_type& image,
+        const polygon_t<2, location_base_t, cartesian_space_t>& polygon,
+        color_filter_t color_filter) const
+    {
+        for (const auto seg : segments(polygon))
+        {
+            (*this)(image, seg, color_filter);
+        }
+    }
+
+    void operator()(
+        const rgb_image_t::mut_view_type& image,
+        const polyline_t<2, location_base_t, cartesian_space_t>& polygon,
+        color_filter_t color_filter) const
+    {
+        for (const auto seg : segments(polygon))
+        {
+            (*this)(image, seg, color_filter);
+        }
+    }
+
+    void bresenham_line(
         const rgb_image_t::location_type& start,
         const rgb_image_t::location_type& end,
         function_ref<void(const rgb_image_t::location_type&)> output) const
@@ -772,7 +831,7 @@ struct bresenham_line_fn
         std::transform(direction.begin(), direction.end(), dist.begin(), math::abs);
         std::transform(direction.begin(), direction.end(), dir.begin(), math::sign);
 
-        bresenham_line_fn::bresenham(
+        bresenham_line(
             start,
             dir,
             dist,
@@ -784,7 +843,7 @@ struct bresenham_line_fn
             });
     }
 
-    static void bresenham(
+    static void bresenham_line(
         rgb_image_t::location_type cur,
         const vector_type<>& dir,
         const vector_type<>& dist,
@@ -813,19 +872,9 @@ struct bresenham_line_fn
             }
         }
     }
-};
 
-struct bresenham_circle_fn
-{
-    void operator()(const rgb_image_t::mut_view_type& image, const circle_type& circle, color_filter_t color_filter) const
-    {
-        (*this)(circle.center, circle.radius, draw_pixel_t{ image, color_filter });
-    }
-
-    void operator()(
-        const rgb_image_t::location_type& center,
-        int radius,
-        function_ref<void(const rgb_image_t::location_type&)> output) const
+    static void bresenham_circle(
+        const rgb_image_t::location_type& center, int radius, function_ref<void(const rgb_image_t::location_type&)> output)
     {
         rgb_image_t::location_type cur{ radius, 0 };
         int err = 0;
@@ -854,32 +903,8 @@ struct bresenham_circle_fn
             }
         }
     }
-};
 
-struct draw_rectangle_fn
-{
-    void operator()(
-        const rgb_image_t::mut_view_type& image, const rgb_image_t::bounds_type& rect, color_filter_t color_filter) const
-    {
-        for (const auto seg : segments(rect))
-        {
-            bresenham_line_fn{}(image, seg, color_filter);
-        }
-    }
-};
-
-struct draw_raster_fn
-{
-    void operator()(const rgb_image_t::mut_view_type& image, const raster_t& raster, color_filter_t color_filter) const
-    {
-        const auto do_draw = draw_pixel_t{ image, color_filter };
-        for (const auto& shape : raster)
-        {
-            (*this)(shape, do_draw);
-        }
-    }
-
-    void operator()(const raster_t::shape_t& shape, const draw_pixel_t& do_draw) const
+    static void draw_raster_shape(const raster_t::shape_t& shape, const draw_pixel_t& do_draw)
     {
         for (const auto& [y, spans] : shape)
         {
@@ -1103,10 +1128,7 @@ inline constexpr auto rotate = detail::rotate_fn{};
 inline constexpr auto flip_horizontal = detail::flip_fn<detail::flip_direction_t::horizontal>{};
 inline constexpr auto flip_vertical = detail::flip_fn<detail::flip_direction_t::vertical>{};
 
-inline constexpr auto draw_line = detail::bresenham_line_fn{};
-inline constexpr auto draw_circle = detail::bresenham_circle_fn{};
-inline constexpr auto draw_rectangle = detail::draw_rectangle_fn{};
-inline constexpr auto draw_raster = detail::draw_raster_fn{};
+inline constexpr auto draw = detail::draw_fn{};
 inline constexpr auto paste = detail::paste_fn{};
 inline constexpr auto convolve = detail::convolve_fn{};
 

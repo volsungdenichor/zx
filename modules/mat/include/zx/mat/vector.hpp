@@ -253,10 +253,10 @@ struct polar_fn
 {
     struct from_fn
     {
-        template <class T>
-        constexpr vector_t<2, T> operator()(T radius, T angle) const
+        template <class T, class A>
+        constexpr vector_t<2, T> operator()(T radius, A angle) const
         {
-            return radius * vector_t<2, T>{ math::cos(angle), math::sin(angle) };
+            return (radius * vector_t<2, A>{ math::cos(angle), math::sin(angle) }).template to<T>();
         }
     };
 };
@@ -265,11 +265,12 @@ struct cylindrical_fn
 {
     struct from_fn
     {
-        template <class T>
-        constexpr vector_t<3, T> operator()(T radius, T azimuth, T elevation) const
+        template <class T, class A>
+        constexpr vector_t<3, T> operator()(T radius, A azimuth, A elevation) const
         {
-            return radius * vector_t<3, T>{ math::cos(azimuth), T{}, math::sin(azimuth) }
-                   + vector_t<3, T>{ T{}, elevation, T{} };
+            return (radius * vector_t<3, A>{ math::cos(azimuth), A{}, math::sin(azimuth) }
+                    + vector_t<3, A>{ A{}, elevation, A{} })
+                .template to<T>();
         }
     };
 };
@@ -278,13 +279,14 @@ struct spherical_fn
 {
     struct from_fn
     {
-        template <class T>
-        constexpr vector_t<3, T> operator()(T radius, T azimuth, T inclination) const
+        template <class T, class A>
+        constexpr vector_t<3, T> operator()(T radius, A azimuth, A inclination) const
         {
-            return radius
-                   * vector_t<3, T>{ math::cos(inclination) * math::cos(azimuth),
-                                     math::sin(inclination),
-                                     math::cos(inclination) * math::sin(azimuth) };
+            return (radius
+                    * vector_t<3, A>{ math::cos(inclination) * math::cos(azimuth),
+                                      math::sin(inclination),
+                                      math::cos(inclination) * math::sin(azimuth) })
+                .template to<T>();
         }
     };
 };

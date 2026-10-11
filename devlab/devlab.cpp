@@ -3,33 +3,19 @@
 #include <cmath>
 #include <exception>
 #include <iostream>
-#include <random>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <vector>
 
-#include "perlin.hpp"
-#include "poisson.hpp"
-#include "zx/array.hpp"
 #include "zx/format.hpp"
 #include "zx/image.hpp"
+#include "zx/mat/math.hpp"
+#include "zx/mat/polygonal_shape.hpp"
+#include "zx/mat/spherical_shape.hpp"
 #include "zx/mat/vector.hpp"
 #include "zx/raster.hpp"
 #include "zx/result.hpp"
-#include "zx/yield.hpp"
-
-template <class In, class Out>
-struct interpolate_fn
-{
-    std::pair<In, In> m_in;
-    std::pair<Out, Out> m_out;
-
-    auto operator()(In value) const -> Out
-    {
-        return m_out.first + (m_out.second - m_out.first) * (value - m_in.first) / (m_in.second - m_in.first);
-    }
-};
 
 template <class Clock = std::chrono::high_resolution_clock, class Func, class... Args>
 auto time_it(Func&& func, Args&&... args) -> std::pair<std::invoke_result_t<Func, Args...>, typename Clock::duration>
@@ -50,6 +36,18 @@ auto try_time_it(Func&& func, Args&&... args)
         return zx::forward_error(std::move(result));
     }
     return std::pair{ *std::move(result), duration };
+}
+
+zx::mat::polygon_t<2, zx::mat::location_base_t> segmentize(
+    const zx::mat::spherical_shape_t<2, zx::mat::location_base_t>& shape, std::size_t n)
+{
+    zx::mat::polygon_t<2, zx::mat::location_base_t> result(n);
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        result[i] = shape.center + zx::mat::from_polar(shape.radius, zx::mat::math::two_pi<float> * i / n);
+    }
+
+    return result;
 }
 
 /*
@@ -87,7 +85,13 @@ int run(const std::vector<std::string_view>&)
             mat::modify(v, mat::filters::sepia);
             mat::modify(v, mat::lookup_table::contrast(0.25F) * mat::lookup_table::brightness(-64.F));
             // mat::draw_raster(v, shape, mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
-            mat::paste(v, conan, mat::rgb_image_t::location_type{ 50, 600 }, mat::filters::blend(0.5F));
+            mat::paste(v, conan, mat::rgb_image_t::location_type{ 0, 100 }, mat::filters::blend(0.5F));
+
+            const auto circle = zx::mat::circle_t<zx::mat::location_base_t>{ { 300, 300 }, 150 };
+
+            mat::draw(v, circle, mat::filters::solid(mat::true_color_t{ 255, 255, 0 }));
+            mat::draw(v, segmentize(circle, 3), mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
+            mat::draw(v, segmentize(circle, 6), mat::filters::solid(mat::true_color_t{ 255, 255, 128 }));
         });
 
     mat::save_bitmap(result, mat::filepath_t{ "/home/krzysiek/out.bmp" });
