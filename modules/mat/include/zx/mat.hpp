@@ -1045,7 +1045,7 @@ struct round_fn
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr vector_t<D, T> operator()(const vector_t<D, T, Space>& value) const
+    constexpr vector_t<D, T, Space> operator()(const vector_t<D, T, Space>& value) const
     {
         vector_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -1053,6 +1053,62 @@ struct round_fn
             result[d] = (*this)(value[d]);
         }
         return result;
+    }
+
+    template <class T>
+    constexpr interval_t<T> operator()(const interval_t<T>& value) const
+    {
+        return interval_t<T>{ (*this)(value[0]), (*this)(value[1]) };
+    }
+
+    template <std::size_t D, class T, class Space>
+    constexpr box_shape_t<D, T, Space> operator()(const box_shape_t<D, T, Space>& value) const
+    {
+        box_shape_t<D, T, Space> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(value[d]);
+        }
+        return result;
+    }
+
+    template <std::size_t D, class T, std::size_t N, class Space>
+    constexpr polygonal_shape_t<D, T, N, Space> operator()(const polygonal_shape_t<D, T, N, Space>& value) const
+    {
+        polygonal_shape_t<D, T, N, Space> result;
+        for (std::size_t n = 0; n < N; ++n)
+        {
+            result[n] = (*this)(value[n]);
+        }
+        return result;
+    }
+
+    template <std::size_t D, class T, class Space>
+    constexpr polygon_t<D, T, Space> operator()(const polygon_t<D, T, Space>& value) const
+    {
+        polygon_t<D, T, Space> result;
+        for (std::size_t n = 0; n < value.size(); ++n)
+        {
+            result[n] = (*this)(value[n]);
+        }
+        return result;
+    }
+
+    template <std::size_t D, class T, class Space>
+    constexpr polyline_t<D, T, Space> operator()(const polyline_t<D, T, Space>& value) const
+    {
+        polyline_t<D, T, Space> result;
+        for (std::size_t n = 0; n < value.size(); ++n)
+        {
+            result[n] = (*this)(value[n]);
+        }
+        return result;
+    }
+
+    template <std::size_t D, class T, class Space>
+    constexpr spherical_shape_t<D, T, Space> operator()(const spherical_shape_t<D, T, Space>& value) const
+    {
+        return { (*this)(value.center), (*this)(value.radius) };
     }
 };
 
@@ -1150,15 +1206,77 @@ inline constexpr auto floor_and_fractional_part = floor_and_fractional_part_fn{}
 template <class U>
 struct to_fn
 {
+    template <class T>
+    constexpr U operator()(T value) const
+    {
+        return static_cast<U>(value);
+    }
+
     template <std::size_t D, class T, class Space>
     constexpr vector_t<D, U, Space> operator()(const vector_t<D, T, Space>& value) const
     {
         vector_t<D, U, Space> result;
         for (std::size_t d = 0; d < D; ++d)
         {
-            result[d] = static_cast<U>(value[d]);
+            result[d] = (*this)(value[d]);
         }
         return result;
+    }
+
+    template <class T>
+    constexpr interval_t<U> operator()(const interval_t<T>& value) const
+    {
+        return interval_t<U>{ (*this)(value[0]), (*this)(value[1]) };
+    }
+
+    template <std::size_t D, class T, class Space>
+    constexpr box_shape_t<D, U, Space> operator()(const box_shape_t<D, T, Space>& value) const
+    {
+        box_shape_t<D, U, Space> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = (*this)(value[d]);
+        }
+        return result;
+    }
+
+    template <std::size_t D, class T, std::size_t N, class Space>
+    constexpr polygonal_shape_t<D, U, N, Space> operator()(const polygonal_shape_t<D, T, N, Space>& value) const
+    {
+        polygonal_shape_t<D, U, N, Space> result;
+        for (std::size_t n = 0; n < N; ++n)
+        {
+            result[n] = (*this)(value[n]);
+        }
+        return result;
+    }
+
+    template <std::size_t D, class T, class Space>
+    constexpr polygon_t<D, U, Space> operator()(const polygon_t<D, T, Space>& value) const
+    {
+        polygon_t<D, U, Space> result;
+        for (std::size_t n = 0; n < value.size(); ++n)
+        {
+            result[n] = (*this)(value[n]);
+        }
+        return result;
+    }
+
+    template <std::size_t D, class T, class Space>
+    constexpr polyline_t<D, U, Space> operator()(const polyline_t<D, T, Space>& value) const
+    {
+        polyline_t<D, U, Space> result;
+        for (std::size_t n = 0; n < value.size(); ++n)
+        {
+            result[n] = (*this)(value[n]);
+        }
+        return result;
+    }
+
+    template <std::size_t D, class T, class Space>
+    constexpr spherical_shape_t<D, U, Space> operator()(const spherical_shape_t<D, T, Space>& value) const
+    {
+        return { (*this)(value.center), (*this)(value.radius) };
     }
 };
 
