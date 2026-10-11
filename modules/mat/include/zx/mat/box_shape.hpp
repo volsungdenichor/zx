@@ -118,7 +118,7 @@ struct box_shape_t : public md_base_t<D, interval_t<T>>
     }
 };
 
-struct interval
+struct box
 {
     template <class T>
     static constexpr interval_t<T> from_lower_upper(T lower, T upper)
@@ -156,10 +156,7 @@ struct interval
     {
         return from_center_radius(center, radius, radius);
     }
-};
 
-struct box
-{
     template <std::size_t D, class T, class Space>
     static constexpr box_shape_t<D, T, Space> from_lower_upper(
         const point_t<D, T, Space>& lower, const point_t<D, T, Space>& upper)
@@ -167,7 +164,7 @@ struct box
         box_shape_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
         {
-            result[d] = interval::from_lower_upper(lower[d], upper[d]);
+            result[d] = from_lower_upper(lower[d], upper[d]);
         }
         return result;
     }
@@ -179,7 +176,7 @@ struct box
         box_shape_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
         {
-            result[d] = interval::from_lower_extent(lower[d], extent[d]);
+            result[d] = from_lower_extent(lower[d], extent[d]);
         }
         return result;
     }
@@ -191,7 +188,7 @@ struct box
         box_shape_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
         {
-            result[d] = interval::from_center_extent(center[d], extent[d]);
+            result[d] = from_center_extent(center[d], extent[d]);
         }
         return result;
     }
@@ -203,7 +200,7 @@ struct box
         box_shape_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
         {
-            result[d] = interval::from_center_radius(center[d], left[d], right[d]);
+            result[d] = from_center_radius(center[d], left[d], right[d]);
         }
         return result;
     }
@@ -215,7 +212,7 @@ struct box
         box_shape_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
         {
-            result[d] = interval::from_center_radius(center[d], radius[d]);
+            result[d] = from_center_radius(center[d], radius[d]);
         }
         return result;
     }

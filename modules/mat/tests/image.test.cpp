@@ -86,7 +86,10 @@ std::vector<true_color_t> pixels(const rgb_image_t::view_type& img)
     return std::vector<true_color_t>(img.begin(), img.end());
 }
 
-true_color_t xy(int x, int y) { return true_color_t{ static_cast<zx::mat::byte_t>(x), static_cast<zx::mat::byte_t>(y), 0 }; }
+true_color_t xy(int x, int y)
+{
+    return true_color_t{ static_cast<zx::mat::byte_t>(x), static_cast<zx::mat::byte_t>(y), 0 };
+}
 
 }  // namespace
 
@@ -125,7 +128,8 @@ TEST(image, mutable_iteration)
 TEST(image, for_each_is_lateral_first)
 {
     std::vector<rgb_image_t::location_type> locs;
-    zx::mat::detail::for_each(rgb_image_t::extent_type{ 2, 2 }, [&](const rgb_image_t::location_type& loc) { locs.push_back(loc); });
+    zx::mat::detail::for_each(
+        rgb_image_t::extent_type{ 2, 2 }, [&](const rgb_image_t::location_type& loc) { locs.push_back(loc); });
     EXPECT_THAT(
         locs,
         testing::ElementsAre(
@@ -195,7 +199,7 @@ TEST(image, draw_rasterized_rectangle)
 {
     rgb_image_t img{ rgb_image_t::extent_type{ 5, 4 } };
     const auto rect = zx::mat::box::from_lower_upper(zx::mat::point(1, 2), zx::mat::point(4, 3));
-    zx::mat::draw_raster(img.mut_view(), zx::mat::rasterize(rect), zx::mat::filters::solid(true_color_t{ 255, 0, 0 }));
+    zx::mat::draw(img.mut_view(), zx::mat::rasterize(rect), zx::mat::filters::solid(true_color_t{ 255, 0, 0 }));
     for (zx::mat::location_base_t y = 0; y < 4; ++y)
     {
         for (zx::mat::location_base_t x = 0; x < 5; ++x)
