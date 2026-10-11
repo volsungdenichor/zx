@@ -16,6 +16,7 @@
 #include "zx/mat/vector.hpp"
 #include "zx/raster.hpp"
 #include "zx/result.hpp"
+#include "zx/sequence.hpp"
 
 template <class Clock = std::chrono::high_resolution_clock, class Func, class... Args>
 auto time_it(Func&& func, Args&&... args) -> std::pair<std::invoke_result_t<Func, Args...>, typename Clock::duration>
@@ -38,20 +39,18 @@ auto try_time_it(Func&& func, Args&&... args)
     return std::pair{ *std::move(result), duration };
 }
 
-zx::mat::polygon_t<2, zx::mat::location_base_t> segmentize(
-    const zx::mat::spherical_shape_t<2, zx::mat::location_base_t>& shape, std::size_t n)
+zx::mat::polygon_t<2, int> polygonize(const zx::mat::circle_t<int>& circle, std::size_t n)
 {
-    zx::mat::polygon_t<2, zx::mat::location_base_t> result(n);
-    for (std::size_t i = 0; i < n; ++i)
-    {
-        result[i] = shape.center + zx::mat::from_polar(shape.radius, zx::mat::math::two_pi<float> * i / n);
-    }
-
-    return result;
+    static const auto lower = -zx::mat::math::half_pi<float>;
+    static const auto upper = lower + zx::mat::math::two_pi<float>;
+    return zx::seq::linspace(lower, upper, n, false)
+        .transform([](float i) { return zx::mat::from_polar(1.F, i); })
+        .transform([&](const auto& v) { return circle.center + v * circle.radius; })
+        .transform(zx::mat::to<int>);
 }
 
 /*
-cmake --preset ninja-release -DZX_BUILD_DEVLAB=ON
+make --preset ninja-release -DZX_BUILD_DEVLAB=ON
 cmake --build --preset ninja-release --target zx_devlab
 ./build/ninja-release/devlab/zx_devlab
 */
@@ -87,11 +86,11 @@ int run(const std::vector<std::string_view>&)
             // mat::draw_raster(v, shape, mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
             mat::paste(v, conan, mat::rgb_image_t::location_type{ 0, 100 }, mat::filters::blend(0.5F));
 
-            const auto circle = zx::mat::circle_t<zx::mat::location_base_t>{ { 300, 300 }, 150 };
+            const auto circle = zx::mat::circle_t<int>{ { 300, 300 }, 150 };
 
-            mat::draw(v, circle, mat::filters::solid(mat::true_color_t{ 255, 255, 0 }));
-            mat::draw(v, segmentize(circle, 3), mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
-            mat::draw(v, segmentize(circle, 6), mat::filters::solid(mat::true_color_t{ 255, 255, 128 }));
+            mat::draw(v, circle, mat::filters::solid(mat::true_color_t{ 0, 255, 128 }));
+            mat::draw(v, polygonize(circle, 3), mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
+            mat::draw(v, polygonize(circle, 6), mat::filters::solid(mat::true_color_t{ 255, 255, 128 }));
         });
 
     mat::save_bitmap(result, mat::filepath_t{ "/home/krzysiek/out.bmp" });

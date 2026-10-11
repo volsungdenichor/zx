@@ -1528,6 +1528,18 @@ struct init_infinite_fn
     }
 };
 
+struct linspace_fn
+{
+    template <class T>
+    auto operator()(T start, T end, std::size_t count, bool endpoint = true) const
+    {
+        const auto step = endpoint ? (end - start) / static_cast<T>(count - 1) : (end - start) / static_cast<T>(count);
+        return init_fn{}(
+            static_cast<std::ptrdiff_t>(count),
+            [start, step](std::ptrdiff_t i) { return start + static_cast<T>(i) * step; });
+    }
+};
+
 template <class T>
 struct empty_fn
 {
@@ -1553,6 +1565,7 @@ inline constexpr auto concat = detail::concat_fn{};
 inline constexpr auto vec = detail::vec_fn{};
 inline constexpr auto zip = detail::zip_fn{};
 inline constexpr auto init = detail::init_fn{};
+inline constexpr auto linspace = detail::linspace_fn{};
 inline constexpr auto init_infinite = detail::init_infinite_fn{};
 
 }  // namespace seq

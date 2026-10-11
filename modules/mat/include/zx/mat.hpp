@@ -1147,6 +1147,24 @@ struct floor_and_fractional_part_fn
 
 inline constexpr auto floor_and_fractional_part = floor_and_fractional_part_fn{};
 
+template <class U>
+struct to_fn
+{
+    template <std::size_t D, class T, class Space>
+    constexpr vector_t<D, U, Space> operator()(const vector_t<D, T, Space>& value) const
+    {
+        vector_t<D, U, Space> result;
+        for (std::size_t d = 0; d < D; ++d)
+        {
+            result[d] = static_cast<U>(value[d]);
+        }
+        return result;
+    }
+};
+
+template <class U>
+inline constexpr auto to = to_fn<U>{};
+
 }  // namespace detail
 
 using detail::altitude;
@@ -1189,6 +1207,8 @@ using detail::translate;
 using detail::unit;
 using detail::unite;
 using detail::upper;
+
+using detail::to;
 
 }  // namespace mat
 
