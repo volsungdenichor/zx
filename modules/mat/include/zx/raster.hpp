@@ -16,7 +16,11 @@ namespace mat
 
 struct raster_t
 {
-    using shape_t = std::map<location_base_t, std::vector<bounds_base_t>>;
+    using bounds_type = bounds_base_t;
+    using shape_t = std::map<location_base_t, std::vector<bounds_type>>;
+    using circle_type = circle_t<location_base_t>;
+    using rectangle_type = rectangle_t<location_base_t>;
+    using location_type = point_t<2, location_base_t>;
 
     using shape_list_t = std::vector<shape_t>;
     using const_iterator = shape_list_t::const_iterator;
@@ -56,7 +60,7 @@ struct raster_t
     raster_t outline(location_base_t radius) const { return dilate(radius) - *this; }
 
 private:
-    static bool cmp(const bounds_base_t& lhs, const bounds_base_t& rhs)
+    static bool cmp(const bounds_type& lhs, const bounds_type& rhs)
     {
         return (lhs[0] < rhs[0]) || (lhs[0] == rhs[0] && lhs[1] < rhs[1]);
     }
@@ -70,9 +74,9 @@ private:
             {
                 continue;
             }
-            std::vector<bounds_base_t> v = span;
+            std::vector<bounds_type> v = span;
             std::sort(v.begin(), v.end(), &cmp);
-            std::vector<bounds_base_t> merged = { v[0] };
+            std::vector<bounds_type> merged = { v[0] };
             for (std::size_t i = 1; i < v.size(); ++i)
             {
                 auto& last = merged.back();
@@ -128,7 +132,7 @@ private:
             const auto& rhs_spans = it->second;
             std::size_t i = 0;
             std::size_t j = 0;
-            std::vector<bounds_base_t> row;
+            std::vector<bounds_type> row;
             while (i < lhs_spans.size() && j < rhs_spans.size())
             {
                 const auto lo = std::max(lhs_spans[i][0], rhs_spans[j][0]);
@@ -173,7 +177,7 @@ private:
             }
 
             const auto& rhs_spans = it->second;
-            std::vector<bounds_base_t> row;
+            std::vector<bounds_type> row;
             std::size_t j = 0;
             for (const auto& span : lhs_spans)
             {
@@ -291,7 +295,7 @@ private:
         struct row_t
         {
             location_base_t y = 0;
-            std::vector<bounds_base_t> spans;
+            std::vector<bounds_type> spans;
             std::vector<std::size_t> ids;
         };
 
@@ -399,27 +403,27 @@ namespace detail
 
 struct rasterize_fn
 {
-    raster_t operator()(const rectangle_t<location_base_t>& shape) const
+    raster_t operator()(const raster_t::rectangle_type& shape) const
     {
         raster_t::shape_t raster_shape;
 
         for (location_base_t y = shape[1].get(side_t::lower); y < shape[1].get(side_t::upper); ++y)
         {
             raster_shape.emplace(
-                y, std::vector<bounds_base_t>{ { shape[0].get(side_t::lower), shape[0].get(side_t::upper) } });
+                y, std::vector<raster_t::bounds_type>{ { shape[0].get(side_t::lower), shape[0].get(side_t::upper) } });
         }
 
         return raster_t{ { raster_shape } };
     }
 
-    raster_t operator()(const circle_t<location_base_t>& shape) const
+    raster_t operator()(const raster_t::circle_type& shape) const
     {
         raster_t::shape_t raster_shape;
         const auto center = shape.center;
 
-        auto output_row = [&](location_base_t y, bounds_base_t interval)
+        auto output_row = [&](location_base_t y, raster_t::bounds_type interval)
         {
-            auto [it, inserted] = raster_shape.emplace(y, std::vector<bounds_base_t>{});
+            auto [it, inserted] = raster_shape.emplace(y, std::vector<raster_t::bounds_type>{});
             if (inserted || it->second.empty())
             {
                 it->second.push_back(interval);
@@ -457,11 +461,12 @@ struct rasterize_fn
     }
 
     raster_t operator()(
-        const rectangle_t<location_base_t>& area, zx::function_ref<bool(const point_t<2, location_base_t>&)> predicate) const
+        const raster_t::rectangle_type& area, zx::function_ref<bool(const raster_t::location_type&)> predicate) const
     {
         raster_t::shape_t raster_shape;
 
-        const auto output_interval = [&](location_base_t y, bounds_base_t interval) { raster_shape[y].push_back(interval); };
+        const auto output_interval
+            = [&](location_base_t y, raster_t::bounds_type interval) { raster_shape[y].push_back(interval); };
 
         for (location_base_t y = area[1].get(side_t::lower); y < area[1].get(side_t::upper); ++y)
         {
@@ -470,7 +475,7 @@ struct rasterize_fn
 
             for (location_base_t x = area[0].get(side_t::lower); x < area[0].get(side_t::upper); ++x)
             {
-                const point_t<2, location_base_t> loc{ x, y };
+                const raster_t::location_type loc{ x, y };
                 if (predicate(loc))
                 {
                     if (!in_interval)

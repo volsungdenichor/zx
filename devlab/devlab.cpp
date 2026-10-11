@@ -61,41 +61,8 @@ int run(const std::vector<std::string_view>&)
 {
     using namespace zx;
 
-    for (const auto p : poisson(mat::box::from_lower_upper(mat::point(0.F, 0.F), mat::point(100.F, 100.F)), 5.F, 30))
-    {
-        std::cout << p << std::endl;
-    }
-
-    const auto permutations = std::invoke(
-        []() -> std::vector<int>
-        {
-            std::vector<int> result(256);
-            std::iota(result.begin(), result.end(), 0);
-            std::shuffle(result.begin(), result.end(), std::mt19937{ std::random_device{}() });
-            return result;
-        });
-
-    const auto get_permutation = [&](int index) -> int { return permutations[index % permutations.size()]; };
-
     const auto background = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/lenna.bmp" });
     const auto conan = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/conan_small.bmp" });
-
-    const auto create_perlin = [&](const mat::rgb_image_t::extent_type& extent) -> mat::rgb_image_t
-    {
-        mat::mask_t result(extent);
-        mat::detail::for_each(
-            extent, [&](const mat::rgb_image_t::location_type& loc) { result[loc] = perlin(loc / 20.F, get_permutation); });
-        const auto normalize = interpolate_fn<float, float>{ zx::from(result) | zx::min_max_value<float>(), { 0.F, 255.F } };
-        zx::from(result) | zx::transform(normalize) | zx::copy_to(result.begin());
-        mat::rgb_image_t res(extent);
-        mat::detail::for_each(
-            extent,
-            [&](const mat::rgb_image_t::location_type& loc)
-            { res[loc] = mat::rgb_color_t{ result[loc], result[loc], result[loc] }; });
-        return res;
-    };
-
-    // const auto perlin = create_perlin(background.extent());
 
     const auto temp = mat::with(
         background,
@@ -119,12 +86,11 @@ int run(const std::vector<std::string_view>&)
         {
             mat::modify(v, mat::filters::sepia);
             mat::modify(v, mat::lookup_table::contrast(0.25F) * mat::lookup_table::brightness(-64.F));
-            mat::draw_raster(v, shape, mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
+            // mat::draw_raster(v, shape, mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
             mat::paste(v, conan, mat::rgb_image_t::location_type{ 50, 600 }, mat::filters::blend(0.5F));
-            // mat::paste(v, perlin, mat::rgb_image_t::location_type{ 0, 0 }, mat::filters::blend(0.125F));
         });
 
-    mat::save_bitmap(mat::flip_horizontal(result.view()), mat::filepath_t{ "/home/krzysiek/out.bmp" });
+    mat::save_bitmap(result, mat::filepath_t{ "/home/krzysiek/out.bmp" });
     return 0;
 }
 

@@ -9,8 +9,8 @@
 #include <zx/function_ref.hpp>
 #include <zx/raster.hpp>
 
+#include "zx/mat.hpp"
 #include "zx/mat/box_shape.hpp"
-#include "zx/mat/matrix.hpp"
 
 namespace zx
 {
@@ -31,9 +31,6 @@ struct filepath_t
     friend std::ostream& operator<<(std::ostream& os, const filepath_t& item) { return os << item.m_path; }
 };
 
-// Image addressed with (x, y) locations, where x is the column (growing to the right) and y is the row (growing
-// downwards). Pixels are stored interleaved, row by row; the underlying storage is a cartesian (channel, x, y) array.
-// Iteration over pixels is lateral-first: (0, 0), (1, 0), ..., (w - 1, 0), (0, 1), ...
 template <extent_base_t Channels>
 struct image_base_t
 {
@@ -122,7 +119,8 @@ struct image_base_t
 
         auto deref() const
         {
-            const auto pixel = array_view_base_t<T, 1, space_type>{ &m_iter.deref(), shape_t<1, space_type>{ m_channel_dim } };
+            const auto pixel
+                = array_view_base_t<T, 1, space_type>{ &m_iter.deref(), shape_t<1, space_type>{ m_channel_dim } };
             if constexpr (std::is_const_v<T>)
             {
                 return read_color(pixel);
@@ -608,12 +606,10 @@ struct with_fn
     }
 };
 
-// Planar transformations expressed in terms of the horizontal (H) and vertical (V) axes of a shape, so that they work
-// both for plain 2D arrays and for the (channel, x, y) storage of images.
 template <std::size_t H, std::size_t V, std::size_t D, class Space>
 auto rotate_shape(const shape_t<D, Space>& src, int turns) -> std::pair<shape_t<D, Space>, flat_offset_t>
 {
-    if (src.dim(H).extent == 0 || src.dim(V).extent == 0 || turns == 0)
+    if (src.volume() == 0 || turns == 0)
     {
         return { src, 0 };
     }
@@ -622,7 +618,6 @@ auto rotate_shape(const shape_t<D, Space>& src, int turns) -> std::pair<shape_t<
     typename shape_t<D, Space>::location_type corner = {};
     const auto last = [&](std::size_t d) -> location_base_t { return src.dim(d).extent - 1; };
 
-    // Clockwise rotation (with the vertical axis pointing downwards).
     switch (turns)
     {
         case 1:
@@ -837,14 +832,14 @@ struct bresenham_circle_fn
 
         while (cur[0] >= cur[1])
         {
-            output(rgb_image_t::location_type{ center[0] + cur[0], center[1] + cur[1] });
-            output(rgb_image_t::location_type{ center[0] + cur[1], center[1] + cur[0] });
-            output(rgb_image_t::location_type{ center[0] - cur[1], center[1] + cur[0] });
-            output(rgb_image_t::location_type{ center[0] - cur[0], center[1] + cur[1] });
-            output(rgb_image_t::location_type{ center[0] - cur[0], center[1] - cur[1] });
-            output(rgb_image_t::location_type{ center[0] - cur[1], center[1] - cur[0] });
-            output(rgb_image_t::location_type{ center[0] + cur[1], center[1] - cur[0] });
-            output(rgb_image_t::location_type{ center[0] + cur[0], center[1] - cur[1] });
+            output(center + rgb_image_t::location_type{ +cur[0], +cur[1] });
+            output(center + rgb_image_t::location_type{ +cur[1], +cur[0] });
+            output(center + rgb_image_t::location_type{ -cur[1], +cur[0] });
+            output(center + rgb_image_t::location_type{ -cur[0], +cur[1] });
+            output(center + rgb_image_t::location_type{ -cur[0], -cur[1] });
+            output(center + rgb_image_t::location_type{ -cur[1], -cur[0] });
+            output(center + rgb_image_t::location_type{ +cur[1], -cur[0] });
+            output(center + rgb_image_t::location_type{ +cur[0], -cur[1] });
 
             if (err <= 0)
             {
@@ -1184,9 +1179,8 @@ struct kernel
             mask.shape(),
             [&](const rgb_image_t::location_type& loc)
             {
-                const float dx = static_cast<float>(loc[0]) - mean;
-                const float dy = static_cast<float>(loc[1]) - mean;
-                const float value = std::exp(-(dx * dx + dy * dy) / sigma2);
+                const vector_t<2, float> delta = loc - vector_type<float>{ 1.F, 1.F } * mean;
+                const float value = std::exp(-mat::norm(delta) / sigma2);
                 mask[loc] = value;
             });
         return normalize(mask);
