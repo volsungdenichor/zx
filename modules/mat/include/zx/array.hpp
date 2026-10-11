@@ -30,6 +30,37 @@ using bounds_base_t = interval_t<extent_base_t>;
 using flat_offset_t = std::ptrdiff_t;
 using volume_t = std::ptrdiff_t;
 
+// Memory layout / iteration order of a Space:
+// - matrix_space_t: (row, column, ...) - the last axis varies fastest (row-major),
+// - cartesian_space_t: (x, y, ...) - the first axis varies fastest, i.e. (0, 0), (1, 0), ..., (0, 1), ...
+template <class Space>
+inline constexpr bool is_first_axis_fastest_v = false;
+
+template <>
+inline constexpr bool is_first_axis_fastest_v<cartesian_space_t> = true;
+
+// Returns the axis which is the i-th fastest varying one.
+template <std::size_t D, class Space>
+constexpr std::size_t nth_fastest_axis(std::size_t i)
+{
+    return is_first_axis_fastest_v<Space> ? i : D - 1 - i;
+}
+
+// Indices of the horizontal and vertical axes of a 2D Space.
+template <class Space>
+struct planar_axes
+{
+    static constexpr std::size_t horizontal = 0;
+    static constexpr std::size_t vertical = 1;
+};
+
+template <>
+struct planar_axes<matrix_space_t>
+{
+    static constexpr std::size_t horizontal = 1;
+    static constexpr std::size_t vertical = 0;
+};
+
 template <class T>
 byte_ptr to_byte_ptr(T* ptr)
 {
@@ -216,9 +247,9 @@ struct shape_t : md_base_t<D, dim_t>
     {
         shape_t result;
         stride_base_t stride = element_size;
-        for (int _d = D - 1; _d >= 0; --_d)
+        for (std::size_t i = 0; i < D; ++i)
         {
-            const auto d = static_cast<std::size_t>(_d);
+            const auto d = nth_fastest_axis<D, Space>(i);
             auto& dim = result[d];
             dim.extent = extent[d];
             dim.stride = stride;
@@ -253,8 +284,8 @@ struct shape_t : md_base_t<D, dim_t>
     }
 };
 
-template <>
-struct shape_t<1>
+template <class Space>
+struct shape_t<1, Space>
 {
     using extent_type = extent_base_t;
     using stride_type = stride_base_t;
@@ -318,9 +349,9 @@ struct flat_iter_impl
         , m_index{ index }
     {
         volume_t pitch = 1;
-        for (std::size_t rd = 0; rd < D; ++rd)
+        for (std::size_t i = 0; i < D; ++i)
         {
-            const auto d = D - 1 - rd;
+            const auto d = nth_fastest_axis<D, Space>(i);
             m_pitch[d] = pitch;
             pitch *= m_shape.dim(d).extent;
         }
@@ -528,9 +559,9 @@ struct array_view_base_t<T, 1, Space>
 
     const shape_type& shape() const { return m_shape; }
 
-    array_view_base_t<std::add_const_t<T>, 1> as_const() const { return { from_offset(0), m_shape }; }
+    array_view_base_t<std::add_const_t<T>, 1, Space> as_const() const { return { from_offset(0), m_shape }; }
 
-    operator array_view_base_t<std::add_const_t<T>, 1>() const { return as_const(); }
+    operator array_view_base_t<std::add_const_t<T>, 1, Space>() const { return as_const(); }
 
     extent_type extent() const { return m_shape.extent(); }
     stride_type stride() const { return m_shape.stride(); }

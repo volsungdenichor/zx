@@ -403,10 +403,10 @@ struct rasterize_fn
     {
         raster_t::shape_t raster_shape;
 
-        for (location_base_t y = shape[0].get(side_t::lower); y < shape[0].get(side_t::upper); ++y)
+        for (location_base_t y = shape[1].get(side_t::lower); y < shape[1].get(side_t::upper); ++y)
         {
             raster_shape.emplace(
-                y, std::vector<bounds_base_t>{ { shape[1].get(side_t::lower), shape[1].get(side_t::upper) } });
+                y, std::vector<bounds_base_t>{ { shape[0].get(side_t::lower), shape[0].get(side_t::upper) } });
         }
 
         return raster_t{ { raster_shape } };
@@ -436,10 +436,10 @@ struct rasterize_fn
 
         while (cur[0] >= cur[1])
         {
-            output_row(center[0] + cur[1], { center[1] - cur[0], center[1] + cur[0] + 1 });
-            output_row(center[0] - cur[1], { center[1] - cur[0], center[1] + cur[0] + 1 });
-            output_row(center[0] + cur[0], { center[1] - cur[1], center[1] + cur[1] + 1 });
-            output_row(center[0] - cur[0], { center[1] - cur[1], center[1] + cur[1] + 1 });
+            output_row(center[1] + cur[1], { center[0] - cur[0], center[0] + cur[0] + 1 });
+            output_row(center[1] - cur[1], { center[0] - cur[0], center[0] + cur[0] + 1 });
+            output_row(center[1] + cur[0], { center[0] - cur[1], center[0] + cur[1] + 1 });
+            output_row(center[1] - cur[0], { center[0] - cur[1], center[0] + cur[1] + 1 });
 
             if (err <= 0)
             {
@@ -463,14 +463,14 @@ struct rasterize_fn
 
         const auto output_interval = [&](location_base_t y, bounds_base_t interval) { raster_shape[y].push_back(interval); };
 
-        for (location_base_t y = area[0].get(side_t::lower); y < area[0].get(side_t::upper); ++y)
+        for (location_base_t y = area[1].get(side_t::lower); y < area[1].get(side_t::upper); ++y)
         {
             bool in_interval = false;
             location_base_t interval_start = 0;
 
-            for (location_base_t x = area[1].get(side_t::lower); x < area[1].get(side_t::upper); ++x)
+            for (location_base_t x = area[0].get(side_t::lower); x < area[0].get(side_t::upper); ++x)
             {
-                const point_t<2, location_base_t> loc{ y, x };
+                const point_t<2, location_base_t> loc{ x, y };
                 if (predicate(loc))
                 {
                     if (!in_interval)
@@ -488,7 +488,7 @@ struct rasterize_fn
 
             if (in_interval)
             {
-                output_interval(y, { interval_start, area[1].get(side_t::upper) });
+                output_interval(y, { interval_start, area[0].get(side_t::upper) });
             }
         }
 

@@ -31,10 +31,13 @@ struct filepath_t
     friend std::ostream& operator<<(std::ostream& os, const filepath_t& item) { return os << item.m_path; }
 };
 
+// Image addressed with (x, y) locations, where x is the column (growing to the right) and y is the row (growing
+// downwards). Pixels are stored interleaved, row by row; the underlying storage is a cartesian (channel, x, y) array.
+// Iteration over pixels is lateral-first: (0, 0), (1, 0), ..., (w - 1, 0), (0, 1), ...
 template <extent_base_t Channels>
 struct image_base_t
 {
-    using space_type = matrix_space_t;
+    using space_type = cartesian_space_t;
 
     using extent_type = extent_t<2, extent_base_t, space_type>;
     using location_type = point_t<2, location_base_t, space_type>;
@@ -42,32 +45,52 @@ struct image_base_t
     using slice_type = vector_t<2, slice_base_t, space_type>;
 
     using color_type = channel_color_base_t<byte_t, static_cast<std::size_t>(Channels)>;
-    using storage_type = array_t<byte_t, 3>;
-    using channel_type = array_t<byte_t, 2>;
+    using storage_type = array_t<byte_t, 3, space_type>;
+    using channel_type = array_t<byte_t, 2, space_type>;
+
+    static constexpr std::size_t channel_axis = 0;
+    static constexpr std::size_t x_axis = 1;
+    static constexpr std::size_t y_axis = 2;
 
     storage_type m_data;
 
+    template <class T>
+    static auto pixel_data(array_view_base_t<T, 3, space_type> data, const location_type& loc)
+        -> array_view_base_t<T, 1, space_type>
+    {
+        return data.sub(y_axis, loc[1]).sub(x_axis, loc[0]);
+    }
+
+    template <class T>
+    static color_type read_color(array_view_base_t<T, 1, space_type> pixel)
+    {
+        color_type result = {};
+        for (std::size_t c = 0; c < Channels; ++c)
+        {
+            result[c] = pixel[static_cast<location_base_t>(c)];
+        }
+        return result;
+    }
+
     struct proxy_t
     {
-        array_mut_view_t<byte_t, 1> _data;
+        array_mut_view_t<byte_t, 1, space_type> _data;
 
-        void operator=(const color_type& color) const
+        explicit proxy_t(array_mut_view_t<byte_t, 1, space_type> data) : _data{ data } { }
+        proxy_t(const proxy_t&) = default;
+
+        const proxy_t& operator=(const color_type& color) const
         {
             for (std::size_t c = 0; c < Channels; ++c)
             {
                 _data[static_cast<location_base_t>(c)] = color[c];
             }
+            return *this;
         }
 
-        operator color_type() const
-        {
-            color_type result = {};
-            for (std::size_t c = 0; c < Channels; ++c)
-            {
-                result[c] = _data[static_cast<location_base_t>(c)];
-            }
-            return result;
-        }
+        const proxy_t& operator=(const proxy_t& other) const { return *this = static_cast<color_type>(other); }
+
+        operator color_type() const { return read_color(_data); }
 
         operator rgb_color_t() const { return static_cast<color_type>(*this); }
 
@@ -80,84 +103,128 @@ struct image_base_t
         friend bool operator!=(const color_type& lhs, const proxy_t& rhs) { return rhs != lhs; }
     };
 
+    // Iterates over the pixels lateral-first, yielding colors (const) or proxies (mutable).
+    template <class T>
+    struct pixel_iter_impl
+    {
+        using channel_iter_impl = detail::flat_iter_impl<T, 2, space_type>;
+
+        channel_iter_impl m_iter = {};
+        dim_t m_channel_dim = {};
+
+        pixel_iter_impl() = default;
+
+        pixel_iter_impl(array_view_base_t<T, 3, space_type> data, volume_t index)
+            : m_iter{ data.data(), data.shape().erase(channel_axis), index }
+            , m_channel_dim{ data.shape().dim(channel_axis) }
+        {
+        }
+
+        auto deref() const
+        {
+            const auto pixel = array_view_base_t<T, 1, space_type>{ &m_iter.deref(), shape_t<1, space_type>{ m_channel_dim } };
+            if constexpr (std::is_const_v<T>)
+            {
+                return read_color(pixel);
+            }
+            else
+            {
+                return proxy_t{ pixel };
+            }
+        }
+
+        void inc() { m_iter.inc(); }
+        void dec() { m_iter.dec(); }
+        void advance(std::ptrdiff_t n) { m_iter.advance(n); }
+        bool is_equal(const pixel_iter_impl& other) const { return m_iter.is_equal(other.m_iter); }
+        bool is_less(const pixel_iter_impl& other) const { return m_iter.is_less(other.m_iter); }
+        std::ptrdiff_t distance_to(const pixel_iter_impl& other) const { return m_iter.distance_to(other.m_iter); }
+    };
+
     struct view_type
     {
         using color_type = typename image_base_t::color_type;
+        using iterator = iterator_interface<pixel_iter_impl<const byte_t>>;
 
-        using data_type = storage_type::view_type;
+        using data_type = typename storage_type::view_type;
         data_type m_data;
 
         data_type data() const { return m_data; }
-        extent_type extent() const { return pop_back(m_data.extent()); }
+        extent_type extent() const { return pop_front(m_data.extent()); }
+        volume_t volume() const { return m_data.volume() / channel_count(); }
 
-        color_type operator[](const location_type& loc) const
+        color_type operator[](const location_type& loc) const { return read_color(pixel_data(m_data, loc)); }
+
+        iterator begin() const { return iterator{ m_data, 0 }; }
+        iterator end() const { return iterator{ m_data, volume() }; }
+
+        extent_base_t channel_count() const { return m_data.extent()[channel_axis]; }
+
+        typename channel_type::view_type channel(std::size_t channel_index) const
         {
-            color_type result = {};
-            for (std::size_t c = 0; c < Channels; ++c)
-            {
-                result[c] = m_data[data_type::location_type{ loc[0], loc[1], c }];
-            }
-            return result;
-        }
-
-        extent_base_t channel_count() const { return m_data.extent()[2]; }
-
-        channel_type::view_type channel(std::size_t channel_index) const
-        {
-            return m_data.sub(2, static_cast<location_base_t>(channel_index));
+            return m_data.sub(channel_axis, static_cast<location_base_t>(channel_index));
         }
 
         bounds_type bounds() const
         {
             const auto b = m_data.bounds();
-            return { b[0], b[1] };
+            return { b[x_axis], b[y_axis] };
         }
 
-        view_type slice(const slice_type& s) const { return { m_data.slice({ s[0], s[1], slice_base_t{} }) }; }
+        view_type slice(const slice_type& s) const { return { m_data.slice({ slice_base_t{}, s[0], s[1] }) }; }
     };
 
     struct mut_view_type
     {
         using color_type = typename image_base_t::color_type;
+        using iterator = iterator_interface<pixel_iter_impl<byte_t>>;
 
-        using data_type = storage_type::mut_view_type;
+        using data_type = typename storage_type::mut_view_type;
         data_type m_data;
 
         data_type data() const { return m_data; }
-        extent_type extent() const { return pop_back(m_data.extent()); }
+        extent_type extent() const { return pop_front(m_data.extent()); }
+        volume_t volume() const { return m_data.volume() / channel_count(); }
 
         operator view_type() const { return view_type{ m_data }; }
 
-        proxy_t operator[](const location_type& loc) const { return proxy_t{ m_data[loc[0]][loc[1]] }; }
+        proxy_t operator[](const location_type& loc) const { return proxy_t{ pixel_data(m_data, loc) }; }
 
-        extent_base_t channel_count() const { return m_data.extent()[2]; }
+        iterator begin() const { return iterator{ m_data, 0 }; }
+        iterator end() const { return iterator{ m_data, volume() }; }
 
-        channel_type::mut_view_type channel(std::size_t channel_index) const
+        extent_base_t channel_count() const { return m_data.extent()[channel_axis]; }
+
+        typename channel_type::mut_view_type channel(std::size_t channel_index) const
         {
-            return m_data.sub(2, static_cast<location_base_t>(channel_index));
+            return m_data.sub(channel_axis, static_cast<location_base_t>(channel_index));
         }
 
         bounds_type bounds() const
         {
             const auto b = m_data.bounds();
-            return { b[0], b[1] };
+            return { b[x_axis], b[y_axis] };
         }
 
-        mut_view_type slice(const slice_type& s) const { return { m_data.slice({ s[0], s[1], slice_base_t{} }) }; }
+        mut_view_type slice(const slice_type& s) const { return { m_data.slice({ slice_base_t{}, s[0], s[1] }) }; }
     };
+
+    using iterator = typename mut_view_type::iterator;
+    using const_iterator = typename view_type::iterator;
 
     view_type view() const { return view_type{ m_data.view() }; }
     mut_view_type mut_view() { return mut_view_type{ m_data.mut_view() }; }
 
-    storage_type::mut_view_type mut_data() { return m_data.mut_view(); }
-    storage_type::view_type data() const { return m_data.view(); }
+    typename storage_type::mut_view_type mut_data() { return m_data.mut_view(); }
+    typename storage_type::view_type data() const { return m_data.view(); }
 
-    image_base_t(const storage_type::extent_type& extent) : m_data{ extent } { }
-    image_base_t(const extent_type& extent) : image_base_t{ append(extent, Channels) } { }
+    image_base_t(const typename storage_type::extent_type& extent) : m_data{ extent } { }
+    image_base_t(const extent_type& extent) : image_base_t{ prepend(extent, Channels) } { }
     image_base_t(const view_type& view) : m_data{ view.data() } { }
 
     extent_type extent() const { return view().extent(); }
     bounds_type bounds() const { return view().bounds(); }
+    volume_t volume() const { return view().volume(); }
     extent_base_t channel_count() const { return view().channel_count(); }
 
     operator view_type() const { return view(); }
@@ -166,8 +233,14 @@ struct image_base_t
     view_type slice(const slice_type& s) const { return view().slice(s); }
     mut_view_type slice(const slice_type& s) { return mut_view().slice(s); }
 
-    channel_type::mut_view_type channel(std::size_t channel_index) { return mut_view().channel(channel_index); }
-    channel_type::view_type channel(std::size_t channel_index) const { return view().channel(channel_index); }
+    typename channel_type::mut_view_type channel(std::size_t channel_index) { return mut_view().channel(channel_index); }
+    typename channel_type::view_type channel(std::size_t channel_index) const { return view().channel(channel_index); }
+
+    const_iterator begin() const { return view().begin(); }
+    const_iterator end() const { return view().end(); }
+
+    iterator begin() { return mut_view().begin(); }
+    iterator end() { return mut_view().end(); }
 
     true_color_t operator[](const location_type& loc) const { return view()[loc]; }
     proxy_t operator[](const location_type& loc) { return mut_view()[loc]; }
@@ -370,8 +443,8 @@ struct load_bitmap_fn
 
     static auto prepare_array(const dib_header& header) -> rgb_image_t
     {
-        return rgb_image_t{ rgb_image_t::extent_type{ static_cast<extent_base_t>(header.height),
-                                                      static_cast<extent_base_t>(header.width) } };
+        return rgb_image_t{ rgb_image_t::extent_type{ static_cast<extent_base_t>(header.width),
+                                                      static_cast<extent_base_t>(header.height) } };
     }
 
     static auto read_color(std::istream& is) -> true_color_t
@@ -399,13 +472,13 @@ struct load_bitmap_fn
             is.ignore(1);
         }
 
-        const auto [h, w] = view.extent();
+        const auto [w, h] = view.extent();
 
         for (location_base_t y = h - 1; y >= 0; --y)
         {
             for (location_base_t x = 0; x < w; ++x)
             {
-                view[rgb_image_t::location_type{ y, x }] = palette.at(read<byte_t>(is));
+                view[rgb_image_t::location_type{ x, y }] = palette.at(read<byte_t>(is));
             }
 
             is.ignore(static_cast<std::streamsize>(padding));
@@ -421,13 +494,13 @@ struct load_bitmap_fn
         rgb_image_t result = prepare_array(header);
         auto view = result.mut_view();
 
-        const auto [h, w] = view.extent();
+        const auto [w, h] = view.extent();
 
         for (location_base_t y = h - 1; y >= 0; --y)
         {
             for (location_base_t x = 0; x < w; ++x)
             {
-                view[rgb_image_t::location_type{ y, x }] = read_color(is);
+                view[rgb_image_t::location_type{ x, y }] = read_color(is);
             }
 
             is.ignore(static_cast<std::streamsize>(padding));
@@ -442,7 +515,7 @@ struct save_bitmap_fn
     {
         static const std::size_t bits_per_pixel = 24;
 
-        const auto [h, w] = image.extent();
+        const auto [w, h] = image.extent();
 
         const std::size_t padding = get_padding(static_cast<std::size_t>(w), bits_per_pixel);
 
@@ -452,7 +525,7 @@ struct save_bitmap_fn
         {
             for (location_base_t x = 0; x < w; ++x)
             {
-                write_color(os, image[rgb_image_t::location_type{ y, x }]);
+                write_color(os, image[rgb_image_t::location_type{ x, y }]);
             }
 
             write_n(os, padding);
@@ -490,19 +563,24 @@ struct inject_t
 using color_filter_t = function_ref<rgb_color_t(const rgb_color_t&)>;
 using binary_color_filter_t = function_ref<rgb_color_t(const rgb_color_t&, const rgb_color_t&)>;
 
-template <std::size_t D>
-void for_each(const shape_t<D>& shape, function_ref<void(const rgb_image_t::location_type&)> func)
+// Visits (x, y) locations lateral-first: (0, 0), (1, 0), ..., (w - 1, 0), (0, 1), ...
+inline void for_each(const rgb_image_t::extent_type& extent, function_ref<void(const rgb_image_t::location_type&)> func)
 {
-    const extent_base_t h = shape[0].extent;
-    const extent_base_t w = shape[1].extent;
+    const auto [w, h] = extent;
 
     for (location_base_t y = 0; y < h; ++y)
     {
         for (location_base_t x = 0; x < w; ++x)
         {
-            func(rgb_image_t::location_type{ y, x });
+            func(rgb_image_t::location_type{ x, y });
         }
     }
+}
+
+inline void for_each(
+    const shape_t<2, rgb_image_t::space_type>& shape, function_ref<void(const rgb_image_t::location_type&)> func)
+{
+    for_each(shape.extent(), func);
 }
 
 struct modify_fn
@@ -515,7 +593,7 @@ struct modify_fn
 
     void operator()(const rgb_image_t::mut_view_type& image, color_filter_t filter) const
     {
-        for_each(image.data().shape(), [&](const rgb_image_t::location_type& loc) { (*this)(image, loc, filter); });
+        for_each(image.extent(), [&](const rgb_image_t::location_type& loc) { (*this)(image, loc, filter); });
     }
 };
 
@@ -530,25 +608,90 @@ struct with_fn
     }
 };
 
+// Planar transformations expressed in terms of the horizontal (H) and vertical (V) axes of a shape, so that they work
+// both for plain 2D arrays and for the (channel, x, y) storage of images.
+template <std::size_t H, std::size_t V, std::size_t D, class Space>
+auto rotate_shape(const shape_t<D, Space>& src, int turns) -> std::pair<shape_t<D, Space>, flat_offset_t>
+{
+    if (src.dim(H).extent == 0 || src.dim(V).extent == 0 || turns == 0)
+    {
+        return { src, 0 };
+    }
+
+    shape_t<D, Space> out = src;
+    typename shape_t<D, Space>::location_type corner = {};
+    const auto last = [&](std::size_t d) -> location_base_t { return src.dim(d).extent - 1; };
+
+    // Clockwise rotation (with the vertical axis pointing downwards).
+    switch (turns)
+    {
+        case 1:
+            out[H] = src[V].flip();
+            out[V] = src[H];
+            corner[V] = last(V);
+            break;
+        case 2:
+            out[H] = src[H].flip();
+            out[V] = src[V].flip();
+            corner[H] = last(H);
+            corner[V] = last(V);
+            break;
+        case 3:
+            out[H] = src[V];
+            out[V] = src[H].flip();
+            corner[H] = last(H);
+            break;
+        default: return { src, 0 };
+    }
+    return { out, src.flat_offset(corner) };
+}
+
+template <std::size_t Axis, std::size_t D, class Space>
+auto flip_shape(const shape_t<D, Space>& src) -> std::pair<shape_t<D, Space>, flat_offset_t>
+{
+    if (src.dim(Axis).extent == 0)
+    {
+        return { src, 0 };
+    }
+
+    shape_t<D, Space> out = src;
+    out[Axis] = src[Axis].flip();
+    typename shape_t<D, Space>::location_type corner = {};
+    corner[Axis] = src.dim(Axis).extent - 1;
+    return { out, src.flat_offset(corner) };
+}
+
+template <class Image>
+Image make_image_view(const Image& image, const std::pair<shape_t<3, rgb_image_t::space_type>, flat_offset_t>& shape_offset)
+{
+    return Image{ { image.data().from_offset(shape_offset.second), shape_offset.first } };
+}
+
 struct rotate_fn
 {
     template <class T, class Space>
     auto operator()(array_view_base_t<T, 2, Space> image, int degrees) const -> array_view_base_t<T, 2, Space>
     {
-        const auto [shape, offset] = new_shape_and_offset(image.shape(), normalize_quarter_turns(degrees));
+        using axes = planar_axes<Space>;
+        const auto [shape, offset]
+            = rotate_shape<axes::horizontal, axes::vertical>(image.shape(), normalize_quarter_turns(degrees));
         return { image.from_offset(offset), shape };
     }
 
     auto operator()(const rgb_image_t::view_type& image, int degrees) const -> rgb_image_t::view_type
     {
-        const auto [shape, offset] = new_shape_and_offset(image.data().shape(), normalize_quarter_turns(degrees));
-        return { { image.data().from_offset(offset), shape } };
+        return make_image_view(image, image_shape(image.data().shape(), degrees));
     }
 
     auto operator()(const rgb_image_t::mut_view_type& image, int degrees) const -> rgb_image_t::mut_view_type
     {
-        const auto [shape, offset] = new_shape_and_offset(image.data().shape(), normalize_quarter_turns(degrees));
-        return { { image.data().from_offset(offset), shape } };
+        return make_image_view(image, image_shape(image.data().shape(), degrees));
+    }
+
+    static auto image_shape(const shape_t<3, rgb_image_t::space_type>& shape, int degrees)
+        -> std::pair<shape_t<3, rgb_image_t::space_type>, flat_offset_t>
+    {
+        return rotate_shape<rgb_image_t::x_axis, rgb_image_t::y_axis>(shape, normalize_quarter_turns(degrees));
     }
 
     static int normalize_quarter_turns(int degrees)
@@ -561,107 +704,41 @@ struct rotate_fn
         const int turns = degrees / 90;
         return (turns % 4 + 4) % 4;
     }
-
-    template <class Space>
-    static auto new_shape_and_offset(const shape_t<2, Space>& src, int turns) -> std::pair<shape_t<2, Space>, flat_offset_t>
-    {
-        if (src[0].extent == 0 || src[1].extent == 0 || turns == 0)
-        {
-            return { src, 0 };
-        }
-
-        const auto bounds = src.bounds();
-        switch (turns)
-        {
-            case 0: return { src, 0 };
-            case 1:
-                return std::pair{ shape_t<2, Space>{ src[1], src[0].flip() },
-                                  src.flat_offset(bounds.get({ side_t::last, side_t::first })) };
-
-            case 2:
-                return std::pair{ shape_t<2, Space>{ src[0].flip(), src[1].flip() },
-                                  src.flat_offset(bounds.get({ side_t::last, side_t::last })) };
-            case 3:
-                return std::pair{ shape_t<2, Space>{ src[1].flip(), src[0] },
-                                  src.flat_offset(bounds.get({ side_t::first, side_t::last })) };
-        }
-        return { src, 0 };
-    }
-
-    template <class Space>
-    static auto new_shape_and_offset(const shape_t<3, Space>& src, int turns) -> std::pair<shape_t<3, Space>, flat_offset_t>
-    {
-        if (src[0].extent == 0 || src[1].extent == 0 || turns == 0)
-        {
-            return { src, 0 };
-        }
-
-        const auto bounds = src.bounds();
-        switch (turns)
-        {
-            case 0: return { src, 0 };
-            case 1:
-                return std::pair{ shape_t<3, Space>{ src[1], src[0].flip(), src[2] },
-                                  src.flat_offset(bounds.get({ side_t::last, side_t::first, side_t::first })) };
-
-            case 2:
-                return std::pair{ shape_t<3, Space>{ src[0].flip(), src[1].flip(), src[2] },
-                                  src.flat_offset(bounds.get({ side_t::last, side_t::last, side_t::first })) };
-            case 3:
-                return std::pair{ shape_t<3, Space>{ src[1].flip(), src[0], src[2] },
-                                  src.flat_offset(bounds.get({ side_t::first, side_t::last, side_t::first })) };
-        }
-        return { src, 0 };
-    }
 };
 
-template <std::size_t D>
+enum class flip_direction_t
+{
+    horizontal,
+    vertical
+};
+
+template <flip_direction_t Direction>
 struct flip_fn
 {
-    static_assert(D < 2, "flip: axis out of range");
-
     template <class T, class Space>
-    auto operator()(const array_view_base_t<T, 2>& image) const -> array_view_base_t<T, 2, Space>
+    auto operator()(array_view_base_t<T, 2, Space> image) const -> array_view_base_t<T, 2, Space>
     {
-        const auto [shape, offset] = new_shape_and_offset(image.shape());
+        using axes = planar_axes<Space>;
+        constexpr std::size_t axis = Direction == flip_direction_t::horizontal ? axes::horizontal : axes::vertical;
+        const auto [shape, offset] = flip_shape<axis>(image.shape());
         return { image.from_offset(offset), shape };
     }
 
     auto operator()(const rgb_image_t::view_type& image) const -> rgb_image_t::view_type
     {
-        const auto [shape, offset] = new_shape_and_offset(image.data().shape());
-        return { { image.data().from_offset(offset), shape } };
+        return make_image_view(image, image_shape(image.data().shape()));
     }
 
     auto operator()(const rgb_image_t::mut_view_type& image) const -> rgb_image_t::mut_view_type
     {
-        const auto [shape, offset] = new_shape_and_offset(image.data().shape());
-        return { { image.data().from_offset(offset), shape } };
+        return make_image_view(image, image_shape(image.data().shape()));
     }
 
-    template <class Space>
-    static auto new_shape_and_offset(const shape_t<2, Space>& src) -> std::pair<shape_t<2, Space>, flat_offset_t>
+    static auto image_shape(const shape_t<3, rgb_image_t::space_type>& shape)
+        -> std::pair<shape_t<3, rgb_image_t::space_type>, flat_offset_t>
     {
-        const auto bounds = src.bounds();
-        shape_t<2, Space> out_shape = src;
-        out_shape[D] = src[D].flip();
-
-        const flat_offset_t base_offset = D == 0 ? src.flat_offset(bounds.get({ side_t::last, side_t::first }))
-                                                 : src.flat_offset(bounds.get({ side_t::first, side_t::last }));
-        return { out_shape, base_offset };
-    }
-
-    template <class Space>
-    static auto new_shape_and_offset(const shape_t<3, Space>& src) -> std::pair<shape_t<3, Space>, flat_offset_t>
-    {
-        const auto bounds = src.bounds();
-        shape_t<3, Space> out_shape = src;
-        out_shape[D] = src[D].flip();
-
-        const flat_offset_t base_offset = D == 0
-                                              ? src.flat_offset(bounds.get({ side_t::last, side_t::first, side_t::first }))
-                                              : src.flat_offset(bounds.get({ side_t::first, side_t::last, side_t::first }));
-        return { out_shape, base_offset };
+        constexpr std::size_t axis = Direction == flip_direction_t::horizontal ? rgb_image_t::x_axis : rgb_image_t::y_axis;
+        return flip_shape<axis>(shape);
     }
 };
 
@@ -815,7 +892,7 @@ struct draw_raster_fn
             {
                 for (location_base_t x = span[0]; x < span[1]; ++x)
                 {
-                    do_draw(rgb_image_t::location_type{ y, x });
+                    do_draw(rgb_image_t::location_type{ x, y });
                 }
             }
         }
@@ -830,13 +907,14 @@ struct paste_fn
         const rgb_image_t::location_type& location,
         binary_color_filter_t filter = filters::normal) const
     {
-        const auto [src_bounds, dst_bounds] = adjust_bounds(dst.data().bounds(), src.data().bounds(), append(location, 0));
+        const auto [src_bounds, dst_bounds]
+            = adjust_bounds(dst.data().bounds(), src.data().bounds(), prepend(location, location_base_t{ 0 }));
 
         const auto clipped_dst = rgb_image_t::mut_view_type{ dst.data().slice(to_slice(dst_bounds)) };
         const auto clipped_src = rgb_image_t::view_type{ src.data().slice(to_slice(src_bounds)) };
 
         for_each(
-            clipped_dst.data().shape(),
+            clipped_dst.extent(),
             [&](const rgb_image_t::location_type& loc) { clipped_dst[loc] = filter(clipped_dst[loc], clipped_src[loc]); });
     }
 };
@@ -1027,8 +1105,8 @@ inline constexpr auto load_bitmap = detail::load_bitmap_fn{};
 inline constexpr auto save_bitmap = detail::save_bitmap_fn{};
 
 inline constexpr auto rotate = detail::rotate_fn{};
-inline constexpr auto flip_horizontal = detail::flip_fn<1>{};
-inline constexpr auto flip_vertical = detail::flip_fn<0>{};
+inline constexpr auto flip_horizontal = detail::flip_fn<detail::flip_direction_t::horizontal>{};
+inline constexpr auto flip_vertical = detail::flip_fn<detail::flip_direction_t::vertical>{};
 
 inline constexpr auto draw_line = detail::bresenham_line_fn{};
 inline constexpr auto draw_circle = detail::bresenham_circle_fn{};
@@ -1106,8 +1184,8 @@ struct kernel
             mask.shape(),
             [&](const rgb_image_t::location_type& loc)
             {
-                const float dx = static_cast<float>(loc[1]) - mean;
-                const float dy = static_cast<float>(loc[0]) - mean;
+                const float dx = static_cast<float>(loc[0]) - mean;
+                const float dy = static_cast<float>(loc[1]) - mean;
                 const float value = std::exp(-(dx * dx + dy * dy) / sigma2);
                 mask[loc] = value;
             });

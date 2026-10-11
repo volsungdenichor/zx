@@ -1,30 +1,22 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <cstddef>
 #include <exception>
 #include <iostream>
-#include <optional>
 #include <random>
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <variant>
 #include <vector>
 
 #include "perlin.hpp"
 #include "poisson.hpp"
 #include "zx/array.hpp"
 #include "zx/format.hpp"
-#include "zx/functional.hpp"
 #include "zx/image.hpp"
-#include "zx/let.hpp"
-#include "zx/mat/matrix.hpp"
 #include "zx/mat/vector.hpp"
-#include "zx/maybe.hpp"
-#include "zx/random.hpp"
 #include "zx/raster.hpp"
-#include "zx/string.hpp"
+#include "zx/result.hpp"
 #include "zx/yield.hpp"
 
 template <class In, class Out>
@@ -38,30 +30,6 @@ struct interpolate_fn
         return m_out.first + (m_out.second - m_out.first) * (value - m_in.first) / (m_in.second - m_in.first);
     }
 };
-
-template <class T>
-auto convert(zx::mat::vector_t<2, T, zx::mat::matrix_space_t> loc) -> zx::mat::vector_t<2, T>
-{
-    return {};
-}
-
-template <class T>
-auto convert(zx::mat::vector_t<2, T> loc) -> zx::mat::vector_t<2, T, zx::mat::matrix_space_t>
-{
-    return {};
-}
-
-template <std::size_t D, class T>
-auto convert(zx::mat::box_shape_t<D, T, zx::mat::matrix_space_t> loc) -> zx::mat::box_shape_t<D, T>
-{
-    return {};
-}
-
-template <std::size_t D, class T>
-auto convert(zx::mat::box_shape_t<D, T> rect) -> zx::mat::box_shape_t<D, T, zx::mat::matrix_space_t>
-{
-    return {};
-}
 
 template <class Clock = std::chrono::high_resolution_clock, class Func, class... Args>
 auto time_it(Func&& func, Args&&... args) -> std::pair<std::invoke_result_t<Func, Args...>, typename Clock::duration>
@@ -109,21 +77,19 @@ int run(const std::vector<std::string_view>&)
 
     const auto get_permutation = [&](int index) -> int { return permutations[index % permutations.size()]; };
 
-    const auto background = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/river.bmp" });
+    const auto background = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/lenna.bmp" });
     const auto conan = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/conan_small.bmp" });
 
-    const auto create_perlin = [&](const mat::array_t<float, 2>::extent_type& extent) -> mat::rgb_image_t
+    const auto create_perlin = [&](const mat::rgb_image_t::extent_type& extent) -> mat::rgb_image_t
     {
-        mat::array_t<float, 2> result(extent);
+        mat::mask_t result(extent);
         mat::detail::for_each(
-            result.shape(),
-            [&](const mat::array_t<float, 2>::location_type& loc)
-            { result[loc] = perlin(convert(loc / 20.F), get_permutation); });
+            extent, [&](const mat::rgb_image_t::location_type& loc) { result[loc] = perlin(loc / 20.F, get_permutation); });
         const auto normalize = interpolate_fn<float, float>{ zx::from(result) | zx::min_max_value<float>(), { 0.F, 255.F } };
         zx::from(result) | zx::transform(normalize) | zx::copy_to(result.begin());
         mat::rgb_image_t res(extent);
         mat::detail::for_each(
-            res.data().shape(),
+            extent,
             [&](const mat::rgb_image_t::location_type& loc)
             { res[loc] = mat::rgb_color_t{ result[loc], result[loc], result[loc] }; });
         return res;
@@ -140,10 +106,10 @@ int run(const std::vector<std::string_view>&)
         });
 
     const auto shape = zx::mat::rasterize(
-        convert(temp.slice({ { 0, -10 }, { 0, -10 } }).bounds()),
+        temp.slice({ { 0, -10 }, { 0, -10 } }).bounds(),
         [&](const auto& loc)
         {
-            const auto pixel = mat::filters::gray(temp[convert(loc)]);
+            const auto pixel = mat::filters::gray(temp[loc]);
             return pixel[0] > 192.F;
         });
 
@@ -154,7 +120,7 @@ int run(const std::vector<std::string_view>&)
             mat::modify(v, mat::filters::sepia);
             mat::modify(v, mat::lookup_table::contrast(0.25F) * mat::lookup_table::brightness(-64.F));
             mat::draw_raster(v, shape, mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
-            mat::paste(v, conan, mat::rgb_image_t::location_type{ 600, 50 }, mat::filters::blend(0.5F));
+            mat::paste(v, conan, mat::rgb_image_t::location_type{ 50, 600 }, mat::filters::blend(0.5F));
             // mat::paste(v, perlin, mat::rgb_image_t::location_type{ 0, 0 }, mat::filters::blend(0.125F));
         });
 
