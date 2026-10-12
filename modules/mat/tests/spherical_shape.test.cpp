@@ -9,7 +9,7 @@ TEST(circle, ostream)
     std::ostringstream os;
     os << circle;
 
-    EXPECT_THAT(os.str(), "(circle [1 2] 5)");
+    EXPECT_THAT(os.str(), "[[1 2] 5]");
 }
 
 TEST(circle, translate)
@@ -34,5 +34,5 @@ TEST(sphere, ostream)
     std::ostringstream os;
     os << sphere;
 
-    EXPECT_THAT(os.str(), "(sphere [1 2 3] 5)");
+    EXPECT_THAT(os.str(), "[[1 2 3] 5]");
 }

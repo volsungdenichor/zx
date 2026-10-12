@@ -119,8 +119,8 @@ TEST(mat, box_intersection_of_many)
 
     EXPECT_THAT(
         zx::mat::intersection(a, b, c),
-        testing::Optional(testing::Eq(
-            (zx::mat::rectangle_t<int>{ zx::mat::interval_t<int>{ 4, 7 }, zx::mat::interval_t<int>{ 3, 6 } }))));
+        testing::Optional(
+            testing::Eq((zx::mat::rectangle_t<int>{ zx::mat::interval_t<int>{ 4, 7 }, zx::mat::interval_t<int>{ 3, 6 } }))));
 }
 
 TEST(mat, box_intersection_of_many_returns_nullopt_when_empty)
@@ -152,7 +152,8 @@ TEST(mat, segments)
 
     EXPECT_THAT(
         zx::mat::segments(
-            zx::mat::polygon(zx::mat::point(0, 0), zx::mat::point(1, 0), zx::mat::point(1, 1), zx::mat::point(0, 1))),
+            zx::mat::polygon_t<2, int>{
+                zx::mat::point(0, 0), zx::mat::point(1, 0), zx::mat::point(1, 1), zx::mat::point(0, 1) }),
         testing::ElementsAre(
             zx::mat::segment(zx::mat::point(0, 0), zx::mat::point(1, 0)),
             zx::mat::segment(zx::mat::point(1, 0), zx::mat::point(1, 1)),
@@ -161,7 +162,8 @@ TEST(mat, segments)
 
     EXPECT_THAT(
         zx::mat::segments(
-            zx::mat::polyline(zx::mat::point(0, 0), zx::mat::point(1, 0), zx::mat::point(1, 1), zx::mat::point(0, 1))),
+            zx::mat::polyline_t<2, int>{
+                { zx::mat::point(0, 0), zx::mat::point(1, 0), zx::mat::point(1, 1), zx::mat::point(0, 1) } }),
         testing::ElementsAre(
             zx::mat::segment(zx::mat::point(0, 0), zx::mat::point(1, 0)),
             zx::mat::segment(zx::mat::point(1, 0), zx::mat::point(1, 1)),
