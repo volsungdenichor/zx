@@ -63,7 +63,7 @@ struct line_fn
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr auto operator()(const segment_t<D, T, Space>& s) const -> line_t<2, T, Space>
+    constexpr auto operator()(const segment_t<D, T, Space>& s) const -> line_t<D, T, Space>
     {
         return (*this)(s[0], s[1]);
     }
@@ -80,7 +80,7 @@ struct ray_fn
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr auto operator()(const segment_t<D, T, Space>& s) const -> ray_t<2, T, Space>
+    constexpr auto operator()(const segment_t<D, T, Space>& s) const -> ray_t<D, T, Space>
     {
         return (*this)(s[0], s[1]);
     }
@@ -781,11 +781,10 @@ inline constexpr auto perpendicular = perpendicular_fn{};
 
 struct altitude_fn
 {
-    template <typename T, class Space>
-    constexpr auto operator()(const triangle_t<2, T, Space>& value, std::size_t index) const -> segment_t<2, T, Space>
+    template <typename T, class Space, class E = T>
+    constexpr auto operator()(const triangle_t<2, T, Space>& value, std::size_t index, const E epsilon = E(0.1)) const
+        -> segment_t<2, T, Space>
     {
-        constexpr T epsilon = T(0.1);
-
         const auto v = value[index];
 
         const auto p = projection(v, line(segment(value, index + 1)), epsilon);
@@ -809,11 +808,10 @@ inline constexpr auto centroid = centroid_fn{};
 
 struct orthocenter_fn
 {
-    template <typename T, class Space>
-    constexpr auto operator()(const triangle_t<2, T, Space>& value) const -> point_t<2, T, Space>
+    template <typename T, class Space, class E = T>
+    constexpr auto operator()(const triangle_t<2, T, Space>& value, const E epsilon = E(0.0001)) const
+        -> point_t<2, T, Space>
     {
-        constexpr T epsilon = T(0.0001);
-
         return *intersection(line(altitude(value, 0)), line(altitude(value, 1)), epsilon);
     }
 };
@@ -822,11 +820,10 @@ inline constexpr auto orthocenter = orthocenter_fn{};
 
 struct circumcenter_fn
 {
-    template <typename T, class Space>
-    constexpr auto operator()(const triangle_t<2, T, Space>& value) const -> point_t<2, T, Space>
+    template <typename T, class Space, class E = T>
+    constexpr auto operator()(const triangle_t<2, T, Space>& value, const E epsilon = E(0.0001)) const
+        -> point_t<2, T, Space>
     {
-        constexpr T epsilon = T(0.0001);
-
         const auto s0 = segment(value, 0);
         const auto s1 = segment(value, 1);
 
@@ -865,11 +862,9 @@ inline constexpr auto incenter = incenter_fn{};
 
 struct incircle_fn
 {
-    template <class T, class Space>
-    constexpr auto operator()(const triangle_t<2, T, Space>& triangle) const -> circle_t<T, Space>
+    template <class T, class Space, class E = T>
+    constexpr auto operator()(const triangle_t<2, T, Space>& triangle, const E epsilon = E(0.1)) const -> circle_t<T, Space>
     {
-        constexpr T epsilon = T(0.1);
-
         const auto c = incenter(triangle);
         const auto r = distance(c, *projection(c, segment(triangle, 0), epsilon));
 
