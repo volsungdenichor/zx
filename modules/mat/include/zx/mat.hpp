@@ -83,6 +83,23 @@ struct line_fn
 
 inline constexpr auto line = line_fn{};
 
+struct ray_fn
+{
+    template <std::size_t D, class T, class Space>
+    constexpr auto operator()(point_t<D, T, Space> p0, point_t<D, T, Space> p1) const -> ray_t<D, T, Space>
+    {
+        return ray_t<D, T, Space>{ p0, p1 };
+    }
+
+    template <std::size_t D, class T, class Space>
+    constexpr auto operator()(const segment_t<D, T, Space>& s) const -> ray_t<2, T, Space>
+    {
+        return (*this)(s[0], s[1]);
+    }
+};
+
+inline constexpr auto ray = ray_fn{};
+
 struct dot_fn
 {
     template <std::size_t D, class T, class U, class Space, class Res = std::invoke_result_t<std::multiplies<>, T, U>>
@@ -1356,6 +1373,7 @@ using detail::orthocenter;
 using detail::perpendicular;
 using detail::projection;
 using detail::radius;
+using detail::ray;
 using detail::rejection;
 using detail::round;
 using detail::segment;

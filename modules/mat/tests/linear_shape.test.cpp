@@ -9,7 +9,7 @@ TEST(segment, ostream)
     std::ostringstream os;
     os << seg;
 
-    EXPECT_THAT(os.str(), "(segment [1 2 3] [4 5 6])");
+    EXPECT_THAT(os.str(), "[[1 2 3] [4 5 6]]");
 }
 
 TEST(segment, translation)
