@@ -53,18 +53,6 @@ struct interval_t : public std::array<T, 2>
     }
 };
 
-template <class T, class U>
-constexpr bool operator==(const interval_t<T>& lhs, const interval_t<U>& rhs)
-{
-    return std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
-}
-
-template <class T, class U>
-constexpr bool operator!=(const interval_t<T>& lhs, const interval_t<U>& rhs)
-{
-    return !(lhs == rhs);
-}
-
 template <class T, class U, class = std::invoke_result_t<std::plus<>, T, U>>
 constexpr auto operator+=(interval_t<T>& lhs, U rhs) -> interval_t<T>&
 {
@@ -106,12 +94,12 @@ struct box_shape_t : public md_base_t<D, interval_t<T>>
     using base_t::base_t;
     using point_type = point_t<D, T, Space>;
 
-    constexpr point_type get(side_t side) const
+    constexpr auto get(side_t side) const -> point_type
     {
         return detail::map_into(point_type{}, [&](const interval_t<T>& interval) -> T { return interval.get(side); }, *this);
     }
 
-    constexpr point_type get(const std::array<side_t, D>& sides) const
+    constexpr auto get(const std::array<side_t, D>& sides) const -> point_type
     {
         return detail::map_into(
             point_type{}, [&](const interval_t<T>& interval, side_t side) -> T { return interval.get(side); }, *this, sides);
@@ -121,25 +109,25 @@ struct box_shape_t : public md_base_t<D, interval_t<T>>
 struct box
 {
     template <class T>
-    static constexpr interval_t<T> from_lower_upper(T lower, T upper)
+    static constexpr auto from_lower_upper(T lower, T upper) -> interval_t<T>
     {
         return interval_t<T>{ lower, upper };
     }
 
     template <class T>
-    static constexpr interval_t<T> from_lower_extent(T lower, T extent)
+    static constexpr auto from_lower_extent(T lower, T extent) -> interval_t<T>
     {
         return interval_t<T>{ lower, lower + extent };
     }
 
     template <class T>
-    static constexpr interval_t<T> from_center_extent(T center, T extent)
+    static constexpr auto from_center_extent(T center, T extent) -> interval_t<T>
     {
         return from_lower_extent(center - extent / 2, extent);
     }
 
     template <class T>
-    static constexpr interval_t<T> from_center_radius(T center, T left, T right)
+    static constexpr auto from_center_radius(T center, T left, T right) -> interval_t<T>
     {
         if constexpr (std::is_integral_v<T>)
         {
@@ -152,14 +140,14 @@ struct box
     }
 
     template <class T>
-    static constexpr interval_t<T> from_center_radius(T center, T radius)
+    static constexpr auto from_center_radius(T center, T radius) -> interval_t<T>
     {
         return from_center_radius(center, radius, radius);
     }
 
     template <std::size_t D, class T, class Space>
-    static constexpr box_shape_t<D, T, Space> from_lower_upper(
-        const point_t<D, T, Space>& lower, const point_t<D, T, Space>& upper)
+    static constexpr auto from_lower_upper(const point_t<D, T, Space>& lower, const point_t<D, T, Space>& upper)
+        -> box_shape_t<D, T, Space>
     {
         box_shape_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -170,8 +158,8 @@ struct box
     }
 
     template <std::size_t D, class T, class Space>
-    static constexpr box_shape_t<D, T, Space> from_lower_extent(
-        const point_t<D, T, Space>& lower, const extent_t<D, T, Space>& extent)
+    static constexpr auto from_lower_extent(const point_t<D, T, Space>& lower, const extent_t<D, T, Space>& extent)
+        -> box_shape_t<D, T, Space>
     {
         box_shape_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -182,8 +170,7 @@ struct box
     }
 
     template <std::size_t D, class T, class Space>
-    static constexpr box_shape_t<D, T, Space> from_center_extent(
-        const point_t<D, T, Space>& center, const extent_t<D, T, Space>& extent)
+    static constexpr auto from_center_extent(const point_t<D, T, Space>& center, const extent_t<D, T, Space>& extent)
     {
         box_shape_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -194,8 +181,9 @@ struct box
     }
 
     template <std::size_t D, class T, class Space>
-    static constexpr box_shape_t<D, T, Space> from_center_radius(
+    static constexpr auto from_center_radius(
         const point_t<D, T, Space>& center, const vector_t<D, T, Space>& left, const vector_t<D, T, Space>& right)
+        -> box_shape_t<D, T, Space>
     {
         box_shape_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -206,8 +194,8 @@ struct box
     }
 
     template <std::size_t D, class T, class Space = cartesian_space_t>
-    static constexpr box_shape_t<D, T, Space> from_center_radius(
-        const point_t<D, T, Space>& center, const vector_t<D, T, Space>& radius)
+    static constexpr auto from_center_radius(const point_t<D, T, Space>& center, const vector_t<D, T, Space>& radius)
+        -> box_shape_t<D, T, Space>
     {
         box_shape_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)

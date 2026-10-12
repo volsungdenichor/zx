@@ -92,32 +92,6 @@ struct polyline_t : public std::vector<point_t<D, T>>
     friend std::ostream& operator<<(std::ostream& os, const polyline_t& item) { return detail::serialize(os, item); }
 };
 
-namespace detail
-{
-
-struct polygon_fn
-{
-    template <std::size_t D, class T, class Space, class... Tail>
-    constexpr auto operator()(const point_t<D, T, Space>& head, Tail&&... tail) const -> polygon_t<D, T, Space>
-    {
-        return polygon_t<D, T, Space>{ head, std::forward<Tail>(tail)... };
-    }
-};
-
-struct polyline_fn
-{
-    template <std::size_t D, class T, class Space, class... Tail>
-    constexpr auto operator()(const point_t<D, T, Space>& head, Tail&&... tail) const -> polyline_t<D, T, Space>
-    {
-        return polyline_t<D, T, Space>{ head, std::forward<Tail>(tail)... };
-    }
-};
-
-}  // namespace detail
-
-inline constexpr auto polygon = detail::polygon_fn{};
-inline constexpr auto polyline = detail::polyline_fn{};
-
 }  // namespace mat
 
 }  // namespace zx
