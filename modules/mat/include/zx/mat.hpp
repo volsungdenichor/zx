@@ -1097,7 +1097,7 @@ struct map_to_fn
     template <std::size_t D, class T, class Space, class U = std::invoke_result_t<const Func&, T>>
     constexpr auto operator()(const vector_t<D, T, Space>& value) const -> vector_t<D, U, Space>
     {
-        vector_t<D, T, Space> result;
+        vector_t<D, U, Space> result;
         for (std::size_t d = 0; d < D; ++d)
         {
             result[d] = (*this)(value[d]);
