@@ -18,18 +18,6 @@ namespace mat
 namespace detail
 {
 
-template <class T>
-constexpr bool between(T v, T lo, T up)
-{
-    return lo <= v && v < up;
-}
-
-template <class T>
-constexpr bool inclusive_between(T v, T lo, T up)
-{
-    return lo <= v && v <= up;
-}
-
 template <class T, class E>
 constexpr auto approx_equal(T value, E epsilon)
 {
@@ -389,7 +377,7 @@ struct contains_fn
     template <class T, class U>
     constexpr auto operator()(const interval_t<T>& item, U value) const -> bool
     {
-        return between(value, lower(item), upper(item));
+        return lower(item) <= value && value < upper(item);
     }
 
     template <class T>
@@ -445,6 +433,12 @@ struct contains_fn
         }
 
         return same_sign(result[0], result[1]) && same_sign(result[0], result[2]) && same_sign(result[1], result[2]);
+    }
+
+    template <class T>
+    static constexpr bool inclusive_between(T v, T lo, T up)
+    {
+        return lo <= v && v <= up;
     }
 };
 
@@ -792,7 +786,7 @@ struct altitude_fn
     {
         constexpr T epsilon = T(0.1);
 
-        const auto v = value[(index + 0) % 3];
+        const auto v = value[index];
 
         const auto p = projection(v, line(segment(value, index + 1)), epsilon);
 
@@ -1095,13 +1089,13 @@ inline constexpr auto segments = segments_fn{};
 struct round_fn
 {
     template <class T>
-    constexpr T operator()(T value) const
+    constexpr auto operator()(T value) const -> T
     {
         return math::round(value);
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr vector_t<D, T, Space> operator()(const vector_t<D, T, Space>& value) const
+    constexpr auto operator()(const vector_t<D, T, Space>& value) const -> vector_t<D, T, Space>
     {
         vector_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -1112,13 +1106,13 @@ struct round_fn
     }
 
     template <class T>
-    constexpr interval_t<T> operator()(const interval_t<T>& value) const
+    constexpr auto operator()(const interval_t<T>& value) const -> interval_t<T>
     {
         return interval_t<T>{ (*this)(value[0]), (*this)(value[1]) };
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr box_shape_t<D, T, Space> operator()(const box_shape_t<D, T, Space>& value) const
+    constexpr auto operator()(const box_shape_t<D, T, Space>& value) const -> box_shape_t<D, T, Space>
     {
         box_shape_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -1129,7 +1123,7 @@ struct round_fn
     }
 
     template <std::size_t D, class T, std::size_t N, class Space>
-    constexpr polygonal_shape_t<D, T, N, Space> operator()(const polygonal_shape_t<D, T, N, Space>& value) const
+    constexpr auto operator()(const polygonal_shape_t<D, T, N, Space>& value) const -> polygonal_shape_t<D, T, N, Space>
     {
         polygonal_shape_t<D, T, N, Space> result;
         for (std::size_t n = 0; n < N; ++n)
@@ -1140,7 +1134,7 @@ struct round_fn
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr polygon_t<D, T, Space> operator()(const polygon_t<D, T, Space>& value) const
+    constexpr auto operator()(const polygon_t<D, T, Space>& value) const -> polygon_t<D, T, Space>
     {
         polygon_t<D, T, Space> result;
         for (std::size_t n = 0; n < value.size(); ++n)
@@ -1151,7 +1145,7 @@ struct round_fn
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr polyline_t<D, T, Space> operator()(const polyline_t<D, T, Space>& value) const
+    constexpr auto operator()(const polyline_t<D, T, Space>& value) const -> polyline_t<D, T, Space>
     {
         polyline_t<D, T, Space> result;
         for (std::size_t n = 0; n < value.size(); ++n)
@@ -1162,7 +1156,7 @@ struct round_fn
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr spherical_shape_t<D, T, Space> operator()(const spherical_shape_t<D, T, Space>& value) const
+    constexpr auto operator()(const spherical_shape_t<D, T, Space>& value) const -> spherical_shape_t<D, T, Space>
     {
         return { (*this)(value.center), (*this)(value.radius) };
     }
@@ -1173,13 +1167,13 @@ inline constexpr auto round = round_fn{};
 struct floor_fn
 {
     template <class T>
-    constexpr T operator()(T value) const
+    constexpr auto operator()(T value) const -> T
     {
         return math::floor(value);
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr vector_t<D, T, Space> operator()(const vector_t<D, T, Space>& value) const
+    constexpr auto operator()(const vector_t<D, T, Space>& value) const -> vector_t<D, T, Space>
     {
         vector_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -1195,13 +1189,13 @@ inline constexpr auto floor = floor_fn{};
 struct ceil_fn
 {
     template <class T>
-    constexpr T operator()(T value) const
+    constexpr auto operator()(T value) const -> T
     {
         return math::ceil(value);
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr vector_t<D, T, Space> operator()(const vector_t<D, T, Space>& value) const
+    constexpr auto operator()(const vector_t<D, T, Space>& value) const -> vector_t<D, T, Space>
     {
         vector_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -1217,13 +1211,13 @@ inline constexpr auto ceil = ceil_fn{};
 struct fractional_part_fn
 {
     template <class T>
-    constexpr T operator()(T value) const
+    constexpr auto operator()(T value) const -> T
     {
         return math::fractional_part(value);
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr vector_t<D, T, Space> operator()(const vector_t<D, T, Space>& value) const
+    constexpr auto operator()(const vector_t<D, T, Space>& value) const -> vector_t<D, T, Space>
     {
         vector_t<D, T, Space> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -1239,13 +1233,14 @@ inline constexpr auto fractional_part = fractional_part_fn{};
 struct floor_and_fractional_part_fn
 {
     template <class T>
-    constexpr std::pair<T, T> operator()(T value) const
+    constexpr auto operator()(T value) const -> std::pair<T, T>
     {
         return math::floor_and_fractional_part(value);
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr std::pair<vector_t<D, T, Space>, vector_t<D, T, Space>> operator()(const vector_t<D, T, Space>& value) const
+    constexpr auto operator()(const vector_t<D, T, Space>& value) const
+        -> std::pair<vector_t<D, T, Space>, vector_t<D, T, Space>>
     {
         vector_t<D, T, Space> lo;
         vector_t<D, T, Space> frac;
@@ -1269,7 +1264,7 @@ struct to_fn
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr vector_t<D, U, Space> operator()(const vector_t<D, T, Space>& value) const
+    constexpr auto operator()(const vector_t<D, T, Space>& value) const -> vector_t<D, U, Space>
     {
         vector_t<D, U, Space> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -1280,13 +1275,13 @@ struct to_fn
     }
 
     template <class T>
-    constexpr interval_t<U> operator()(const interval_t<T>& value) const
+    constexpr auto operator()(const interval_t<T>& value) const -> interval_t<U>
     {
         return interval_t<U>{ (*this)(value[0]), (*this)(value[1]) };
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr box_shape_t<D, U, Space> operator()(const box_shape_t<D, T, Space>& value) const
+    constexpr auto operator()(const box_shape_t<D, T, Space>& value) const -> box_shape_t<D, U, Space>
     {
         box_shape_t<D, U, Space> result;
         for (std::size_t d = 0; d < D; ++d)
@@ -1297,7 +1292,7 @@ struct to_fn
     }
 
     template <std::size_t D, class T, std::size_t N, class Space>
-    constexpr polygonal_shape_t<D, U, N, Space> operator()(const polygonal_shape_t<D, T, N, Space>& value) const
+    constexpr auto operator()(const polygonal_shape_t<D, T, N, Space>& value) const -> polygonal_shape_t<D, U, N, Space>
     {
         polygonal_shape_t<D, U, N, Space> result;
         for (std::size_t n = 0; n < N; ++n)
@@ -1308,7 +1303,7 @@ struct to_fn
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr polygon_t<D, U, Space> operator()(const polygon_t<D, T, Space>& value) const
+    constexpr auto operator()(const polygon_t<D, T, Space>& value) const -> polygon_t<D, U, Space>
     {
         polygon_t<D, U, Space> result;
         for (std::size_t n = 0; n < value.size(); ++n)
@@ -1319,7 +1314,7 @@ struct to_fn
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr polyline_t<D, U, Space> operator()(const polyline_t<D, T, Space>& value) const
+    constexpr auto operator()(const polyline_t<D, T, Space>& value) const -> polyline_t<D, U, Space>
     {
         polyline_t<D, U, Space> result;
         for (std::size_t n = 0; n < value.size(); ++n)
@@ -1330,7 +1325,7 @@ struct to_fn
     }
 
     template <std::size_t D, class T, class Space>
-    constexpr spherical_shape_t<D, U, Space> operator()(const spherical_shape_t<D, T, Space>& value) const
+    constexpr auto operator()(const spherical_shape_t<D, T, Space>& value) const -> spherical_shape_t<D, U, Space>
     {
         return { (*this)(value.center), (*this)(value.radius) };
     }
