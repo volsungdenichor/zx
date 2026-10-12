@@ -21,6 +21,15 @@ TEST(mat, altitude)
         ApproxEqual(zx::mat::segment_t<2, double>{ zx::mat::vector(0.0, 0.0), zx::mat::vector(2.0, 2.0) }));
 }
 
+TEST(mat, triangle_area)
+{
+    const auto t = zx::mat::triangle(zx::mat::point(1.0, 2.0), zx::mat::point(5.0, 2.0), zx::mat::point(1.0, 6.0));
+    const auto reversed = zx::mat::triangle(t[0], t[2], t[1]);
+
+    EXPECT_THAT(zx::mat::area(t), ApproxEqual(8.0));
+    EXPECT_THAT(zx::mat::area(reversed), ApproxEqual(8.0));
+}
+
 TEST(mat, clamp_interval)
 {
     const zx::mat::interval_t<int> interval{ 2, 8 };

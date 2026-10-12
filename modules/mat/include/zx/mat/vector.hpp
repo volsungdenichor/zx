@@ -295,7 +295,6 @@ struct spherical_fn
 
 inline constexpr auto vector = detail::vector_fn{};
 inline constexpr auto point = detail::vector_fn{};
-inline constexpr auto extent = detail::vector_fn{};
 
 inline constexpr auto from_polar = detail::polar_fn::from_fn{};
 inline constexpr auto from_cylindrical = detail::cylindrical_fn::from_fn{};

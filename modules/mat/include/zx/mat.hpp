@@ -219,7 +219,7 @@ inline constexpr auto upper = get_fn<side_t::upper>{};
 inline constexpr auto min = get_fn<side_t::first>{};
 inline constexpr auto max = get_fn<side_t::last>{};
 
-struct size_fn
+struct extent_fn
 {
     template <class T>
     constexpr auto operator()(const interval_t<T>& item) const -> T
@@ -234,8 +234,7 @@ struct size_fn
     }
 };
 
-inline constexpr auto size = size_fn{};
-inline constexpr auto extent = size;
+inline constexpr auto extent = extent_fn{};
 
 struct radius_fn
 {
@@ -533,7 +532,7 @@ struct interpolate_fn
     template <class R, class T>
     constexpr auto operator()(R r, const interval_t<T>& item) const -> T
     {
-        return static_cast<T>(lower(item) + r * size(item));
+        return static_cast<T>(lower(item) + r * extent(item));
     }
 
     template <std::size_t D, class R, class T, class Space>
@@ -1197,10 +1196,40 @@ struct floor_and_fractional_part_fn
 
 inline constexpr auto floor_and_fractional_part = floor_and_fractional_part_fn{};
 
+struct area_fn
+{
+    template <class T, class Space>
+    constexpr auto operator()(const extent_t<2, T, Space>& value) const
+    {
+        return value[0] * value[1];
+    }
+
+    template <class T, class Space>
+    constexpr auto operator()(const rectangle_t<T, Space>& value) const
+    {
+        return (*this)(extent(value));
+    }
+
+    template <class T, class Space>
+    constexpr auto operator()(const triangle_t<2, T, Space>& value) const
+    {
+        return math::abs(orientation(value[2], value[0], value[1])) / 2;
+    }
+
+    template <class T, class Space>
+    constexpr auto operator()(const circle_t<T, Space>& value) const
+    {
+        return math::pi<double> * math::sqr(value.radius);
+    }
+};
+
+inline constexpr auto area = area_fn{};
+
 }  // namespace detail
 
 using detail::altitude;
 using detail::angle;
+using detail::area;
 using detail::ceil;
 using detail::center;
 using detail::centroid;
@@ -1212,6 +1241,7 @@ using detail::cross;
 using detail::distance;
 using detail::dot;
 using detail::extend;
+using detail::extent;
 using detail::floor;
 using detail::floor_and_fractional_part;
 using detail::fractional_part;
@@ -1236,7 +1266,6 @@ using detail::rejection;
 using detail::round;
 using detail::segment;
 using detail::segments;
-using detail::size;
 using detail::to;
 using detail::transform;
 using detail::translate;
