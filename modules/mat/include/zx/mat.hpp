@@ -36,11 +36,52 @@ constexpr auto approx_equal(T value, E epsilon)
     return [=](auto v) { return std::abs(v - value) < epsilon; };
 }
 
-template <std::size_t D, class T, class Space>
-constexpr line_t<2, T, Space> make_line(const segment_t<D, T, Space>& s)
+struct segment_fn
 {
-    return line_t<2, T, Space>{ s[0], s[1] };
-}
+    template <std::size_t D, class T, class Space>
+    constexpr auto operator()(point_t<D, T, Space> p0, point_t<D, T, Space> p1) const -> segment_t<D, T, Space>
+    {
+        return segment_t<D, T, Space>{ p0, p1 };
+    }
+
+    template <std::size_t D, class T, std::size_t N, class Space>
+    constexpr auto operator()(const polygonal_shape_t<D, T, N, Space>& lhs, std::size_t index) const
+        -> segment_t<D, T, Space>
+    {
+        return (*this)(lhs[index], lhs[(index + 1) % lhs.size()]);
+    }
+
+    template <std::size_t D, class T, class Space>
+    constexpr auto operator()(const polygon_t<D, T, Space>& lhs, std::size_t index) const -> segment_t<D, T, Space>
+    {
+        return (*this)(lhs[index], lhs[(index + 1) % lhs.size()]);
+    }
+
+    template <std::size_t D, class T, class Space>
+    constexpr auto operator()(const polyline_t<D, T, Space>& lhs, std::size_t index) const -> segment_t<D, T, Space>
+    {
+        return (*this)(lhs[index], lhs[(index + 1) % lhs.size()]);
+    }
+};
+
+inline constexpr auto segment = segment_fn{};
+
+struct line_fn
+{
+    template <std::size_t D, class T, class Space>
+    constexpr auto operator()(point_t<D, T, Space> p0, point_t<D, T, Space> p1) const -> line_t<D, T, Space>
+    {
+        return line_t<D, T, Space>{ p0, p1 };
+    }
+
+    template <std::size_t D, class T, class Space>
+    constexpr auto operator()(const segment_t<D, T, Space>& s) const -> line_t<2, T, Space>
+    {
+        return (*this)(s[0], s[1]);
+    }
+};
+
+inline constexpr auto line = line_fn{};
 
 struct dot_fn
 {
@@ -736,7 +777,7 @@ struct altitude_fn
 
         const auto v = value[(index + 0) % 3];
 
-        const auto p = projection(v, line_t<2, T>{ value[(index + 1) % 3], value[(index + 2) % 3] }, epsilon);
+        const auto p = projection(v, line(segment(value, index + 1)), epsilon);
 
         return { v, *p };
     }
@@ -762,7 +803,7 @@ struct orthocenter_fn
     {
         constexpr T epsilon = T(0.0001);
 
-        return *intersection(make_line(altitude(value, 0)), make_line(altitude(value, 1)), epsilon);
+        return *intersection(line(altitude(value, 0)), line(altitude(value, 1)), epsilon);
     }
 };
 
@@ -775,10 +816,10 @@ struct circumcenter_fn
     {
         constexpr T epsilon = T(0.0001);
 
-        const auto s0 = segment(value[0], value[1]);
-        const auto s1 = segment(value[1], value[2]);
+        const auto s0 = segment(value, 0);
+        const auto s1 = segment(value, 1);
 
-        return *intersection(make_line(perpendicular(s0, center(s0))), make_line(perpendicular(s1, center(s1))), epsilon);
+        return *intersection(line(perpendicular(s0, center(s0))), line(perpendicular(s1, center(s1))), epsilon);
     }
 };
 
@@ -793,7 +834,7 @@ struct incenter_fn
         std::array<T, 3> sides = {};
         for (std::size_t i = 0; i < 3; ++i)
         {
-            sides[i] = length(segment(value[(i + 1) % 3], value[(i + 2) % 3]));
+            sides[i] = length(segment(value, i + 1));
             perimeter += sides[i];
         }
 
@@ -819,7 +860,7 @@ struct incircle_fn
         constexpr T epsilon = T(0.1);
 
         const auto c = incenter(triangle);
-        const auto r = distance(c, *projection(c, segment(triangle[0], triangle[1]), epsilon));
+        const auto r = distance(c, *projection(c, segment(triangle, 0), epsilon));
 
         return circle_t<T, Space>{ c, static_cast<T>(r) };
     }
@@ -986,15 +1027,13 @@ struct segments_fn
     template <class T, std::size_t D, std::size_t N, class Space>
     constexpr auto operator()(const polygonal_shape_t<D, T, N, Space>& value) const -> sequence_t<segment_t<D, T, Space>>
     {
-        return seq::range(value.size())
-            .transform([&](std::size_t i) { return segment(value[i], value[(i + 1) % value.size()]); });
+        return seq::range(value.size()).transform([&](std::size_t i) { return segment(value, i); });
     }
 
     template <class T, std::size_t D, class Space>
     constexpr auto operator()(const polygon_t<D, T, Space>& value) const -> sequence_t<segment_t<D, T, Space>>
     {
-        return seq::range(value.size())
-            .transform([&](std::size_t i) { return segment(value[i], value[(i + 1) % value.size()]); });
+        return seq::range(value.size()).transform([&](std::size_t i) { return segment(value, i); });
     }
 
     template <class T, std::size_t D, class Space>
@@ -1005,7 +1044,7 @@ struct segments_fn
             return {};
         }
         return seq::range(static_cast<std::size_t>(value.size() - 1))
-            .transform([&](std::size_t i) { return segment(value[i], value[i + 1]); });
+            .transform([&](std::size_t i) { return segment(value, i); });
     }
 
     template <class T, class Space>
@@ -1307,6 +1346,7 @@ using detail::interpolate;
 using detail::intersection;
 using detail::intersects;
 using detail::length;
+using detail::line;
 using detail::lower;
 using detail::max;
 using detail::min;
@@ -1318,15 +1358,15 @@ using detail::projection;
 using detail::radius;
 using detail::rejection;
 using detail::round;
+using detail::segment;
 using detail::segments;
 using detail::size;
+using detail::to;
 using detail::transform;
 using detail::translate;
 using detail::unit;
 using detail::unite;
 using detail::upper;
-
-using detail::to;
 
 }  // namespace mat
 
