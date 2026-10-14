@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <tuple>
 #include <utility>
+#include <zx/pipe.hpp>
 #include <zx/type_traits.hpp>
 
 namespace zx
@@ -183,14 +184,14 @@ public:
     template <class... Funcs>
     constexpr auto operator()(Funcs&&... funcs) const
     {
-        return impl_t<std::decay_t<Funcs>...>{ overload_set_t<std::decay_t<Funcs>...>{ std::forward<Funcs>(funcs)... } };
+        return fn(impl_t<std::decay_t<Funcs>...>{ overload_set_t<std::decay_t<Funcs>...>{ std::forward<Funcs>(funcs)... } });
     }
 };
 
 }  // namespace detail
 
 template <std::size_t N>
-constexpr auto get_element = detail::get_element_fn<N>{};
+constexpr auto get_element = fn(detail::get_element_fn<N>{});
 
 inline constexpr auto get_key = get_element<0>;
 inline constexpr auto get_value = get_element<1>;
@@ -198,14 +199,14 @@ inline constexpr auto get_value = get_element<1>;
 inline constexpr auto get_first = get_element<0>;
 inline constexpr auto get_second = get_element<1>;
 
-inline constexpr auto dereference = detail::dereference_fn{};
+inline constexpr auto dereference = fn(detail::dereference_fn{});
 inline constexpr auto proj = detail::proj_fn{};
 
 template <class T>
-inline constexpr auto cast = detail::cast_fn<T>{};
+inline constexpr auto cast = fn(detail::cast_fn<T>{});
 
-inline constexpr auto as_signed = detail::as_signed_fn{};
-inline constexpr auto as_unsigned = detail::as_unsigned_fn{};
+inline constexpr auto as_signed = fn(detail::as_signed_fn{});
+inline constexpr auto as_unsigned = fn(detail::as_unsigned_fn{});
 inline constexpr auto overloaded = detail::overloaded_fn{};
 
 }  // namespace zx

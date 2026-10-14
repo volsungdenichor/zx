@@ -29,7 +29,7 @@ static constexpr inline struct do_all_fn
     template <class... Funcs>
     constexpr auto operator()(Funcs&&... funcs) const -> impl<std::decay_t<Funcs>...>
     {
-        return { std::forward_as_tuple(std::forward<Funcs>(funcs)...) };
+        return impl<std::decay_t<Funcs>...>{ std::forward_as_tuple(std::forward<Funcs>(funcs)...) };
     }
 } do_all;
 
@@ -53,7 +53,7 @@ static constexpr struct apply_fn
     template <class... Funcs>
     constexpr auto operator()(Funcs&&... funcs) const
     {
-        return pipe(impl{ do_all(std::forward<Funcs>(funcs)...) });
+        return fn(impl{ do_all(std::forward<Funcs>(funcs)...) });
     }
 } apply;
 
@@ -77,7 +77,7 @@ static constexpr struct with_fn
     template <class... Funcs>
     constexpr auto operator()(Funcs&&... funcs) const
     {
-        return pipe(impl{ do_all(std::forward<Funcs>(funcs)...) });
+        return fn(impl{ do_all(std::forward<Funcs>(funcs)...) });
     }
 } with;
 
