@@ -2,6 +2,7 @@
 
 #include <exception>
 #include <functional>
+#include <iostream>
 #include <optional>
 #include <stdexcept>
 #include <utility>
