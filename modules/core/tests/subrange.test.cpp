@@ -1,8 +1,8 @@
 #include <gmock/gmock.h>
 
-#include <zx/iterator_range.hpp>
+#include <zx/subrange.hpp>
 
-TEST(iteratror_range, slicing)
+TEST(subrange, slicing)
 {
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
     const auto span = zx::span_t<int>{ vect };
@@ -22,6 +22,28 @@ TEST(iteratror_range, slicing)
     EXPECT_THAT(span.slice({ {}, -2 }), testing::ElementsAre(1, 2, 3, 4, 5));
     EXPECT_THAT(span.slice({ -4, -2 }), testing::ElementsAre(4, 5));
     EXPECT_THAT(span.slice({ -2, -4 }), testing::IsEmpty());
+}
+
+TEST(subrange, at)
+{
+    const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
+    const auto span = zx::span_t<int>{ vect };
+
+    EXPECT_THAT(zx::subrange::at(span, 2), testing::Optional(3));
+    EXPECT_THAT(span |= zx::subrange::at(2), testing::Optional(3));
+    EXPECT_THROW(zx::subrange::at(span, 7), std::out_of_range);
+    EXPECT_THROW((span |= zx::subrange::at(7)), std::out_of_range);
+}
+
+TEST(subrange, maybe_at)
+{
+    const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
+    const auto span = zx::span_t<int>{ vect };
+
+    EXPECT_THAT(zx::subrange::maybe_at(span, 2), testing::Optional(3));
+    EXPECT_THAT(span |= zx::subrange::maybe_at(2), testing::Optional(3));
+    EXPECT_THAT(zx::subrange::maybe_at(span, 7), testing::Eq(zx::none));
+    EXPECT_THAT(span |= zx::subrange::maybe_at(7), testing::Eq(zx::none));
 }
 
 TEST(iterator_range, find)

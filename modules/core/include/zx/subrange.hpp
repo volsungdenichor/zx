@@ -1,10 +1,12 @@
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
 #include <cstring>
 #include <optional>
 #include <utility>
 #include <zx/maybe.hpp>
+#include <zx/pipe.hpp>
 #include <zx/type_traits.hpp>
 
 namespace zx
@@ -42,23 +44,23 @@ auto make_reverse(std::reverse_iterator<Iter> b, std::reverse_iterator<Iter> e) 
 }
 
 template <class Iter>
-struct iterator_range_base_t
+struct subrange_t
 {
     using iterator = Iter;
     using difference_type = typename std::iterator_traits<iterator>::difference_type;
 
-    constexpr iterator_range_base_t() = default;
-    constexpr iterator_range_base_t(const iterator_range_base_t&) = default;
-    constexpr iterator_range_base_t(iterator_range_base_t&&) noexcept = default;
+    constexpr subrange_t() = default;
+    constexpr subrange_t(const subrange_t&) = default;
+    constexpr subrange_t(subrange_t&&) noexcept = default;
 
-    constexpr iterator_range_base_t(iterator b, iterator e) : m_iterators(b, e) { }
+    constexpr subrange_t(iterator b, iterator e) : m_iterators(b, e) { }
 
-    constexpr iterator_range_base_t(const std::pair<iterator, iterator>& pair) : m_iterators(pair) { }
+    constexpr subrange_t(const std::pair<iterator, iterator>& pair) : m_iterators(pair) { }
 
-    constexpr iterator_range_base_t(iterator b, difference_type n) : iterator_range_base_t(b, std::next(b, n)) { }
+    constexpr subrange_t(iterator b, difference_type n) : subrange_t(b, std::next(b, n)) { }
 
     template <class Range, class It = iterator_t<Range>, enable_if_t<std::is_constructible_v<iterator, It>> = 0>
-    constexpr iterator_range_base_t(Range&& range) : iterator_range_base_t(std::begin(range), std::end(range))
+    constexpr subrange_t(Range&& range) : subrange_t(std::begin(range), std::end(range))
     {
     }
 
@@ -66,34 +68,33 @@ struct iterator_range_base_t
 
     constexpr auto end() const noexcept -> iterator { return m_iterators.second; }
 
-    void swap(iterator_range_base_t& other) noexcept { std::swap(m_iterators, other.m_iterators); }
+    void swap(subrange_t& other) noexcept { std::swap(m_iterators, other.m_iterators); }
 
     std::pair<iterator, iterator> m_iterators;
 };
 
 template <class T>
-struct iterator_range_base_t<T*>
+struct subrange_t<T*>
 {
     using iterator = T*;
     using pointer = iterator;
     using difference_type = typename std::iterator_traits<iterator>::difference_type;
 
-    constexpr iterator_range_base_t() = default;
-    constexpr iterator_range_base_t(const iterator_range_base_t&) = default;
-    constexpr iterator_range_base_t(iterator_range_base_t&&) noexcept = default;
+    constexpr subrange_t() = default;
+    constexpr subrange_t(const subrange_t&) = default;
+    constexpr subrange_t(subrange_t&&) noexcept = default;
 
-    constexpr iterator_range_base_t(iterator b, iterator e) : m_iterators(b, e) { }
+    constexpr subrange_t(iterator b, iterator e) : m_iterators(b, e) { }
 
-    constexpr iterator_range_base_t(const std::pair<iterator, iterator>& pair) : m_iterators(pair) { }
+    constexpr subrange_t(const std::pair<iterator, iterator>& pair) : m_iterators(pair) { }
 
     template <class D = difference_type, enable_if_t<std::is_integral_v<D>> = 0>
-    constexpr iterator_range_base_t(iterator b, D n)
-        : iterator_range_base_t(b, std::next(b, static_cast<difference_type>(n)))
+    constexpr subrange_t(iterator b, D n) : subrange_t(b, std::next(b, static_cast<difference_type>(n)))
     {
     }
 
     template <class Range, class It = iterator_t<Range>, enable_if_t<std::is_constructible_v<iterator, It>> = 0>
-    constexpr iterator_range_base_t(Range&& range) : iterator_range_base_t(std::begin(range), std::end(range))
+    constexpr subrange_t(Range&& range) : subrange_t(std::begin(range), std::end(range))
     {
     }
 
@@ -102,8 +103,7 @@ struct iterator_range_base_t<T*>
         class It = iterator_t<Range>,
         class Ptr = decltype(std::declval<Range>().data()),
         enable_if_t<std::is_constructible_v<iterator, Ptr>, !std::is_constructible_v<iterator, It>> = 0>
-    constexpr iterator_range_base_t(Range&& range)
-        : iterator_range_base_t(range.data(), static_cast<difference_type>(range.size()))
+    constexpr subrange_t(Range&& range) : subrange_t(range.data(), static_cast<difference_type>(range.size()))
     {
     }
 
@@ -113,32 +113,32 @@ struct iterator_range_base_t<T*>
 
     constexpr auto data() const noexcept -> pointer { return begin(); }
 
-    void swap(iterator_range_base_t& other) noexcept { std::swap(m_iterators, other.m_iterators); }
+    void swap(subrange_t& other) noexcept { std::swap(m_iterators, other.m_iterators); }
 
     std::pair<iterator, iterator> m_iterators;
 };
 
 }  // namespace detail
 
-struct iterator_range_slice_t
+struct subrange_slice_t
 {
     std::optional<std::ptrdiff_t> start;
     std::optional<std::ptrdiff_t> stop;
 };
 
 template <class Iter>
-struct iterator_range_t;
+struct subrange_t;
 
 template <class Iter>
-iterator_range_t(Iter, Iter) -> iterator_range_t<Iter>;
+subrange_t(Iter, Iter) -> subrange_t<Iter>;
 
 template <class Range>
-iterator_range_t(Range&&) -> iterator_range_t<iterator_t<Range>>;
+subrange_t(Range&&) -> subrange_t<iterator_t<Range>>;
 
 template <class Iter>
-struct iterator_range_t : detail::iterator_range_base_t<Iter>
+struct subrange_t : detail::subrange_t<Iter>
 {
-    using base_t = detail::iterator_range_base_t<Iter>;
+    using base_t = detail::subrange_t<Iter>;
 
     using iterator = typename base_t::iterator;
     using difference_type = typename base_t::difference_type;
@@ -150,7 +150,7 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
 
     using value_type = typename std::iterator_traits<iterator>::value_type;
 
-    using reverse_type = iterator_range_t<detail::reverse_iterator_t<iterator>>;
+    using reverse_type = subrange_t<detail::reverse_iterator_t<iterator>>;
     using reverse_iterator = typename reverse_type::iterator;
 
     using base_t::base_t;
@@ -189,39 +189,6 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
         return std::distance(begin(), end());
     }
 
-    auto maybe_front() const -> maybe_reference { return !empty() ? maybe_reference{ *begin() } : maybe_reference{}; }
-
-    auto front() const -> reference
-    {
-        if (auto maybe = maybe_front())
-        {
-            return *maybe;
-        }
-        throw std::out_of_range("iterator_range_t::front - empty range");
-    }
-
-    template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
-    auto maybe_back() const -> maybe_reference
-    {
-        return !empty() ? maybe_reference{ *std::prev(end()) } : maybe_reference{};
-    }
-
-    template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
-    auto back() const -> reference
-    {
-        if (auto maybe = maybe_back())
-        {
-            return *maybe;
-        }
-        throw std::out_of_range("iterator_range_t::back - empty range");
-    }
-
-    template <class It = iterator, enable_if_t<is_random_access_iterator<It>::value> = 0>
-    auto maybe_at(difference_type n) const -> maybe_reference
-    {
-        return (0 <= n && n < size()) ? maybe_reference{ *std::next(begin(), n) } : maybe_reference{};
-    }
-
     template <class It = iterator, enable_if_t<is_random_access_iterator<It>::value> = 0>
     auto at(difference_type n) const -> reference
     {
@@ -229,7 +196,7 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
         {
             return *maybe;
         }
-        throw std::out_of_range("iterator_range_t::at - index out of range");
+        throw std::out_of_range("subrange_t::at - index out of range");
     }
 
     template <class It = iterator, enable_if_t<is_random_access_iterator<It>::value> = 0>
@@ -244,50 +211,50 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
         return detail::make_reverse(begin(), end());
     }
 
-    auto take(difference_type n) const -> iterator_range_t { return iterator_range_t(begin(), advance(n)); }
+    auto take(difference_type n) const -> subrange_t { return subrange_t(begin(), advance(n)); }
 
-    auto drop(difference_type n) const -> iterator_range_t { return iterator_range_t(advance(n), end()); }
+    auto drop(difference_type n) const -> subrange_t { return subrange_t(advance(n), end()); }
 
     template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
-    auto take_back(difference_type n) const -> iterator_range_t
+    auto take_back(difference_type n) const -> subrange_t
     {
         return reverse().take(n).reverse();
     }
 
     template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
-    auto drop_back(difference_type n) const -> iterator_range_t
+    auto drop_back(difference_type n) const -> subrange_t
     {
         return reverse().drop(n).reverse();
     }
 
     template <class Pred>
-    auto take_while(Pred&& pred) const -> iterator_range_t
+    auto take_while(Pred&& pred) const -> subrange_t
     {
         const iterator found = std::find_if_not(begin(), end(), std::forward<Pred>(pred));
-        return iterator_range_t(begin(), found);
+        return subrange_t(begin(), found);
     }
 
     template <class Pred>
-    auto drop_while(Pred&& pred) const -> iterator_range_t
+    auto drop_while(Pred&& pred) const -> subrange_t
     {
         const iterator found = std::find_if_not(begin(), end(), std::forward<Pred>(pred));
-        return iterator_range_t(found, end());
+        return subrange_t(found, end());
     }
 
     template <class Pred, class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
-    auto take_back_while(Pred&& pred) const -> iterator_range_t
+    auto take_back_while(Pred&& pred) const -> subrange_t
     {
         return reverse().take_while(std::forward<Pred>(pred)).reverse();
     }
 
     template <class Pred, class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
-    auto drop_back_while(Pred&& pred) const -> iterator_range_t
+    auto drop_back_while(Pred&& pred) const -> subrange_t
     {
         return reverse().drop_while(std::forward<Pred>(pred)).reverse();
     }
 
     template <class It = iterator, enable_if_t<is_random_access_iterator<It>::value> = 0>
-    auto slice(const iterator_range_slice_t& info) const -> iterator_range_t
+    auto slice(const subrange_slice_t& info) const -> subrange_t
     {
         static const auto adjust = [](difference_type index,
                                       size_type size) -> size_type {  //
@@ -296,7 +263,7 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
         const size_type s = size();
         const size_type b = info.start ? adjust(*info.start, s) : size_type{ 0 };
         const size_type e = info.stop ? adjust(*info.stop, s) : s;
-        return iterator_range_t{ begin() + b, std::max(size_type{ 0 }, e - b) };
+        return subrange_t{ begin() + b, std::max(size_type{ 0 }, e - b) };
     }
 
     auto find(const value_type& value) const -> maybe_reference
@@ -315,14 +282,14 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
     template <class Range, class Compare = std::equal_to<>>
     bool is_equal(Range&& other, Compare&& compare = {}) const
     {
-        auto other_range = iterator_range_t<iterator_t<Range>>{ std::forward<Range>(other) };
+        auto other_range = subrange_t<iterator_t<Range>>{ std::forward<Range>(other) };
         return std::equal(begin(), end(), other_range.begin(), other_range.end(), std::forward<Compare>(compare));
     }
 
     template <class Range, class Compare = std::less<>>
     bool is_less(Range&& other, Compare&& compare = {}) const
     {
-        auto other_range = iterator_range_t<iterator_t<Range>>{ std::forward<Range>(other) };
+        auto other_range = subrange_t<iterator_t<Range>>{ std::forward<Range>(other) };
         return std::lexicographical_compare(
             begin(), end(), other_range.begin(), other_range.end(), std::forward<Compare>(compare));
     }
@@ -330,28 +297,27 @@ struct iterator_range_t : detail::iterator_range_base_t<Iter>
     template <class Range, class Compare = std::less<>>
     bool is_greater(Range&& other, Compare&& compare = {}) const
     {
-        return iterator_range_t<iterator_t<Range>>{ std::forward<Range>(other) }.is_less(
-            *this, std::forward<Compare>(compare));
+        return subrange_t<iterator_t<Range>>{ std::forward<Range>(other) }.is_less(*this, std::forward<Compare>(compare));
     }
 
     template <class Range, class Compare = std::equal_to<>>
     bool starts_with(Range&& prefix, Compare&& compare = {}) const
     {
-        auto prefix_range = iterator_range_t<iterator_t<Range>>{ std::forward<Range>(prefix) };
+        auto prefix_range = subrange_t<iterator_t<Range>>{ std::forward<Range>(prefix) };
         return take(prefix_range.size()).is_equal(prefix_range, std::forward<Compare>(compare));
     }
 
     template <class Range, class Compare = std::equal_to<>>
     bool ends_with(Range&& suffix, Compare&& compare = {}) const
     {
-        auto suffix_range = iterator_range_t<iterator_t<Range>>{ std::forward<Range>(suffix) };
+        auto suffix_range = subrange_t<iterator_t<Range>>{ std::forward<Range>(suffix) };
         return take_back(suffix_range.size()).is_equal(suffix_range, std::forward<Compare>(compare));
     }
 
     template <class Range, class Compare = std::equal_to<>>
     bool contains_subrange(Range&& subrange, Compare&& compare = {}) const
     {
-        auto subrange_range = iterator_range_t<iterator_t<Range>>{ std::forward<Range>(subrange) };
+        auto subrange_range = subrange_t<iterator_t<Range>>{ std::forward<Range>(subrange) };
         return std::search(begin(), end(), subrange_range.begin(), subrange_range.end(), std::forward<Compare>(compare))
                != end();
     }
@@ -395,84 +361,171 @@ private:
 };
 
 template <class L, class R>
-bool operator==(iterator_range_t<L> lhs, R&& rhs)
+bool operator==(subrange_t<L> lhs, R&& rhs)
 {
     return lhs.is_equal(rhs);
 }
 
 template <class L, class R>
-bool operator!=(iterator_range_t<L> lhs, R&& rhs)
+bool operator!=(subrange_t<L> lhs, R&& rhs)
 {
     return !(lhs == rhs);
 }
 
 template <class L, class R>
-bool operator==(L&& lhs, iterator_range_t<R> rhs)
+bool operator==(L&& lhs, subrange_t<R> rhs)
 {
     return rhs == lhs;
 }
 
 template <class L, class R>
-bool operator!=(L&& lhs, iterator_range_t<R> rhs)
+bool operator!=(L&& lhs, subrange_t<R> rhs)
 {
     return !(lhs == rhs);
 }
 
 template <class L, class R>
-bool operator<(iterator_range_t<L> lhs, R&& rhs)
+bool operator<(subrange_t<L> lhs, R&& rhs)
 {
     return lhs.is_less(rhs);
 }
 
 template <class L, class R>
-bool operator>(iterator_range_t<L> lhs, R&& rhs)
+bool operator>(subrange_t<L> lhs, R&& rhs)
 {
     return lhs.is_greater(rhs);
 }
 
 template <class L, class R>
-bool operator<=(iterator_range_t<L> lhs, R&& rhs)
+bool operator<=(subrange_t<L> lhs, R&& rhs)
 {
     return !(lhs > rhs);
 }
 
 template <class L, class R>
-bool operator>=(iterator_range_t<L> lhs, R&& rhs)
+bool operator>=(subrange_t<L> lhs, R&& rhs)
 {
     return !(lhs < rhs);
 }
 
 template <class L, class R>
-bool operator<(L&& lhs, iterator_range_t<R> rhs)
+bool operator<(L&& lhs, subrange_t<R> rhs)
 {
     return rhs > lhs;
 }
 
 template <class L, class R>
-bool operator>(L&& lhs, iterator_range_t<R> rhs)
+bool operator>(L&& lhs, subrange_t<R> rhs)
 {
     return rhs < lhs;
 }
 
 template <class L, class R>
-bool operator<=(L&& lhs, iterator_range_t<R> rhs)
+bool operator<=(L&& lhs, subrange_t<R> rhs)
 {
     return !(lhs > rhs);
 }
 
 template <class L, class R>
-bool operator>=(L&& lhs, iterator_range_t<R> rhs)
+bool operator>=(L&& lhs, subrange_t<R> rhs)
 {
     return !(lhs < rhs);
 }
 
 template <class T>
-using span_t = iterator_range_t<const T*>;
+using span_t = subrange_t<const T*>;
 
 template <class T>
-using mut_span_t = iterator_range_t<T*>;
+using mut_span_t = subrange_t<T*>;
 
-template <class Container>
-using subrange_t = iterator_range_t<iterator_t<Container>>;
+namespace subrange
+{
+
+namespace detail
+{
+
+struct front_fn
+{
+    template <class Iter>
+    auto operator()(subrange_t<Iter> value) const -> typename subrange_t<Iter>::reference
+    {
+        if (!value.empty())
+        {
+            return *value.begin();
+        }
+        throw std::out_of_range("subrange_t::front - empty range");
+    }
+};
+
+struct back_fn
+{
+    template <class Iter, enable_if_t<is_bidirectional_iterator<Iter>::value> = 0>
+    auto operator()(subrange_t<Iter> value) const -> typename subrange_t<Iter>::reference
+    {
+        if (!value.empty())
+        {
+            return *std::prev(value.end());
+        }
+        throw std::out_of_range("subrange_t::back - empty range");
+    }
+};
+
+struct maybe_front_fn
+{
+    template <class Iter, class Res = typename subrange_t<Iter>::maybe_reference>
+    auto operator()(subrange_t<Iter> value) const -> Res
+    {
+        return !value.empty() ? Res{ *value.begin() } : Res{};
+    }
+};
+
+struct maybe_back_fn
+{
+    template <
+        class Iter,
+        class Res = typename subrange_t<Iter>::maybe_reference,
+        enable_if_t<is_bidirectional_iterator<Iter>::value> = 0>
+    auto operator()(subrange_t<Iter> value) const -> Res
+    {
+        return !value.empty() ? Res{ *std::prev(value.end()) } : Res{};
+    }
+};
+
+struct maybe_at_fn
+{
+    template <class Iter, class Res = typename subrange_t<Iter>::maybe_reference>
+    constexpr auto operator()(subrange_t<Iter> value, std::ptrdiff_t index) const -> Res
+    {
+        return (0 <= index && index < value.size()) ? Res{ *std::next(value.begin(), index) } : Res{};
+    }
+
+    auto operator()(std::ptrdiff_t index) const { return fn(std::bind(*this, std::placeholders::_1, index)); }
+};
+
+struct at_fn
+{
+    template <class Iter, class Res = typename subrange_t<Iter>::maybe_reference>
+    constexpr auto operator()(subrange_t<Iter> value, std::ptrdiff_t index) const -> Res
+    {
+        if (0 <= index && index < value.ssize())
+        {
+            return Res{ *std::next(value.begin(), index) };
+        }
+        throw std::out_of_range("subrange_t::at - index out of range");
+    }
+
+    auto operator()(std::ptrdiff_t index) const { return fn(std::bind(*this, std::placeholders::_1, index)); }
+};
+
+}  // namespace detail
+
+constexpr inline auto front = fn(detail::front_fn{});
+constexpr inline auto back = fn(detail::back_fn{});
+constexpr inline auto maybe_front = fn(detail::maybe_front_fn{});
+constexpr inline auto maybe_back = fn(detail::maybe_back_fn{});
+constexpr inline auto maybe_at = fn(detail::maybe_at_fn{});
+constexpr inline auto at = fn(detail::at_fn{});
+
+}  // namespace subrange
 
 }  // namespace zx

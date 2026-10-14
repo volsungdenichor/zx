@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <limits>
 #include <numeric>
-#include <zx/iterator_range.hpp>
 #include <zx/iterators.hpp>
 #include <zx/mat/math.hpp>
 #include <zx/mat/vector.hpp>
 #include <zx/maybe.hpp>
+#include <zx/subrange.hpp>
 
 namespace zx
 {
@@ -30,9 +30,9 @@ struct matrix_view_t
 
     using pointer = T*;
     using reference = T&;
-    using row_type = iterator_range_t<pointer>;
-    using column_type = iterator_range_t<strided_iterator<pointer, std::ptrdiff_t(C)>>;
-    using data_type = iterator_range_t<pointer>;
+    using row_type = subrange_t<pointer>;
+    using column_type = subrange_t<strided_iterator<pointer, std::ptrdiff_t(C)>>;
+    using data_type = subrange_t<pointer>;
 
     pointer m_data;
 

@@ -6,7 +6,7 @@ zx_add_module(
     tests/algorithm.test.cpp
     tests/type_traits.test.cpp
     tests/format.test.cpp
-    tests/iterator_range.test.cpp
+    tests/subrange.test.cpp
     tests/maybe.test.cpp
     tests/result.test.cpp
     tests/type_name.test.cpp
