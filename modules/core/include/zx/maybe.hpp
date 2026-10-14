@@ -5,6 +5,7 @@
 #include <iostream>
 #include <optional>
 #include <utility>
+#include <zx/pipe.hpp>
 #include <zx/type_traits.hpp>
 
 namespace zx
@@ -138,134 +139,6 @@ struct maybe_t
 
     constexpr bool has_value() const noexcept { return static_cast<bool>(*this); }
 
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const T&>>,
-        class Result = FuncResult>
-    constexpr auto and_then(Func&& func) const& -> Result
-    {
-        static_assert(
-            detail::is_maybe<FuncResult>::value, "and_then: function result type needs to be of `maybe_t<T>` type");
-        return *this  //
-                   ? Result{ std::invoke(std::forward<Func>(func), get()) }
-                   : Result{};
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&&>>,
-        class Result = FuncResult>
-    constexpr auto and_then(Func&& func) && -> Result
-    {
-        static_assert(
-            detail::is_maybe<FuncResult>::value, "and_then: function result type needs to be of `maybe_t<T>` type");
-        return *this  //
-                   ? Result{ std::invoke(std::forward<Func>(func), std::move(*this).get()) }
-                   : Result{};
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const T&>>,
-        class Result = maybe_t<FuncResult>>
-    constexpr auto transform(Func&& func) const& -> Result
-    {
-        return *this  //
-                   ? Result{ std::invoke(std::forward<Func>(func), get()) }
-                   : Result{};
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&&>>,
-        class Result = maybe_t<FuncResult>>
-    constexpr auto transform(Func&& func) && -> Result
-    {
-        return *this  //
-                   ? Result{ std::invoke(std::forward<Func>(func), std::move(*this).get()) }
-                   : Result{};
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, maybe_t<T>, FuncResult>>
-    constexpr auto or_else(Func&& func) const& -> Result
-    {
-        if constexpr (std::is_void_v<FuncResult>)
-        {
-            if (!*this)
-            {
-                std::invoke(std::forward<Func>(func));
-            }
-            return Result{ *this };
-        }
-        else
-        {
-            static_assert(
-                detail::is_maybe<FuncResult>::value, "or_else: function result type needs to be of `maybe_t<T>` type");
-            if (*this)
-            {
-                return Result{ *this };
-            }
-            return Result{ std::invoke(std::forward<Func>(func)) };
-        }
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, maybe_t<T>, FuncResult>>
-    constexpr auto or_else(Func&& func) && -> Result
-    {
-        if constexpr (std::is_void_v<FuncResult>)
-        {
-            if (!*this)
-            {
-                std::invoke(std::forward<Func>(func));
-            }
-            return Result{ std::move(*this) };
-        }
-        else
-        {
-            static_assert(
-                detail::is_maybe<FuncResult>::value, "or_else: function result type needs to be of `maybe_t<T>` type");
-            if (*this)
-            {
-                return Result{ std::move(*this) };
-            }
-            return Result{ std::invoke(std::forward<Func>(func)) };
-        }
-    }
-
-    template <class Pred>
-    constexpr auto filter(Pred&& pred) const& -> maybe_t<T>
-    {
-        return *this && std::invoke(std::forward<Pred>(pred), get())  //
-                   ? maybe_t<T>{ *this }
-                   : maybe_t<T>{};
-    }
-
-    template <class Pred>
-    constexpr auto filter(Pred&& pred) && -> maybe_t<T>
-    {
-        return *this && std::invoke(std::forward<Pred>(pred), get())  //
-                   ? maybe_t<T>{ std::move(*this) }
-                   : maybe_t<T>{};
-    }
-
-    template <class U>
-    constexpr auto value_or(U&& v) const& -> value_type
-    {
-        return *this ? get() : static_cast<value_type>(std::forward<U>(v));
-    }
-
-    template <class U>
-    constexpr auto value_or(U&& v) && -> value_type
-    {
-        return *this ? std::move(*this).get() : static_cast<value_type>(std::forward<U>(v));
-    }
-
 private:
     std::optional<value_type> m_storage;
 };
@@ -308,70 +181,6 @@ struct maybe_t<T&>
     constexpr value_type& value() const { return **this; }
 
     constexpr bool has_value() const noexcept { return static_cast<bool>(*this); }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&>>,
-        class Result = FuncResult>
-    constexpr auto and_then(Func&& func) const -> Result
-    {
-        static_assert(
-            detail::is_maybe<FuncResult>::value, "and_then: function result type needs to be of `maybe_t<T>` type");
-        return *this  //
-                   ? Result{ std::invoke(std::forward<Func>(func), get()) }
-                   : Result{};
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&>>,
-        class Result = maybe_t<FuncResult>>
-    constexpr auto transform(Func&& func) const -> Result
-    {
-        return *this  //
-                   ? Result{ std::invoke(std::forward<Func>(func), get()) }
-                   : Result{};
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, maybe_t<T&>, FuncResult>>
-    constexpr auto or_else(Func&& func) const -> Result
-    {
-        if constexpr (std::is_void_v<FuncResult>)
-        {
-            if (!*this)
-            {
-                std::invoke(std::forward<Func>(func));
-            }
-            return Result{ *this };
-        }
-        else
-        {
-            static_assert(
-                detail::is_maybe<FuncResult>::value, "or_else: function result type needs to be of `maybe_t<T>` type");
-            if (*this)
-            {
-                return Result{ *this };
-            }
-            return Result{ std::invoke(std::forward<Func>(func)) };
-        }
-    }
-
-    template <class Pred>
-    constexpr auto filter(Pred&& pred) const -> maybe_t<T&>
-    {
-        return *this && std::invoke(std::forward<Pred>(pred), get())  //
-                   ? maybe_t<T&>{ *this }
-                   : maybe_t<T&>{};
-    }
-
-    template <class U>
-    constexpr auto value_or(U&& v) const -> value_type
-    {
-        return *this ? get() : static_cast<value_type>(std::forward<U>(v));
-    }
 
 private:
     value_type* m_storage;
@@ -482,5 +291,264 @@ std::ostream& operator<<(std::ostream& os, const maybe_t<T>& item)
     }
     return os;
 }
+
+namespace maybe
+{
+
+namespace detail
+{
+
+struct transform_fn
+{
+    template <class Func>
+    struct impl_t
+    {
+        Func m_func;
+
+        template <
+            class T,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, const T&>>,
+            class Result = maybe_t<FuncResult>>
+        constexpr auto operator()(const maybe_t<T>& value) const -> Result
+        {
+            return value ? Result{ std::invoke(m_func, value.get()) } : Result{};
+        }
+
+        template <
+            class T,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, T&&>>,
+            class Result = maybe_t<FuncResult>>
+        constexpr auto operator()(maybe_t<T>&& value) const -> Result
+        {
+            return value ? Result{ std::invoke(m_func, std::move(value).get()) } : Result{};
+        }
+
+        template <
+            class T,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, T&>>,
+            class Result = maybe_t<FuncResult>>
+        constexpr auto operator()(maybe_t<T&> value) const -> Result
+        {
+            return value ? Result{ std::invoke(m_func, value.get()) } : Result{};
+        }
+    };
+
+    template <class Func>
+    constexpr auto operator()(Func&& func) const
+    {
+        return fn(impl_t<std::decay_t<Func>>{ std::forward<Func>(func) });
+    }
+};
+
+struct and_then_fn
+{
+    template <class Func>
+    struct impl_t
+    {
+        Func m_func;
+
+        template <
+            class T,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, const T&>>,
+            class Result = FuncResult>
+        constexpr auto operator()(const maybe_t<T>& value) const -> Result
+        {
+            static_assert(
+                ::zx::detail::is_maybe<FuncResult>::value,
+                "and_then: function result type needs to be of `maybe_t<T>` type");
+            return value ? Result{ std::invoke(m_func, value.get()) } : Result{};
+        }
+
+        template <
+            class T,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, T&&>>,
+            class Result = FuncResult>
+        constexpr auto operator()(maybe_t<T>&& value) const -> Result
+        {
+            static_assert(
+                ::zx::detail::is_maybe<FuncResult>::value,
+                "and_then: function result type needs to be of `maybe_t<T>` type");
+            return value ? Result{ std::invoke(m_func, std::move(value).get()) } : Result{};
+        }
+
+        template <
+            class T,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, T&>>,
+            class Result = FuncResult>
+        constexpr auto operator()(maybe_t<T&> value) const -> Result
+        {
+            static_assert(
+                ::zx::detail::is_maybe<FuncResult>::value,
+                "and_then: function result type needs to be of `maybe_t<T>` type");
+            return value ? Result{ std::invoke(m_func, value.get()) } : Result{};
+        }
+    };
+
+    template <class Func>
+    constexpr auto operator()(Func&& func) const
+    {
+        return fn(impl_t<std::decay_t<Func>>{ std::forward<Func>(func) });
+    }
+};
+
+struct filter_fn
+{
+    template <class Pred>
+    struct impl_t
+    {
+        Pred m_pred;
+
+        template <class T, class Result = maybe_t<T>>
+        constexpr auto operator()(const maybe_t<T>& value) const -> Result
+        {
+            return value && std::invoke(m_pred, value.get()) ? Result{ value.get() } : Result{};
+        }
+
+        template <class T, class Result = maybe_t<T>>
+        constexpr auto operator()(maybe_t<T>&& value) const -> Result
+        {
+            return value && std::invoke(m_pred, value.get()) ? Result{ std::move(value).get() } : Result{};
+        }
+
+        template <class T, class Result = maybe_t<T&>>
+        constexpr auto operator()(maybe_t<T&> value) const -> Result
+        {
+            return value && std::invoke(m_pred, value.get()) ? Result{ value.get() } : Result{};
+        }
+    };
+
+    template <class Pred>
+    constexpr auto operator()(Pred&& pred) const
+    {
+        return fn(impl_t<std::decay_t<Pred>>{ std::forward<Pred>(pred) });
+    }
+};
+
+struct or_else_fn
+{
+    template <class Func>
+    struct impl_t
+    {
+        Func m_func;
+
+        template <
+            class T,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&>>,
+            class Result = std::conditional_t<std::is_void_v<FuncResult>, maybe_t<T>, FuncResult>>
+        constexpr auto operator()(const maybe_t<T>& value) const -> Result
+        {
+            if constexpr (std::is_void_v<FuncResult>)
+            {
+                if (!value)
+                {
+                    std::invoke(m_func);
+                }
+                return Result{ value };
+            }
+            else
+            {
+                static_assert(
+                    ::zx::detail::is_maybe<FuncResult>::value,
+                    "or_else: function result type needs to be of `maybe_t<T>` type");
+                return value ? Result{ value } : Result{ std::invoke(m_func) };
+            }
+        }
+
+        template <
+            class T,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&>>,
+            class Result = std::conditional_t<std::is_void_v<FuncResult>, maybe_t<T>, FuncResult>>
+        constexpr auto operator()(maybe_t<T>&& value) const -> Result
+        {
+            if constexpr (std::is_void_v<FuncResult>)
+            {
+                if (!value)
+                {
+                    std::invoke(m_func);
+                }
+                return Result{ std::move(value) };
+            }
+            else
+            {
+                static_assert(
+                    ::zx::detail::is_maybe<FuncResult>::value,
+                    "or_else: function result type needs to be of `maybe_t<T>` type");
+                return value ? Result{ std::move(value) } : Result{ std::invoke(m_func) };
+            }
+        }
+
+        template <
+            class T,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&>>,
+            class Result = std::conditional_t<std::is_void_v<FuncResult>, maybe_t<T&>, FuncResult>>
+        constexpr auto operator()(maybe_t<T&> value) const -> Result
+        {
+            if constexpr (std::is_void_v<FuncResult>)
+            {
+                if (!value)
+                {
+                    std::invoke(m_func);
+                }
+                return Result{ value };
+            }
+            else
+            {
+                static_assert(
+                    ::zx::detail::is_maybe<FuncResult>::value,
+                    "or_else: function result type needs to be of `maybe_t<T>` type");
+                return value ? Result{ value } : Result{ std::invoke(m_func) };
+            }
+        }
+    };
+
+    template <class Func>
+    constexpr auto operator()(Func&& func) const
+    {
+        return fn(impl_t<std::decay_t<Func>>{ std::forward<Func>(func) });
+    }
+};
+
+struct value_or_fn
+{
+    template <class U>
+    struct impl_t
+    {
+        U m_default_value;
+
+        template <class T>
+        constexpr auto operator()(const maybe_t<T>& value) const -> T
+        {
+            return value ? value.get() : static_cast<T>(m_default_value);
+        }
+
+        template <class T>
+        constexpr auto operator()(maybe_t<T>&& value) const -> T
+        {
+            return value ? std::move(value).get() : static_cast<T>(m_default_value);
+        }
+
+        template <class T>
+        constexpr auto operator()(maybe_t<T&> value) const -> T
+        {
+            return value ? value.get() : static_cast<T>(m_default_value);
+        }
+    };
+
+    template <class U>
+    constexpr auto operator()(U&& default_value) const
+    {
+        return fn(impl_t<std::decay_t<U>>{ std::forward<U>(default_value) });
+    }
+};
+
+}  // namespace detail
+
+constexpr inline auto transform = detail::transform_fn{};
+constexpr inline auto and_then = detail::and_then_fn{};
+constexpr inline auto filter = detail::filter_fn{};
+constexpr inline auto or_else = detail::or_else_fn{};
+constexpr inline auto value_or = detail::value_or_fn{};
+
+}  // namespace maybe
 
 }  // namespace zx

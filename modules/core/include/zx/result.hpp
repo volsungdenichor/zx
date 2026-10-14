@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <utility>
 #include <variant>
+#include <zx/pipe.hpp>
 #include <zx/type_traits.hpp>
 
 namespace zx
@@ -191,132 +192,6 @@ struct result_t
 
     constexpr bool has_error() const noexcept { return !has_value(); }
 
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const T&>>,
-        class Result = FuncResult>
-    constexpr auto and_then(Func&& func) const& -> Result
-    {
-        static_assert(
-            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result_t<T, E>` type");
-        return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), get())
-                   : detail::to_error<Result>(*this);
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&&>>,
-        class Result = FuncResult>
-    constexpr auto and_then(Func&& func) && -> Result
-    {
-        static_assert(
-            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result_t<T, E>` type");
-        return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), std::move(*this).get())
-                   : detail::to_error<Result>(std::move(*this));
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const T&>>,
-        class Result = result_t<FuncResult, E>>
-    constexpr auto transform(Func&& func) const& -> Result
-    {
-        return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), get())
-                   : detail::to_error<Result>(*this);
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&&>>,
-        class Result = result_t<FuncResult, E>>
-    constexpr auto transform(Func&& func) && -> Result
-    {
-        return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), std::move(*this).get())
-                   : detail::to_error<Result>(std::move(*this));
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
-    constexpr auto or_else(Func&& func) const& -> Result
-    {
-        if constexpr (std::is_void_v<FuncResult>)
-        {
-            return *this  //
-                       ? Result{ *this }
-                       : (std::invoke(std::forward<Func>(func), error()), Result{ *this });
-        }
-        else
-        {
-            static_assert(
-                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result_t<T, E>` type");
-            return *this  //
-                       ? Result{ *this }
-                       : Result{ std::invoke(std::forward<Func>(func), error()) };
-        }
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
-    constexpr auto or_else(Func&& func) && -> Result
-    {
-        if constexpr (std::is_void_v<FuncResult>)
-        {
-            return *this  //
-                       ? Result{ std::move(*this) }
-                       : (std::invoke(std::forward<Func>(func), error()), Result{ std::move(*this) });
-        }
-        else
-        {
-            static_assert(
-                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result_t<T, E>` type");
-            return *this  //
-                       ? Result{ std::move(*this) }
-                       : Result{ std::invoke(std::forward<Func>(func), std::move(*this).error()) };
-        }
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
-        class Result = result_t<T, FuncResult>>
-    constexpr auto transform_error(Func&& func) const& -> Result
-    {
-        return *this  //
-                   ? Result{ get() }
-                   : Result{ zx::error(std::invoke(std::forward<Func>(func), error())) };
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
-        class Result = result_t<T, FuncResult>>
-    constexpr auto transform_error(Func&& func) && -> Result
-    {
-        return *this  //
-                   ? Result{ std::move(*this).get() }
-                   : Result{ zx::error(std::invoke(std::forward<Func>(func), std::move(*this).error())) };
-    }
-
-    template <class U>
-    constexpr auto value_or(U&& v) const& -> value_type
-    {
-        return *this ? get() : static_cast<value_type>(std::forward<U>(v));
-    }
-
-    template <class U>
-    constexpr auto value_or(U&& v) && -> value_type
-    {
-        return *this ? std::move(*this).get() : static_cast<value_type>(std::forward<U>(v));
-    }
-
 private:
     std::variant<value_storage, error_storage> m_storage;
 };
@@ -400,132 +275,6 @@ struct result_t<T&, E>
 
     constexpr bool has_error() const noexcept { return !has_value(); }
 
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&>>,
-        class Result = FuncResult>
-    constexpr auto and_then(Func&& func) const& -> Result
-    {
-        static_assert(
-            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result_t<T, E>` type");
-        return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), get())
-                   : detail::to_error<Result>(*this);
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&&>>,
-        class Result = FuncResult>
-    constexpr auto and_then(Func&& func) && -> Result
-    {
-        static_assert(
-            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result_t<T, E>` type");
-        return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), std::move(*this).get())
-                   : detail::to_error<Result>(std::move(*this));
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&>>,
-        class Result = result_t<FuncResult, E>>
-    constexpr auto transform(Func&& func) const& -> Result
-    {
-        return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), get())
-                   : detail::to_error<Result>(*this);
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, T&&>>,
-        class Result = result_t<FuncResult, E>>
-    constexpr auto transform(Func&& func) && -> Result
-    {
-        return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func), std::move(*this).get())
-                   : detail::to_error<Result>(std::move(*this));
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
-    constexpr auto or_else(Func&& func) const& -> Result
-    {
-        if constexpr (std::is_void_v<FuncResult>)
-        {
-            return *this  //
-                       ? Result{ *this }
-                       : (std::invoke(std::forward<Func>(func), error()), Result{ *this });
-        }
-        else
-        {
-            static_assert(
-                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result_t<T, E>` type");
-            return *this  //
-                       ? Result{ *this }
-                       : Result{ std::invoke(std::forward<Func>(func), error()) };
-        }
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
-    constexpr auto or_else(Func&& func) && -> Result
-    {
-        if constexpr (std::is_void_v<FuncResult>)
-        {
-            return *this  //
-                       ? Result{ std::move(*this) }
-                       : (std::invoke(std::forward<Func>(func), error()), Result{ std::move(*this) });
-        }
-        else
-        {
-            static_assert(
-                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result_t<T, E>` type");
-            return *this  //
-                       ? Result{ std::move(*this) }
-                       : Result{ std::invoke(std::forward<Func>(func), std::move(*this).error()) };
-        }
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
-        class Result = result_t<T, FuncResult>>
-    constexpr auto transform_error(Func&& func) const& -> Result
-    {
-        return *this  //
-                   ? Result{ get() }
-                   : Result{ zx::error(std::invoke(std::forward<Func>(func), error())) };
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
-        class Result = result_t<T, FuncResult>>
-    constexpr auto transform_error(Func&& func) && -> Result
-    {
-        return *this  //
-                   ? Result{ std::move(*this).get() }
-                   : Result{ zx::error(std::invoke(std::forward<Func>(func), std::move(*this).error())) };
-    }
-
-    template <class U>
-    constexpr auto value_or(U&& v) const& -> value_type
-    {
-        return *this ? get() : static_cast<value_type>(std::forward<U>(v));
-    }
-
-    template <class U>
-    constexpr auto value_or(U&& v) && -> value_type
-    {
-        return *this ? std::move(*this).get() : static_cast<value_type>(std::forward<U>(v));
-    }
-
 private:
     std::variant<value_storage, error_storage> m_storage;
 };
@@ -589,120 +338,6 @@ struct result_t<void, E>
     constexpr bool has_value() const noexcept { return static_cast<bool>(*this); }
 
     constexpr bool has_error() const noexcept { return !has_value(); }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
-        class Result = FuncResult>
-    constexpr auto and_then(Func&& func) const& -> Result
-    {
-        static_assert(
-            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result_t<T, E>` type");
-        return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func))
-                   : detail::to_error<Result>(*this);
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
-        class Result = FuncResult>
-    constexpr auto and_then(Func&& func) && -> Result
-    {
-        static_assert(
-            detail::is_result<FuncResult>::value, "and_then: function result type needs to be of `result_t<T, E>` type");
-        return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func))
-                   : detail::to_error<Result>(std::move(*this));
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
-        class Result = result_t<FuncResult, E>>
-    constexpr auto transform(Func&& func) const& -> Result
-    {
-        return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func))
-                   : detail::to_error<Result>(*this);
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func>>,
-        class Result = result_t<FuncResult, E>>
-    constexpr auto transform(Func&& func) && -> Result
-    {
-        return *this  //
-                   ? detail::to_ok<Result>(std::forward<Func>(func))
-                   : detail::to_error<Result>(std::move(*this));
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<void, E>, FuncResult>>
-    constexpr auto or_else(Func&& func) const& -> Result
-    {
-        if constexpr (std::is_void_v<FuncResult>)
-        {
-            return *this  //
-                       ? Result{ *this }
-                       : (std::invoke(std::forward<Func>(func), error()), Result{ *this });
-        }
-        else
-        {
-            static_assert(
-                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result_t<T, E>` type");
-            return *this  //
-                       ? Result{ *this }
-                       : Result{ std::invoke(std::forward<Func>(func), error()) };
-        }
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
-        class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<void, E>, FuncResult>>
-    constexpr auto or_else(Func&& func) && -> Result
-    {
-        if constexpr (std::is_void_v<FuncResult>)
-        {
-            return *this  //
-                       ? Result{ std::move(*this) }
-                       : (std::invoke(std::forward<Func>(func), error()), Result{ std::move(*this) });
-        }
-        else
-        {
-            static_assert(
-                detail::is_result<FuncResult>::value, "or_else: function result type needs to be of `result_t<T, E>` type");
-            return *this  //
-                       ? Result{ std::move(*this) }
-                       : Result{ std::invoke(std::forward<Func>(func), std::move(*this).error()) };
-        }
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
-        class Result = result_t<void, FuncResult>>
-    constexpr auto transform_error(Func&& func) const& -> Result
-    {
-        return *this  //
-                   ? Result{}
-                   : Result{ zx::error(std::invoke(std::forward<Func>(func), error())) };
-    }
-
-    template <
-        class Func,
-        class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
-        class Result = result_t<void, FuncResult>>
-    constexpr auto transform_error(Func&& func) && -> Result
-    {
-        return *this  //
-                   ? Result{}
-                   : Result{ zx::error(std::invoke(std::forward<Func>(func), std::move(*this).error())) };
-    }
 
 private:
     std::optional<error_type> m_storage;
@@ -814,6 +449,9 @@ std::ostream& operator<<(std::ostream& os, const result_t<void, E>& result)
     return os;
 }
 
+namespace result
+{
+
 namespace detail
 {
 
@@ -882,7 +520,441 @@ struct forward_error_fn
     }
 };
 
+struct and_then_fn
+{
+    template <class Func>
+    struct impl_t
+    {
+        Func m_func;
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, const T&>>,
+            class Result = FuncResult>
+        constexpr auto operator()(const result_t<T, E>& value) const -> Result
+        {
+            static_assert(
+                ::zx::detail::is_result<FuncResult>::value,
+                "and_then: function result type needs to be of `result_t<T, E>` type");
+            return value ? ::zx::detail::to_ok<Result>(m_func, value.get()) : ::zx::detail::to_error<Result>(value);
+        }
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, T&&>>,
+            class Result = FuncResult>
+        constexpr auto operator()(result_t<T, E>&& value) const -> Result
+        {
+            static_assert(
+                ::zx::detail::is_result<FuncResult>::value,
+                "and_then: function result type needs to be of `result_t<T, E>` type");
+            return value ? ::zx::detail::to_ok<Result>(m_func, std::move(value).get())
+                         : ::zx::detail::to_error<Result>(std::move(value));
+        }
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, T&>>,
+            class Result = FuncResult>
+        constexpr auto operator()(const result_t<T&, E>& value) const -> Result
+        {
+            static_assert(
+                ::zx::detail::is_result<FuncResult>::value,
+                "and_then: function result type needs to be of `result_t<T, E>` type");
+            return value ? ::zx::detail::to_ok<Result>(m_func, value.get()) : ::zx::detail::to_error<Result>(value);
+        }
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, T&&>>,
+            class Result = FuncResult>
+        constexpr auto operator()(result_t<T&, E>&& value) const -> Result
+        {
+            static_assert(
+                ::zx::detail::is_result<FuncResult>::value,
+                "and_then: function result type needs to be of `result_t<T, E>` type");
+            return value ? ::zx::detail::to_ok<Result>(m_func, std::move(value).get())
+                         : ::zx::detail::to_error<Result>(std::move(value));
+        }
+
+        template <
+            class E,
+            class F = Func,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const F&>>,
+            class Result = FuncResult>
+        constexpr auto operator()(const result_t<void, E>& value) const -> Result
+        {
+            static_assert(
+                ::zx::detail::is_result<FuncResult>::value,
+                "and_then: function result type needs to be of `result_t<T, E>` type");
+            return value ? ::zx::detail::to_ok<Result>(m_func) : ::zx::detail::to_error<Result>(value);
+        }
+
+        template <
+            class E,
+            class F = Func,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const F&>>,
+            class Result = FuncResult>
+        constexpr auto operator()(result_t<void, E>&& value) const -> Result
+        {
+            static_assert(
+                ::zx::detail::is_result<FuncResult>::value,
+                "and_then: function result type needs to be of `result_t<T, E>` type");
+            return value ? ::zx::detail::to_ok<Result>(m_func) : ::zx::detail::to_error<Result>(std::move(value));
+        }
+    };
+
+    template <class Func>
+    constexpr auto operator()(Func&& func) const
+    {
+        return fn(impl_t<std::decay_t<Func>>{ std::forward<Func>(func) });
+    }
+};
+
+struct transform_fn
+{
+    template <class Func>
+    struct impl_t
+    {
+        Func m_func;
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, const T&>>,
+            class Result = result_t<FuncResult, E>>
+        constexpr auto operator()(const result_t<T, E>& value) const -> Result
+        {
+            return value ? ::zx::detail::to_ok<Result>(m_func, value.get()) : ::zx::detail::to_error<Result>(value);
+        }
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, T&&>>,
+            class Result = result_t<FuncResult, E>>
+        constexpr auto operator()(result_t<T, E>&& value) const -> Result
+        {
+            return value  //
+                       ? ::zx::detail::to_ok<Result>(m_func, std::move(value).get())
+                       : ::zx::detail::to_error<Result>(std::move(value));
+        }
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, T&>>,
+            class Result = result_t<FuncResult, E>>
+        constexpr auto operator()(const result_t<T&, E>& value) const -> Result
+        {
+            return value ? ::zx::detail::to_ok<Result>(m_func, value.get()) : ::zx::detail::to_error<Result>(value);
+        }
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, T&&>>,
+            class Result = result_t<FuncResult, E>>
+        constexpr auto operator()(result_t<T&, E>&& value) const -> Result
+        {
+            return value  //
+                       ? ::zx::detail::to_ok<Result>(m_func, std::move(value).get())
+                       : ::zx::detail::to_error<Result>(std::move(value));
+        }
+
+        template <
+            class E,
+            class F = Func,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const F&>>,
+            class Result = result_t<FuncResult, E>>
+        constexpr auto operator()(const result_t<void, E>& value) const -> Result
+        {
+            return value ? ::zx::detail::to_ok<Result>(m_func) : ::zx::detail::to_error<Result>(value);
+        }
+
+        template <
+            class E,
+            class F = Func,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const F&>>,
+            class Result = result_t<FuncResult, E>>
+        constexpr auto operator()(result_t<void, E>&& value) const -> Result
+        {
+            return value ? ::zx::detail::to_ok<Result>(m_func) : ::zx::detail::to_error<Result>(std::move(value));
+        }
+    };
+
+    template <class Func>
+    constexpr auto operator()(Func&& func) const
+    {
+        return fn(impl_t<std::decay_t<Func>>{ std::forward<Func>(func) });
+    }
+};
+
+struct transform_error_fn
+{
+    template <class Func>
+    struct impl_t
+    {
+        Func m_func;
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
+            class Result = result_t<T, FuncResult>>
+        constexpr auto operator()(const result_t<T, E>& value) const -> Result
+        {
+            return value ? Result{ value.get() } : Result{ zx::error(std::invoke(m_func, value.error())) };
+        }
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
+            class Result = result_t<T, FuncResult>>
+        constexpr auto operator()(result_t<T, E>&& value) const -> Result
+        {
+            return value ? Result{ std::move(value).get() }
+                         : Result{ zx::error(std::invoke(m_func, std::move(value).error())) };
+        }
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
+            class Result = result_t<T, FuncResult>>
+        constexpr auto operator()(const result_t<T&, E>& value) const -> Result
+        {
+            return value ? Result{ value.get() } : Result{ zx::error(std::invoke(m_func, value.error())) };
+        }
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
+            class Result = result_t<T, FuncResult>>
+        constexpr auto operator()(result_t<T&, E>&& value) const -> Result
+        {
+            return value ? Result{ std::move(value).get() }
+                         : Result{ zx::error(std::invoke(m_func, std::move(value).error())) };
+        }
+
+        template <
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
+            class Result = result_t<void, FuncResult>>
+        constexpr auto operator()(const result_t<void, E>& value) const -> Result
+        {
+            return value ? Result{} : Result{ zx::error(std::invoke(m_func, value.error())) };
+        }
+
+        template <
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<Func, const E&>>,
+            class Result = result_t<void, FuncResult>>
+        constexpr auto operator()(result_t<void, E>&& value) const -> Result
+        {
+            return value  //
+                       ? Result{}
+                       : Result{ zx::error(std::invoke(m_func, std::move(value).error())) };
+        }
+    };
+
+    template <class Func>
+    constexpr auto operator()(Func&& func) const
+    {
+        return fn(impl_t<std::decay_t<Func>>{ func });
+    }
+};
+
+struct or_else_fn
+{
+    template <class Func>
+    struct impl_t
+    {
+        Func m_func;
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, const E&>>,
+            class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
+        constexpr auto operator()(const result_t<T, E>& value) const -> Result
+        {
+            if constexpr (std::is_void_v<FuncResult>)
+            {
+                return value ? Result{ value } : (std::invoke(m_func, value.error()), Result{ value });
+            }
+            else
+            {
+                static_assert(
+                    ::zx::detail::is_result<FuncResult>::value,
+                    "or_else: function result type needs to be of `result_t<T, E>` type");
+                return value ? Result{ value } : Result{ std::invoke(m_func, value.error()) };
+            }
+        }
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, const E&>>,
+            class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
+        constexpr auto operator()(result_t<T, E>&& value) const -> Result
+        {
+            if constexpr (std::is_void_v<FuncResult>)
+            {
+                return value ? Result{ std::move(value) }
+                             : (std::invoke(m_func, std::move(value).error()), Result{ std::move(value) });
+            }
+            else
+            {
+                static_assert(
+                    ::zx::detail::is_result<FuncResult>::value,
+                    "or_else: function result type needs to be of `result_t<T, E>` type");
+                return value ? Result{ std::move(value) } : Result{ std::invoke(m_func, std::move(value).error()) };
+            }
+        }
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, const E&>>,
+            class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
+        constexpr auto operator()(const result_t<T&, E>& value) const -> Result
+        {
+            if constexpr (std::is_void_v<FuncResult>)
+            {
+                return value ? Result{ value } : (std::invoke(m_func, value.error()), Result{ value });
+            }
+            else
+            {
+                static_assert(
+                    ::zx::detail::is_result<FuncResult>::value,
+                    "or_else: function result type needs to be of `result_t<T, E>` type");
+                return value ? Result{ value } : Result{ std::invoke(m_func, value.error()) };
+            }
+        }
+
+        template <
+            class T,
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, const E&>>,
+            class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<T, E>, FuncResult>>
+        constexpr auto operator()(result_t<T&, E>&& value) const -> Result
+        {
+            if constexpr (std::is_void_v<FuncResult>)
+            {
+                return value ? Result{ std::move(value) } : (std::invoke(m_func, value.error()), Result{ std::move(value) });
+            }
+            else
+            {
+                static_assert(
+                    ::zx::detail::is_result<FuncResult>::value,
+                    "or_else: function result type needs to be of `result_t<T, E>` type");
+                return value ? Result{ std::move(value) } : Result{ std::invoke(m_func, std::move(value).error()) };
+            }
+        }
+
+        template <
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, const E&>>,
+            class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<void, E>, FuncResult>>
+        constexpr auto operator()(const result_t<void, E>& value) const -> Result
+        {
+            if constexpr (std::is_void_v<FuncResult>)
+            {
+                return value  //
+                           ? Result{ value }
+                           : (std::invoke(m_func, value.error()), Result{ value });
+            }
+            else
+            {
+                static_assert(
+                    ::zx::detail::is_result<FuncResult>::value,
+                    "or_else: function result type needs to be of `result_t<T, E>` type");
+                return value  //
+                           ? Result{ value }
+                           : Result{ std::invoke(m_func, value.error()) };
+            }
+        }
+
+        template <
+            class E,
+            class FuncResult = remove_rvalue_reference_t<std::invoke_result_t<const Func&, const E&>>,
+            class Result = std::conditional_t<std::is_void_v<FuncResult>, result_t<void, E>, FuncResult>>
+        constexpr auto operator()(result_t<void, E>&& value) const -> Result
+        {
+            if constexpr (std::is_void_v<FuncResult>)
+            {
+                return value ? Result{ std::move(value) } : (std::invoke(m_func, value.error()), Result{ std::move(value) });
+            }
+            else
+            {
+                static_assert(
+                    ::zx::detail::is_result<FuncResult>::value,
+                    "or_else: function result type needs to be of `result_t<T, E>` type");
+                return value ? Result{ std::move(value) } : Result{ std::invoke(m_func, std::move(value).error()) };
+            }
+        }
+    };
+
+    template <class Func>
+    constexpr auto operator()(Func&& func) const
+    {
+        return fn(impl_t<std::decay_t<Func>>{ func });
+    }
+};
+
+struct value_or_fn
+{
+    template <class U>
+    struct impl_t
+    {
+        U m_default_value;
+
+        template <class T, class E>
+        constexpr auto operator()(const result_t<T, E>& value) const& -> T
+        {
+            return value.has_value() ? *value : static_cast<T>(m_default_value);
+        }
+
+        template <class T, class E>
+        constexpr auto operator()(result_t<T, E>&& value) && -> T
+        {
+            return value.has_value() ? *value : static_cast<T>(m_default_value);
+        }
+
+        template <class T, class E>
+        constexpr auto operator()(const result_t<T&, E>& value) const -> T
+        {
+            return value.has_value() ? *value : static_cast<T>(m_default_value);
+        }
+
+        template <class T, class E>
+        constexpr auto operator()(result_t<T&, E>&& value) && -> T
+        {
+            return value.has_value() ? *value : static_cast<T>(m_default_value);
+        }
+    };
+
+    template <class U>
+    constexpr auto operator()(U&& default_value) const
+    {
+        return fn(impl_t<std::decay_t<U>>{ default_value });
+    }
+};
+
 }  // namespace detail
+
+constexpr inline auto and_then = detail::and_then_fn{};
+constexpr inline auto transform = detail::transform_fn{};
+constexpr inline auto transform_error = detail::transform_error_fn{};
+constexpr inline auto or_else = detail::or_else_fn{};
+constexpr inline auto value_or = detail::value_or_fn{};
 
 template <class T>
 constexpr inline auto try_create = detail::try_create_fn<T>{};
@@ -890,5 +962,7 @@ constexpr inline auto try_create = detail::try_create_fn<T>{};
 constexpr inline auto try_invoke = detail::try_invoke_fn{};
 
 constexpr inline auto forward_error = detail::forward_error_fn{};
+
+}  // namespace result
 
 }  // namespace zx

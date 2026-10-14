@@ -129,7 +129,7 @@ struct try_fold_left_first_fn
         }
         auto state = *begin;
         return try_fold_left(std::next(begin), end, std::move(state), std::forward<Func>(func))
-            .transform([](auto&& value) { return maybe_t<V>{ std::forward<decltype(value)>(value) }; });
+               |= result::transform([](auto&& value) { return maybe_t<V>{ std::forward<decltype(value)>(value) }; });
     }
 
     template <class Range, class Func>

@@ -496,7 +496,7 @@ TEST(result_void, assign_error_over_error)
 TEST(result_t, and_then_with_value)
 {
     zx::result_t<int, std::string> r{ 42 };
-    auto res = r.and_then([](int value) { return zx::result_t<int, std::string>{ value * 2 }; });
+    auto res = r |= zx::result::and_then([](int value) { return zx::result_t<int, std::string>{ value * 2 }; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 84);
 }
@@ -504,7 +504,7 @@ TEST(result_t, and_then_with_value)
 TEST(result_t, and_then_with_error)
 {
     zx::result_t<int, std::string> r{ zx::error("failed") };
-    auto res = r.and_then([](int value) { return zx::result_t<int, std::string>{ value * 2 }; });
+    auto res = r |= zx::result::and_then([](int value) { return zx::result_t<int, std::string>{ value * 2 }; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "failed");
 }
@@ -512,7 +512,7 @@ TEST(result_t, and_then_with_error)
 TEST(result_t, and_then_returns_error)
 {
     zx::result_t<int, std::string> r{ 42 };
-    auto res = r.and_then([](int) { return zx::result_t<int, std::string>{ zx::error("new error") }; });
+    auto res = r |= zx::result::and_then([](int) { return zx::result_t<int, std::string>{ zx::error("new error") }; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "new error");
 }
@@ -520,8 +520,8 @@ TEST(result_t, and_then_returns_error)
 TEST(result_t, and_then_chain)
 {
     zx::result_t<int, std::string> r{ 10 };
-    auto res = r.and_then([](int value) { return zx::result_t<int, std::string>{ value + 5 }; })
-                   .and_then([](int value) { return zx::result_t<int, std::string>{ value * 2 }; });
+    auto res = r |= zx::result::and_then([](int value) { return zx::result_t<int, std::string>{ value + 5 }; })
+        |= zx::result::and_then([](int value) { return zx::result_t<int, std::string>{ value * 2 }; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 30);
 }
@@ -529,7 +529,8 @@ TEST(result_t, and_then_chain)
 TEST(result_t, and_then_different_type)
 {
     zx::result_t<int, std::string> r{ 42 };
-    auto res = r.and_then([](int value) { return zx::result_t<std::string, std::string>{ std::to_string(value) }; });
+    auto res = r
+        |= zx::result::and_then([](int value) { return zx::result_t<std::string, std::string>{ std::to_string(value) }; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, "42");
 }
@@ -538,7 +539,7 @@ TEST(result_t, ref_and_then_with_reference)
 {
     int value = 42;
     zx::result_t<int&, std::string> r{ value };
-    auto res = r.and_then([](int v) { return zx::result_t<int, std::string>{ v * 2 }; });
+    auto res = r |= zx::result::and_then([](int v) { return zx::result_t<int, std::string>{ v * 2 }; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 84);
 }
@@ -546,7 +547,7 @@ TEST(result_t, ref_and_then_with_reference)
 TEST(result_t, ref_and_then_with_error)
 {
     zx::result_t<int&, std::string> r{ zx::error("failed") };
-    auto res = r.and_then([](int v) { return zx::result_t<int, std::string>{ v * 2 }; });
+    auto res = r |= zx::result::and_then([](int v) { return zx::result_t<int, std::string>{ v * 2 }; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "failed");
 }
@@ -555,7 +556,7 @@ TEST(result_t, ref_and_then_returns_error)
 {
     int value = 42;
     zx::result_t<int&, std::string> r{ value };
-    auto res = r.and_then([](int) { return zx::result_t<int, std::string>{ zx::error("new error") }; });
+    auto res = r |= zx::result::and_then([](int) { return zx::result_t<int, std::string>{ zx::error("new error") }; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "new error");
 }
@@ -564,8 +565,8 @@ TEST(result_t, ref_and_then_chain)
 {
     int value = 10;
     zx::result_t<int&, std::string> r{ value };
-    auto res = r.and_then([](int v) { return zx::result_t<int, std::string>{ v + 5 }; })
-                   .and_then([](int v) { return zx::result_t<int, std::string>{ v * 2 }; });
+    auto res = r |= zx::result::and_then([](int v) { return zx::result_t<int, std::string>{ v + 5 }; })
+        |= zx::result::and_then([](int v) { return zx::result_t<int, std::string>{ v * 2 }; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 30);
 }
@@ -573,7 +574,7 @@ TEST(result_t, ref_and_then_chain)
 TEST(result_void, and_then_with_value)
 {
     zx::result_t<void, std::string> r;
-    auto res = r.and_then([]() { return zx::result_t<int, std::string>{ 42 }; });
+    auto res = r |= zx::result::and_then([]() { return zx::result_t<int, std::string>{ 42 }; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 42);
 }
@@ -581,7 +582,7 @@ TEST(result_void, and_then_with_value)
 TEST(result_void, and_then_with_error)
 {
     zx::result_t<void, std::string> r{ zx::error("failed") };
-    auto res = r.and_then([]() { return zx::result_t<int, std::string>{ 42 }; });
+    auto res = r |= zx::result::and_then([]() { return zx::result_t<int, std::string>{ 42 }; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "failed");
 }
@@ -589,7 +590,7 @@ TEST(result_void, and_then_with_error)
 TEST(result_void, and_then_returns_error)
 {
     zx::result_t<void, std::string> r;
-    auto res = r.and_then([]() { return zx::result_t<int, std::string>{ zx::error("new error") }; });
+    auto res = r |= zx::result::and_then([]() { return zx::result_t<int, std::string>{ zx::error("new error") }; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "new error");
 }
@@ -597,8 +598,8 @@ TEST(result_void, and_then_returns_error)
 TEST(result_void, and_then_chain)
 {
     zx::result_t<void, std::string> r;
-    auto res = r.and_then([]() { return zx::result_t<int, std::string>{ 10 }; })
-                   .and_then([](int value) { return zx::result_t<int, std::string>{ value * 2 }; });
+    auto res = r |= zx::result::and_then([]() { return zx::result_t<int, std::string>{ 10 }; })
+        |= zx::result::and_then([](int value) { return zx::result_t<int, std::string>{ value * 2 }; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 20);
 }
@@ -606,14 +607,14 @@ TEST(result_void, and_then_chain)
 TEST(result_void, and_then_to_void)
 {
     zx::result_t<void, std::string> r;
-    auto res = r.and_then([]() { return zx::result_t<void, std::string>{}; });
+    auto res = r |= zx::result::and_then([]() { return zx::result_t<void, std::string>{}; });
     EXPECT_TRUE(res.has_value());
 }
 
 TEST(result_void, and_then_to_void_with_error)
 {
     zx::result_t<void, std::string> r{ zx::error("old error") };
-    auto res = r.and_then([]() { return zx::result_t<void, std::string>{ zx::error("new error") }; });
+    auto res = r |= zx::result::and_then([]() { return zx::result_t<void, std::string>{ zx::error("new error") }; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "old error");
 }
@@ -621,7 +622,7 @@ TEST(result_void, and_then_to_void_with_error)
 TEST(result_void, and_then_from_void_to_value)
 {
     zx::result_t<void, std::string> r;
-    auto res = r.and_then([]() { return zx::result_t<int, std::string>{ 42 }; });
+    auto res = r |= zx::result::and_then([]() { return zx::result_t<int, std::string>{ 42 }; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 42);
 }
@@ -629,7 +630,7 @@ TEST(result_void, and_then_from_void_to_value)
 TEST(result_t, transform_with_value)
 {
     zx::result_t<int, std::string> r{ 42 };
-    auto res = r.transform([](int value) { return value * 2; });
+    auto res = r |= zx::result::transform([](int value) { return value * 2; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 84);
 }
@@ -637,7 +638,7 @@ TEST(result_t, transform_with_value)
 TEST(result_t, transform_with_error)
 {
     zx::result_t<int, std::string> r{ zx::error("failed") };
-    auto res = r.transform([](int value) { return value * 2; });
+    auto res = r |= zx::result::transform([](int value) { return value * 2; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "failed");
 }
@@ -645,7 +646,8 @@ TEST(result_t, transform_with_error)
 TEST(result_t, transform_chain)
 {
     zx::result_t<int, std::string> r{ 10 };
-    auto res = r.transform([](int value) { return value + 5; }).transform([](int value) { return value * 2; });
+    auto res = r |= zx::result::transform([](int value) { return value + 5; })
+        |= zx::result::transform([](int value) { return value * 2; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 30);
 }
@@ -653,7 +655,7 @@ TEST(result_t, transform_chain)
 TEST(result_t, transform_different_type)
 {
     zx::result_t<int, std::string> r{ 42 };
-    auto res = r.transform([](int value) { return std::to_string(value); });
+    auto res = r |= zx::result::transform([](int value) { return std::to_string(value); });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, "42");
 }
@@ -662,7 +664,7 @@ TEST(result_t, transform_to_void)
 {
     zx::result_t<int, std::string> r{ 42 };
     int side_effect = 0;
-    auto res = r.transform([&side_effect](int value) { side_effect = value; });
+    auto res = r |= zx::result::transform([&side_effect](int value) { side_effect = value; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(side_effect, 42);
 }
@@ -670,7 +672,7 @@ TEST(result_t, transform_to_void)
 TEST(result_t, or_else_with_value)
 {
     zx::result_t<int, std::string> r{ 42 };
-    auto res = r.or_else([](const std::string&) { return zx::result_t<int, std::string>{ 0 }; });
+    auto res = r |= zx::result::or_else([](const std::string&) { return zx::result_t<int, std::string>{ 0 }; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 42);
 }
@@ -678,7 +680,7 @@ TEST(result_t, or_else_with_value)
 TEST(result_t, or_else_with_error)
 {
     zx::result_t<int, std::string> r{ zx::error("failed") };
-    auto res = r.or_else([](const std::string&) { return zx::result_t<int, std::string>{ 100 }; });
+    auto res = r |= zx::result::or_else([](const std::string&) { return zx::result_t<int, std::string>{ 100 }; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 100);
 }
@@ -686,7 +688,8 @@ TEST(result_t, or_else_with_error)
 TEST(result_t, or_else_returns_error)
 {
     zx::result_t<int, std::string> r{ zx::error("failed") };
-    auto res = r.or_else([](const std::string&) { return zx::result_t<int, std::string>{ zx::error("new error") }; });
+    auto res = r
+        |= zx::result::or_else([](const std::string&) { return zx::result_t<int, std::string>{ zx::error("new error") }; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "new error");
 }
@@ -694,8 +697,9 @@ TEST(result_t, or_else_returns_error)
 TEST(result_t, or_else_chain)
 {
     zx::result_t<int, std::string> r{ zx::error("failed") };
-    auto res = r.or_else([](const std::string&) { return zx::result_t<int, std::string>{ zx::error("error2") }; })
-                   .or_else([](const std::string&) { return zx::result_t<int, std::string>{ 50 }; });
+    auto res = r
+        |= zx::result::or_else([](const std::string&) { return zx::result_t<int, std::string>{ zx::error("error2") }; })
+        |= zx::result::or_else([](const std::string&) { return zx::result_t<int, std::string>{ 50 }; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 50);
 }
@@ -704,7 +708,7 @@ TEST(result_t, ref_transform_chain)
 {
     int value = 10;
     zx::result_t<int&, std::string> r{ value };
-    auto res = r.transform([](int v) { return v + 5; }).transform([](int v) { return v * 2; });
+    auto res = r |= zx::result::transform([](int v) { return v + 5; }) |= zx::result::transform([](int v) { return v * 2; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 30);
 }
@@ -713,7 +717,7 @@ TEST(result_t, ref_transform_different_type)
 {
     int value = 42;
     zx::result_t<int&, std::string> r{ value };
-    auto res = r.transform([](int& v) { return std::to_string(v); });
+    auto res = r |= zx::result::transform([](int& v) { return std::to_string(v); });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, "42");
 }
@@ -722,7 +726,7 @@ TEST(result_t, ref_or_else_with_reference)
 {
     int value = 42;
     zx::result_t<int&, std::string> r{ value };
-    auto res = r.or_else(
+    auto res = r |= zx::result::or_else(
         [](const std::string&)
         {
             static int fallback = 0;
@@ -735,7 +739,7 @@ TEST(result_t, ref_or_else_with_reference)
 TEST(result_t, ref_or_else_with_error)
 {
     zx::result_t<int&, std::string> r{ zx::error("failed") };
-    auto res = r.or_else(
+    auto res = r |= zx::result::or_else(
         [](const std::string&)
         {
             static int fallback = 100;
@@ -748,7 +752,8 @@ TEST(result_t, ref_or_else_with_error)
 TEST(result_t, ref_or_else_returns_error)
 {
     zx::result_t<int&, std::string> r{ zx::error("failed") };
-    auto res = r.or_else([](const std::string&) { return zx::result_t<int&, std::string>{ zx::error("new error") }; });
+    auto res = r
+        |= zx::result::or_else([](const std::string&) { return zx::result_t<int&, std::string>{ zx::error("new error") }; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "new error");
 }
@@ -756,7 +761,7 @@ TEST(result_t, ref_or_else_returns_error)
 TEST(result_void, transform_with_value)
 {
     zx::result_t<void, std::string> r;
-    auto res = r.transform([]() { return 42; });
+    auto res = r |= zx::result::transform([]() { return 42; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 42);
 }
@@ -764,7 +769,7 @@ TEST(result_void, transform_with_value)
 TEST(result_void, transform_with_error)
 {
     zx::result_t<void, std::string> r{ zx::error("failed") };
-    auto res = r.transform([]() { return 42; });
+    auto res = r |= zx::result::transform([]() { return 42; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "failed");
 }
@@ -772,7 +777,7 @@ TEST(result_void, transform_with_error)
 TEST(result_void, transform_chain)
 {
     zx::result_t<void, std::string> r;
-    auto res = r.transform([]() { return 10; }).transform([](int value) { return value * 2; });
+    auto res = r |= zx::result::transform([]() { return 10; }) |= zx::result::transform([](int value) { return value * 2; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 20);
 }
@@ -781,7 +786,7 @@ TEST(result_void, transform_to_void)
 {
     zx::result_t<void, std::string> r;
     int side_effect = 0;
-    auto res = r.transform([&side_effect]() { side_effect = 42; });
+    auto res = r |= zx::result::transform([&side_effect]() { side_effect = 42; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(side_effect, 42);
 }
@@ -789,21 +794,22 @@ TEST(result_void, transform_to_void)
 TEST(result_void, or_else_with_value)
 {
     zx::result_t<void, std::string> r;
-    auto res = r.or_else([](const std::string&) { return zx::result_t<void, std::string>{}; });
+    auto res = r |= zx::result::or_else([](const std::string&) { return zx::result_t<void, std::string>{}; });
     EXPECT_TRUE(res.has_value());
 }
 
 TEST(result_void, or_else_with_error)
 {
     zx::result_t<void, std::string> r{ zx::error("failed") };
-    auto res = r.or_else([](const std::string&) { return zx::result_t<void, std::string>{}; });
+    auto res = r |= zx::result::or_else([](const std::string&) { return zx::result_t<void, std::string>{}; });
     EXPECT_TRUE(res.has_value());
 }
 
 TEST(result_void, or_else_returns_error)
 {
     zx::result_t<void, std::string> r{ zx::error("failed") };
-    auto res = r.or_else([](const std::string&) { return zx::result_t<void, std::string>{ zx::error("new error") }; });
+    auto res = r
+        |= zx::result::or_else([](const std::string&) { return zx::result_t<void, std::string>{ zx::error("new error") }; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "new error");
 }
@@ -811,7 +817,7 @@ TEST(result_void, or_else_returns_error)
 TEST(result_t, transform_error_with_value)
 {
     zx::result_t<int, std::string> r{ 42 };
-    auto res = r.transform_error([](const std::string& err) { return err + " transformed"; });
+    auto res = r |= zx::result::transform_error([](const std::string& err) { return err + " transformed"; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 42);
 }
@@ -819,7 +825,7 @@ TEST(result_t, transform_error_with_value)
 TEST(result_t, transform_error_with_error)
 {
     zx::result_t<int, std::string> r{ zx::error("failed") };
-    auto res = r.transform_error([](const std::string& err) { return err + " transformed"; });
+    auto res = r |= zx::result::transform_error([](const std::string& err) { return err + " transformed"; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "failed transformed");
 }
@@ -827,8 +833,8 @@ TEST(result_t, transform_error_with_error)
 TEST(result_t, transform_error_chain)
 {
     zx::result_t<int, std::string> r{ zx::error("error") };
-    auto res = r.transform_error([](const std::string& err) { return err + " step1"; })
-                   .transform_error([](const std::string& err) { return err + " step2"; });
+    auto res = r |= zx::result::transform_error([](const std::string& err) { return err + " step1"; })
+        |= zx::result::transform_error([](const std::string& err) { return err + " step2"; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "error step1 step2");
 }
@@ -836,7 +842,7 @@ TEST(result_t, transform_error_chain)
 TEST(result_t, transform_error_different_type)
 {
     zx::result_t<int, std::string> r{ zx::error("failed") };
-    auto res = r.transform_error([](const std::string& err) { return static_cast<int>(err.size()); });
+    auto res = r |= zx::result::transform_error([](const std::string& err) { return static_cast<int>(err.size()); });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), 6);
 }
@@ -845,7 +851,7 @@ TEST(result_t, ref_transform_error_with_reference)
 {
     int value = 42;
     zx::result_t<int&, std::string> r{ value };
-    auto res = r.transform_error([](const std::string& err) { return err + " transformed"; });
+    auto res = r |= zx::result::transform_error([](const std::string& err) { return err + " transformed"; });
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 42);
 }
@@ -853,7 +859,7 @@ TEST(result_t, ref_transform_error_with_reference)
 TEST(result_t, ref_transform_error_with_error)
 {
     zx::result_t<int&, std::string> r{ zx::error("failed") };
-    auto res = r.transform_error([](const std::string& err) { return err + " transformed"; });
+    auto res = r |= zx::result::transform_error([](const std::string& err) { return err + " transformed"; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "failed transformed");
 }
@@ -861,8 +867,8 @@ TEST(result_t, ref_transform_error_with_error)
 TEST(result_t, ref_transform_error_chain)
 {
     zx::result_t<int&, std::string> r{ zx::error("error") };
-    auto res = r.transform_error([](const std::string& err) { return err + " step1"; })
-                   .transform_error([](const std::string& err) { return err + " step2"; });
+    auto res = r |= zx::result::transform_error([](const std::string& err) { return err + " step1"; })
+        |= zx::result::transform_error([](const std::string& err) { return err + " step2"; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "error step1 step2");
 }
@@ -870,7 +876,7 @@ TEST(result_t, ref_transform_error_chain)
 TEST(result_t, ref_transform_error_different_type)
 {
     zx::result_t<int&, std::string> r{ zx::error("failed") };
-    auto res = r.transform_error([](const std::string& err) { return static_cast<int>(err.size()); });
+    auto res = r |= zx::result::transform_error([](const std::string& err) { return static_cast<int>(err.size()); });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), 6);
 }
@@ -878,14 +884,14 @@ TEST(result_t, ref_transform_error_different_type)
 TEST(result_void, transform_error_with_value)
 {
     zx::result_t<void, std::string> r;
-    auto res = r.transform_error([](const std::string& err) { return err + " transformed"; });
+    auto res = r |= zx::result::transform_error([](const std::string& err) { return err + " transformed"; });
     EXPECT_TRUE(res.has_value());
 }
 
 TEST(result_void, transform_error_with_error)
 {
     zx::result_t<void, std::string> r{ zx::error("failed") };
-    auto res = r.transform_error([](const std::string& err) { return err + " transformed"; });
+    auto res = r |= zx::result::transform_error([](const std::string& err) { return err + " transformed"; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "failed transformed");
 }
@@ -893,8 +899,8 @@ TEST(result_void, transform_error_with_error)
 TEST(result_void, transform_error_chain)
 {
     zx::result_t<void, std::string> r{ zx::error("error") };
-    auto res = r.transform_error([](const std::string& err) { return err + " step1"; })
-                   .transform_error([](const std::string& err) { return err + " step2"; });
+    auto res = r |= zx::result::transform_error([](const std::string& err) { return err + " step1"; })
+        |= zx::result::transform_error([](const std::string& err) { return err + " step2"; });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), "error step1 step2");
 }
@@ -902,7 +908,7 @@ TEST(result_void, transform_error_chain)
 TEST(result_void, transform_error_different_type)
 {
     zx::result_t<void, std::string> r{ zx::error("failed") };
-    auto res = r.transform_error([](const std::string& err) { return static_cast<int>(err.size()); });
+    auto res = r |= zx::result::transform_error([](const std::string& err) { return static_cast<int>(err.size()); });
     EXPECT_TRUE(res.has_error());
     EXPECT_THAT(res.error(), 6);
 }
@@ -910,35 +916,35 @@ TEST(result_void, transform_error_different_type)
 TEST(result_t, value_or_with_value)
 {
     zx::result_t<int, std::string> r{ 42 };
-    EXPECT_THAT(r.value_or(100), 42);
+    EXPECT_THAT(r |= zx::result::value_or(100), 42);
 }
 
 TEST(result_t, value_or_with_error)
 {
     zx::result_t<int, std::string> r{ zx::error("failed") };
-    EXPECT_THAT(r.value_or(100), 100);
+    EXPECT_THAT(r |= zx::result::value_or(100), 100);
 }
 
 TEST(result_t, value_or_const_with_value)
 {
     const zx::result_t<int, std::string> r{ 42 };
-    EXPECT_THAT(r.value_or(100), 42);
+    EXPECT_THAT(r |= zx::result::value_or(100), 42);
 }
 
 TEST(result_t, value_or_const_with_error)
 {
     const zx::result_t<int, std::string> r{ zx::error("failed") };
-    EXPECT_THAT(r.value_or(100), 100);
+    EXPECT_THAT(r |= zx::result::value_or(100), 100);
 }
 
 TEST(result_t, value_or_rvalue_with_value)
 {
-    EXPECT_THAT((zx::result_t<int, std::string>{ 42 }.value_or(100)), 42);
+    EXPECT_THAT((zx::result_t<int, std::string>{ 42 } |= zx::result::value_or(100)), 42);
 }
 
 TEST(result_t, value_or_rvalue_with_error)
 {
-    EXPECT_THAT((zx::result_t<int, std::string>{ zx::error("failed") }.value_or(100)), 100);
+    EXPECT_THAT((zx::result_t<int, std::string>{ zx::error("failed") } |= zx::result::value_or(100)), 100);
 }
 
 TEST(result_t, ref_value_or_with_reference)
@@ -946,14 +952,14 @@ TEST(result_t, ref_value_or_with_reference)
     int value = 42;
     int fallback = 100;
     zx::result_t<int&, std::string> r{ value };
-    EXPECT_THAT(r.value_or(fallback), 42);
+    EXPECT_THAT(r |= zx::result::value_or(fallback), 42);
 }
 
 TEST(result_t, ref_value_or_with_error)
 {
     int fallback = 100;
     zx::result_t<int&, std::string> r{ zx::error("failed") };
-    EXPECT_THAT(r.value_or(fallback), 100);
+    EXPECT_THAT(r |= zx::result::value_or(fallback), 100);
 }
 
 TEST(result_t, ref_value_or_const_with_reference)
@@ -961,14 +967,14 @@ TEST(result_t, ref_value_or_const_with_reference)
     int value = 42;
     int fallback = 100;
     const zx::result_t<int&, std::string> r{ value };
-    EXPECT_THAT(r.value_or(fallback), 42);
+    EXPECT_THAT(r |= zx::result::value_or(fallback), 42);
 }
 
 TEST(result_t, ref_value_or_const_with_error)
 {
     int fallback = 100;
     const zx::result_t<int&, std::string> r{ zx::error("failed") };
-    EXPECT_THAT(r.value_or(fallback), 100);
+    EXPECT_THAT(r |= zx::result::value_or(fallback), 100);
 }
 
 TEST(result_t, equality_both_values_equal)
@@ -1116,7 +1122,7 @@ TEST(result_void, equality_error_vs_value)
 TEST(result_t, try_invoke_success)
 {
     auto func = []() { return 42; };
-    auto res = zx::try_invoke(func);
+    auto res = zx::result::try_invoke(func);
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 42);
 }
@@ -1124,15 +1130,15 @@ TEST(result_t, try_invoke_success)
 TEST(result_t, try_invoke_throws_exception)
 {
     auto func = []() -> int { throw std::runtime_error("error"); };
-    auto res = zx::try_invoke(func);
+    auto res = zx::result::try_invoke(func);
     EXPECT_TRUE(res.has_error());
-    EXPECT_THAT(res.transform_error(get_error_message).error(), "error");
+    EXPECT_THAT((res |= zx::result::transform_error(get_error_message)).error(), "error");
 }
 
 TEST(result_t, try_invoke_with_args)
 {
     auto func = [](int a, int b) { return a + b; };
-    auto res = zx::try_invoke(func, 10, 32);
+    auto res = zx::result::try_invoke(func, 10, 32);
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(*res, 42);
 }
@@ -1140,16 +1146,16 @@ TEST(result_t, try_invoke_with_args)
 TEST(result_t, try_invoke_with_args_throws)
 {
     auto func = [](int, int) -> int { throw std::runtime_error("addition failed"); };
-    auto res = zx::try_invoke(func, 10, 32);
+    auto res = zx::result::try_invoke(func, 10, 32);
     EXPECT_TRUE(res.has_error());
-    EXPECT_THAT(res.transform_error(get_error_message).error(), "addition failed");
+    EXPECT_THAT((res |= zx::result::transform_error(get_error_message)).error(), "addition failed");
 }
 
 TEST(result_void, try_invoke_success)
 {
     int side_effect = 0;
     auto func = [&side_effect]() { side_effect = 42; };
-    auto res = zx::try_invoke(func);
+    auto res = zx::result::try_invoke(func);
     EXPECT_TRUE(res.has_value());
     EXPECT_THAT(side_effect, 42);
 }
@@ -1157,7 +1163,7 @@ TEST(result_void, try_invoke_success)
 TEST(result_void, try_invoke_throws_exception)
 {
     auto func = []() { throw std::runtime_error("error"); };
-    auto res = zx::try_invoke(func);
+    auto res = zx::result::try_invoke(func);
     EXPECT_TRUE(res.has_error());
-    EXPECT_THAT(res.transform_error(get_error_message).error(), "error");
+    EXPECT_THAT((res |= zx::result::transform_error(get_error_message)).error(), "error");
 }

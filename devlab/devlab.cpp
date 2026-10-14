@@ -3,20 +3,58 @@
 #include <cmath>
 #include <exception>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <vector>
 
+#include "zx/colors.hpp"
 #include "zx/format.hpp"
 #include "zx/image.hpp"
 #include "zx/mat/math.hpp"
 #include "zx/mat/polygonal_shape.hpp"
 #include "zx/mat/spherical_shape.hpp"
 #include "zx/mat/vector.hpp"
+#include "zx/pipe.hpp"
 #include "zx/raster.hpp"
 #include "zx/result.hpp"
 #include "zx/sequence.hpp"
+
+namespace result
+{
+
+template <class Func>
+auto and_then(Func func)
+{
+    return zx::fn(
+        std::bind(
+            [](const auto& opt, const auto& f) { return opt ? std::invoke(f, *opt) : std::nullopt; },
+            std::placeholders::_1,
+            std::move(func)));
+}
+
+template <class Func>
+auto transform(Func func)
+{
+    return zx::fn(
+        std::bind(
+            [](const auto& opt, const auto& f) { return opt ? std::optional{ std::invoke(f, *opt) } : std::nullopt; },
+            std::placeholders::_1,
+            std::move(func)));
+}
+
+template <class Pred>
+auto filter(Pred pred)
+{
+    return zx::fn(
+        std::bind(
+            [](const auto& opt, const auto& p) { return opt && std::invoke(p, *opt) ? opt : std::nullopt; },
+            std::placeholders::_1,
+            std::move(pred)));
+}
+
+}  // namespace result
 
 template <class Clock = std::chrono::high_resolution_clock, class Func, class... Args>
 auto time_it(Func&& func, Args&&... args) -> std::pair<std::invoke_result_t<Func, Args...>, typename Clock::duration>
@@ -58,42 +96,64 @@ int run(const std::vector<std::string_view>&)
 {
     using namespace zx;
 
-    const auto background = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/lenna.bmp" });
-    const auto conan = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/conan_small.bmp" });
-
-    const auto temp = mat::with(
-        background,
-        [&](auto v)
+    const auto pipe = result::and_then(
+        [](const std::string& v) -> std::optional<int>
         {
-            mat::convolve(v, mat::kernel::median(mat::mask::square(9)));
-            mat::convolve(v, mat::kernel::prewitt());
-        });
+            try
+            {
+                return std::stoi(v);
+            }
+            catch (...)
+            {
+                return std::nullopt;
+            }
+        })                                                         //
+        |= result::transform([](int value) { return value + 1; })  //
+        |= result::filter([](int value) { return value != 45; });
 
-    const auto shape = zx::mat::rasterize(
-        temp.slice({ { 0, -10 }, { 0, -10 } }).bounds(),
-        [&](const auto& loc)
-        {
-            const auto pixel = mat::filters::gray(temp[loc]);
-            return pixel[0] > 192.F;
-        });
+    if (const auto result = std::optional{ std::string{ "42" } } |= pipe; result.has_value())
+    {
+        std::cout << *result;
+    }
+    else
+    {
+        std::cout << "---";
+    }
+    std::cout << "\n";
 
-    const auto result = mat::with(
-        background,
-        [&](auto v)
-        {
-            mat::modify(v, mat::filters::sepia);
-            mat::modify(v, mat::lookup_table::contrast(0.25F) * mat::lookup_table::brightness(-64.F));
-            // mat::draw_raster(v, shape, mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
-            mat::paste(v, conan, mat::rgb_image_t::location_type{ 0, 100 }, mat::filters::blend(0.5F));
+    // const auto background = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/lenna.bmp" });
+    // const auto conan = mat::load_bitmap(mat::filepath_t{ "/home/krzysiek/conan_small.bmp" });
 
-            const auto circle = zx::mat::circle_t<int>{ { 300, 300 }, 150 };
+    // const auto temp = mat::with(
+    //     background,
+    //     [&](auto v)
+    //     {
+    //         mat::convolve(v, mat::kernel::median(mat::mask::square(5)));
+    //         mat::convolve(v, mat::kernel::sobel());
+    //     });
 
-            mat::draw(v, circle, mat::filters::solid(mat::true_color_t{ 0, 255, 128 }));
-            mat::draw(v, polygonize(circle, 3), mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
-            mat::draw(v, polygonize(circle, 6), mat::filters::solid(mat::true_color_t{ 255, 255, 128 }));
-        });
+    // const auto threshold = zx::mat::lookup_table::threshold(64.F);
 
-    mat::save_bitmap(result, mat::filepath_t{ "/home/krzysiek/out.bmp" });
+    // const auto shape = zx::mat::rasterize(
+    //     temp.slice({ { 0, -10 }, { 0, -10 } }).bounds(),
+    //     [&](const auto& loc) { return threshold(mat::filters::gray(temp[loc])[0]) > 0.F; });
+
+    // const auto result = mat::with(
+    //     background,
+    //     [&](auto v)
+    //     {
+    //         // mat::modify(v, mat::filters::sepia);
+    //         mat::modify(v, mat::lookup_table::contrast(0.25F) * mat::lookup_table::brightness(-64.F));
+    //         mat::draw(v, shape, mat::filters::solid(mat::true_color_t{ 255, 255, 255 }));
+    //         mat::paste(v, conan, mat::rgb_image_t::location_type{ 0, 100 }, mat::filters::blend(0.5F));
+
+    //         // const auto circle = zx::mat::circle_t<int>{ { 300, 300 }, 150 };
+    //         // mat::draw(v, circle, mat::filters::solid(mat::true_color_t{ 0, 255, 128 }));
+    //         // mat::draw(v, polygonize(circle, 3), mat::filters::solid(mat::true_color_t{ 255, 0, 0 }));
+    //         // mat::draw(v, polygonize(circle, 6), mat::filters::solid(mat::true_color_t{ 255, 255, 128 }));
+    //     });
+
+    // mat::save_bitmap(result, mat::filepath_t{ "/home/krzysiek/out.bmp" });
     return 0;
 }
 

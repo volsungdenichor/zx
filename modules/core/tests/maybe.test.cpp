@@ -97,12 +97,12 @@ TEST(maybe_t, maybe_ref_equality)
 TEST(maybe_t, maybe_and_then)
 {
     zx::maybe_t<int> m{ 42 };
-    auto m2 = m.and_then([](int value) { return zx::maybe_t<std::string>{ std::to_string(value) }; });
+    auto m2 = m |= zx::maybe::and_then([](int value) { return zx::maybe_t<std::string>{ std::to_string(value) }; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, "42");
 
     zx::maybe_t<int> empty = zx::none;
-    auto m3 = empty.and_then([](int value) { return zx::maybe_t<std::string>{ std::to_string(value) }; });
+    auto m3 = empty |= zx::maybe::and_then([](int value) { return zx::maybe_t<std::string>{ std::to_string(value) }; });
     EXPECT_FALSE(m3.has_value());
 }
 
@@ -110,24 +110,24 @@ TEST(maybe_t, maybe_ref_and_then)
 {
     int value = 42;
     zx::maybe_t<int&> m{ value };
-    auto m2 = m.and_then([](int& v) { return zx::maybe_t<std::string>{ std::to_string(v) }; });
+    auto m2 = m |= zx::maybe::and_then([](int& v) { return zx::maybe_t<std::string>{ std::to_string(v) }; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, "42");
 
     zx::maybe_t<int&> empty = zx::none;
-    auto m3 = empty.and_then([](int& v) { return zx::maybe_t<std::string>{ std::to_string(v) }; });
+    auto m3 = empty |= zx::maybe::and_then([](int& v) { return zx::maybe_t<std::string>{ std::to_string(v) }; });
     EXPECT_FALSE(m3.has_value());
 }
 
 TEST(maybe_t, maybe_transform)
 {
     zx::maybe_t<int> m{ 42 };
-    auto m2 = m.transform([](int value) { return std::to_string(value); });
+    auto m2 = m |= zx::maybe::transform([](int value) { return std::to_string(value); });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, "42");
 
     zx::maybe_t<int> empty = zx::none;
-    auto m3 = empty.transform([](int value) { return std::to_string(value); });
+    auto m3 = empty |= zx::maybe::transform([](int value) { return std::to_string(value); });
     EXPECT_FALSE(m3.has_value());
 }
 
@@ -135,32 +135,32 @@ TEST(maybe_t, maybe_ref_transform)
 {
     int value = 42;
     zx::maybe_t<int&> m{ value };
-    auto m2 = m.transform([](int& v) { return std::to_string(v); });
+    auto m2 = m |= zx::maybe::transform([](int& v) { return std::to_string(v); });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, "42");
 
     zx::maybe_t<int&> empty = zx::none;
-    auto m3 = empty.transform([](int& v) { return std::to_string(v); });
+    auto m3 = empty |= zx::maybe::transform([](int& v) { return std::to_string(v); });
     EXPECT_FALSE(m3.has_value());
 }
 
 TEST(maybe_t, maybe_value_or)
 {
     zx::maybe_t<int> m{ 42 };
-    EXPECT_THAT(m.value_or(0), 42);
+    EXPECT_THAT(m |= zx::maybe::value_or(0), 42);
 
     zx::maybe_t<int> empty = zx::none;
-    EXPECT_THAT(empty.value_or(0), 0);
+    EXPECT_THAT(empty |= zx::maybe::value_or(0), 0);
 }
 
 TEST(maybe_t, maybe_ref_value_or)
 {
     int value = 42;
     zx::maybe_t<int&> m{ value };
-    EXPECT_THAT(m.value_or(0), 42);
+    EXPECT_THAT(m |= zx::maybe::value_or(0), 42);
 
     zx::maybe_t<int&> empty = zx::none;
-    EXPECT_THAT(empty.value_or(0), 0);
+    EXPECT_THAT(empty |= zx::maybe::value_or(0), 0);
 }
 
 TEST(maybe_t, maybe_ref_modification)
@@ -224,11 +224,11 @@ TEST(maybe_t, maybe_ref_filter)
     int value = 42;
     zx::maybe_t<int&> m{ value };
 
-    auto m2 = m.filter([](int v) { return v == 42; });
+    auto m2 = m |= zx::maybe::filter([](int v) { return v == 42; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, 42);
 
-    auto m3 = m.filter([](int v) { return v != 42; });
+    auto m3 = m |= zx::maybe::filter([](int v) { return v != 42; });
     EXPECT_FALSE(m3.has_value());
 }
 
@@ -236,11 +236,11 @@ TEST(maybe_t, maybe_filter)
 {
     zx::maybe_t<int> m{ 42 };
 
-    auto m2 = m.filter([](int v) { return v == 42; });
+    auto m2 = m |= zx::maybe::filter([](int v) { return v == 42; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, 42);
 
-    auto m3 = m.filter([](int v) { return v != 42; });
+    auto m3 = m |= zx::maybe::filter([](int v) { return v != 42; });
     EXPECT_FALSE(m3.has_value());
 }
 
@@ -249,12 +249,12 @@ TEST(maybe_t, maybe_ref_or_else)
     int value = 42;
     zx::maybe_t<int&> m{ value };
 
-    auto m2 = m.or_else([]() { return zx::maybe_t<int&>{}; });
+    auto m2 = m |= zx::maybe::or_else([]() { return zx::maybe_t<int&>{}; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, 42);
 
     zx::maybe_t<int&> empty = zx::none;
-    auto m3 = empty.or_else([&]() { return zx::maybe_t<int&>{ value }; });
+    auto m3 = empty |= zx::maybe::or_else([&]() { return zx::maybe_t<int&>{ value }; });
     EXPECT_TRUE(m3.has_value());
     EXPECT_THAT(*m3, 42);
 }
@@ -263,12 +263,12 @@ TEST(maybe_t, maybe_or_else)
 {
     zx::maybe_t<int> m{ 42 };
 
-    auto m2 = m.or_else([]() { return zx::maybe_t<int>{}; });
+    auto m2 = m |= zx::maybe::or_else([]() { return zx::maybe_t<int>{}; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, 42);
 
     zx::maybe_t<int> empty = zx::none;
-    auto m3 = empty.or_else([]() { return zx::maybe_t<int>{ 100 }; });
+    auto m3 = empty |= zx::maybe::or_else([]() { return zx::maybe_t<int>{ 100 }; });
     EXPECT_TRUE(m3.has_value());
     EXPECT_THAT(*m3, 100);
 }
@@ -278,14 +278,14 @@ TEST(maybe_t, maybe_or_else_void)
     zx::maybe_t<int> m{ 42 };
 
     bool called = false;
-    auto m2 = m.or_else([&]() { called = true; });
+    auto m2 = m |= zx::maybe::or_else([&]() { called = true; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, 42);
     EXPECT_FALSE(called);
 
     zx::maybe_t<int> empty = zx::none;
     called = false;
-    auto m3 = empty.or_else([&]() { called = true; });
+    auto m3 = empty |= zx::maybe::or_else([&]() { called = true; });
     EXPECT_FALSE(m3.has_value());
     EXPECT_TRUE(called);
 }
@@ -296,14 +296,14 @@ TEST(maybe_t, maybe_ref_or_else_void)
     zx::maybe_t<int&> m{ value };
 
     bool called = false;
-    auto m2 = m.or_else([&]() { called = true; });
+    auto m2 = m |= zx::maybe::or_else([&]() { called = true; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, 42);
     EXPECT_FALSE(called);
 
     zx::maybe_t<int&> empty = zx::none;
     called = false;
-    auto m3 = empty.or_else([&]() { called = true; });
+    auto m3 = empty |= zx::maybe::or_else([&]() { called = true; });
     EXPECT_FALSE(m3.has_value());
     EXPECT_TRUE(called);
 }
@@ -312,7 +312,7 @@ TEST(maybe_t, maybe_ref_move_and_then)
 {
     int value = 42;
     zx::maybe_t<int&> m{ value };
-    auto m2 = std::move(m).and_then([](int& v) { return zx::maybe_t<std::string>{ std::to_string(v) }; });
+    auto m2 = std::move(m) |= zx::maybe::and_then([](int& v) { return zx::maybe_t<std::string>{ std::to_string(v) }; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, "42");
 }
@@ -320,7 +320,8 @@ TEST(maybe_t, maybe_ref_move_and_then)
 TEST(maybe_t, maybe_move_and_then)
 {
     zx::maybe_t<int> m{ 42 };
-    auto m2 = std::move(m).and_then([](int value) { return zx::maybe_t<std::string>{ std::to_string(value) }; });
+    auto m2 = std::move(m)
+        |= zx::maybe::and_then([](int value) { return zx::maybe_t<std::string>{ std::to_string(value) }; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, "42");
 }
@@ -329,7 +330,7 @@ TEST(maybe_t, maybe_ref_move_transform)
 {
     int value = 42;
     zx::maybe_t<int&> m{ value };
-    auto m2 = std::move(m).transform([](int& v) { return std::to_string(v); });
+    auto m2 = std::move(m) |= zx::maybe::transform([](int& v) { return std::to_string(v); });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, "42");
 }
@@ -337,7 +338,7 @@ TEST(maybe_t, maybe_ref_move_transform)
 TEST(maybe_t, maybe_move_transform)
 {
     zx::maybe_t<int> m{ 42 };
-    auto m2 = std::move(m).transform([](int value) { return std::to_string(value); });
+    auto m2 = std::move(m) |= zx::maybe::transform([](int value) { return std::to_string(value); });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, "42");
 }
@@ -345,20 +346,20 @@ TEST(maybe_t, maybe_move_transform)
 TEST(maybe_t, maybe_move_value_or)
 {
     zx::maybe_t<int> m{ 42 };
-    EXPECT_THAT(std::move(m).value_or(0), 42);
+    EXPECT_THAT(std::move(m) |= zx::maybe::value_or(0), 42);
 
     zx::maybe_t<int> empty = zx::none;
-    EXPECT_THAT(std::move(empty).value_or(0), 0);
+    EXPECT_THAT(std::move(empty) |= zx::maybe::value_or(0), 0);
 }
 
 TEST(maybe_t, maybe_ref_move_value_or)
 {
     int value = 42;
     zx::maybe_t<int&> m{ value };
-    EXPECT_THAT(std::move(m).value_or(0), 42);
+    EXPECT_THAT(std::move(m) |= zx::maybe::value_or(0), 42);
 
     zx::maybe_t<int&> empty = zx::none;
-    EXPECT_THAT(std::move(empty).value_or(0), 0);
+    EXPECT_THAT(std::move(empty) |= zx::maybe::value_or(0), 0);
 }
 
 TEST(maybe_t, maybe_move_no_value_access_throws)
@@ -414,7 +415,7 @@ TEST(maybe_t, maybe_ref_move_filter)
     int value = 42;
     zx::maybe_t<int&> m{ value };
 
-    auto m2 = std::move(m).filter([](int v) { return v == 42; });
+    auto m2 = std::move(m) |= zx::maybe::filter([](int v) { return v == 42; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, 42);
 }
@@ -423,7 +424,7 @@ TEST(maybe_t, maybe_move_filter)
 {
     zx::maybe_t<int> m{ 42 };
 
-    auto m2 = std::move(m).filter([](int v) { return v == 42; });
+    auto m2 = std::move(m) |= zx::maybe::filter([](int v) { return v == 42; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, 42);
 }
@@ -433,7 +434,7 @@ TEST(maybe_t, maybe_ref_move_or_else)
     int value = 42;
     zx::maybe_t<int&> m{ value };
 
-    auto m2 = std::move(m).or_else([]() { return zx::maybe_t<int&>{}; });
+    auto m2 = std::move(m) |= zx::maybe::or_else([]() { return zx::maybe_t<int&>{}; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, 42);
 }
@@ -442,7 +443,7 @@ TEST(maybe_t, maybe_move_or_else)
 {
     zx::maybe_t<int> m{ 42 };
 
-    auto m2 = std::move(m).or_else([]() { return zx::maybe_t<int>{}; });
+    auto m2 = std::move(m) |= zx::maybe::or_else([]() { return zx::maybe_t<int>{}; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, 42);
 }
@@ -453,7 +454,7 @@ TEST(maybe_t, maybe_ref_move_or_else_void)
     zx::maybe_t<int&> m{ value };
 
     bool called = false;
-    auto m2 = std::move(m).or_else([&]() { called = true; });
+    auto m2 = std::move(m) |= zx::maybe::or_else([&]() { called = true; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, 42);
     EXPECT_FALSE(called);
@@ -464,7 +465,7 @@ TEST(maybe_t, maybe_move_or_else_void)
     zx::maybe_t<int> m{ 42 };
 
     bool called = false;
-    auto m2 = std::move(m).or_else([&]() { called = true; });
+    auto m2 = std::move(m) |= zx::maybe::or_else([&]() { called = true; });
     EXPECT_TRUE(m2.has_value());
     EXPECT_THAT(*m2, 42);
     EXPECT_FALSE(called);
@@ -474,7 +475,7 @@ TEST(maybe_t, maybe_ref_filter_no_value)
 {
     zx::maybe_t<int&> m = zx::none;
 
-    auto m2 = m.filter([](int v) { return v == 42; });
+    auto m2 = m |= zx::maybe::filter([](int v) { return v == 42; });
     EXPECT_FALSE(m2.has_value());
 }
 
@@ -482,7 +483,7 @@ TEST(maybe_t, maybe_filter_no_value)
 {
     zx::maybe_t<int> m = zx::none;
 
-    auto m2 = m.filter([](int v) { return v == 42; });
+    auto m2 = m |= zx::maybe::filter([](int v) { return v == 42; });
     EXPECT_FALSE(m2.has_value());
 }
 
@@ -490,7 +491,7 @@ TEST(maybe_t, maybe_ref_move_filter_no_value)
 {
     zx::maybe_t<int&> m = zx::none;
 
-    auto m2 = std::move(m).filter([](int v) { return v == 42; });
+    auto m2 = std::move(m) |= zx::maybe::filter([](int v) { return v == 42; });
     EXPECT_FALSE(m2.has_value());
 }
 
@@ -498,6 +499,6 @@ TEST(maybe_t, maybe_move_filter_no_value)
 {
     zx::maybe_t<int> m = zx::none;
 
-    auto m2 = std::move(m).filter([](int v) { return v == 42; });
+    auto m2 = std::move(m) |= zx::maybe::filter([](int v) { return v == 42; });
     EXPECT_FALSE(m2.has_value());
 }
