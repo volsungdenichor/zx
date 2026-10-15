@@ -44,6 +44,25 @@ auto make_reverse(std::reverse_iterator<Iter> b, std::reverse_iterator<Iter> e) 
 }
 
 template <class Iter>
+auto advance(Iter begin, Iter end, std::ptrdiff_t n) -> Iter
+{
+    if constexpr (is_random_access_iterator<Iter>::value)
+    {
+        return begin + std::min(std::distance(begin, end), n);
+    }
+    else
+    {
+        Iter it = begin;
+        while (it != end && n > 0)
+        {
+            --n;
+            ++it;
+        }
+        return it;
+    }
+}
+
+template <class Iter>
 struct subrange_t
 {
     using iterator = Iter;
@@ -192,9 +211,9 @@ struct subrange_t : detail::subrange_t<Iter>
     template <class It = iterator, enable_if_t<is_random_access_iterator<It>::value> = 0>
     auto at(difference_type n) const -> reference
     {
-        if (auto maybe = maybe_at(n))
+        if (0 <= n && n < ssize())
         {
-            return *maybe;
+            return begin()[n];
         }
         throw std::out_of_range("subrange_t::at - index out of range");
     }
@@ -206,77 +225,17 @@ struct subrange_t : detail::subrange_t<Iter>
     }
 
     template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
-    auto reverse() const -> reverse_type
+    auto _reverse() const -> reverse_type
     {
         return detail::make_reverse(begin(), end());
     }
 
-    auto take(difference_type n) const -> subrange_t { return subrange_t(begin(), advance(n)); }
-
-    auto drop(difference_type n) const -> subrange_t { return subrange_t(advance(n), end()); }
+    auto _take(difference_type n) const -> subrange_t { return subrange_t(begin(), detail::advance(begin(), end(), n)); }
 
     template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
-    auto take_back(difference_type n) const -> subrange_t
+    auto _take_back(difference_type n) const -> subrange_t
     {
-        return reverse().take(n).reverse();
-    }
-
-    template <class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
-    auto drop_back(difference_type n) const -> subrange_t
-    {
-        return reverse().drop(n).reverse();
-    }
-
-    template <class Pred>
-    auto take_while(Pred&& pred) const -> subrange_t
-    {
-        const iterator found = std::find_if_not(begin(), end(), std::forward<Pred>(pred));
-        return subrange_t(begin(), found);
-    }
-
-    template <class Pred>
-    auto drop_while(Pred&& pred) const -> subrange_t
-    {
-        const iterator found = std::find_if_not(begin(), end(), std::forward<Pred>(pred));
-        return subrange_t(found, end());
-    }
-
-    template <class Pred, class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
-    auto take_back_while(Pred&& pred) const -> subrange_t
-    {
-        return reverse().take_while(std::forward<Pred>(pred)).reverse();
-    }
-
-    template <class Pred, class It = iterator, enable_if_t<is_bidirectional_iterator<It>::value> = 0>
-    auto drop_back_while(Pred&& pred) const -> subrange_t
-    {
-        return reverse().drop_while(std::forward<Pred>(pred)).reverse();
-    }
-
-    template <class It = iterator, enable_if_t<is_random_access_iterator<It>::value> = 0>
-    auto slice(const subrange_slice_t& info) const -> subrange_t
-    {
-        static const auto adjust = [](difference_type index,
-                                      size_type size) -> size_type {  //
-            return std::clamp<size_type>(index >= 0 ? index : index + size, 0, size);
-        };
-        const size_type s = size();
-        const size_type b = info.start ? adjust(*info.start, s) : size_type{ 0 };
-        const size_type e = info.stop ? adjust(*info.stop, s) : s;
-        return subrange_t{ begin() + b, std::max(size_type{ 0 }, e - b) };
-    }
-
-    auto find(const value_type& value) const -> maybe_reference
-    {
-        auto it = std::find(begin(), end(), value);
-        return it != end() ? maybe_reference{ *it } : maybe_reference{};
-    }
-
-    template <class Pred>
-    auto find_if(Pred&& pred) const -> maybe_reference
-    {
-        auto it = std::find_if(begin(), end(), std::forward<Pred>(pred));
-        return it != end() ? maybe_reference{ *it } : maybe_reference{};
+        return _reverse()._take(n)._reverse();
     }
 
     template <class Range, class Compare = std::equal_to<>>
@@ -304,14 +263,14 @@ struct subrange_t : detail::subrange_t<Iter>
     bool starts_with(Range&& prefix, Compare&& compare = {}) const
     {
         auto prefix_range = subrange_t<iterator_t<Range>>{ std::forward<Range>(prefix) };
-        return take(prefix_range.size()).is_equal(prefix_range, std::forward<Compare>(compare));
+        return _take(prefix_range.size()).is_equal(prefix_range, std::forward<Compare>(compare));
     }
 
     template <class Range, class Compare = std::equal_to<>>
     bool ends_with(Range&& suffix, Compare&& compare = {}) const
     {
         auto suffix_range = subrange_t<iterator_t<Range>>{ std::forward<Range>(suffix) };
-        return take_back(suffix_range.size()).is_equal(suffix_range, std::forward<Compare>(compare));
+        return _take_back(suffix_range.size()).is_equal(suffix_range, std::forward<Compare>(compare));
     }
 
     template <class Range, class Compare = std::equal_to<>>
@@ -320,43 +279,6 @@ struct subrange_t : detail::subrange_t<Iter>
         auto subrange_range = subrange_t<iterator_t<Range>>{ std::forward<Range>(subrange) };
         return std::search(begin(), end(), subrange_range.begin(), subrange_range.end(), std::forward<Compare>(compare))
                != end();
-    }
-
-    template <class Pred>
-    bool all_of(Pred&& pred) const
-    {
-        return std::all_of(begin(), end(), std::forward<Pred>(pred));
-    }
-
-    template <class Pred>
-    bool any_of(Pred&& pred) const
-    {
-        return std::any_of(begin(), end(), std::forward<Pred>(pred));
-    }
-
-    template <class Pred>
-    bool none_of(Pred&& pred) const
-    {
-        return std::none_of(begin(), end(), std::forward<Pred>(pred));
-    }
-
-private:
-    auto advance(difference_type n) const -> iterator
-    {
-        if constexpr (is_random_access_iterator<iterator>::value)
-        {
-            return begin() + std::min(ssize(), n);
-        }
-        else
-        {
-            iterator it = begin();
-            while (it != end() && n > 0)
-            {
-                --n;
-                ++it;
-            }
-            return it;
-        }
     }
 };
 
@@ -517,14 +439,199 @@ struct at_fn
     auto operator()(std::ptrdiff_t index) const { return fn(std::bind(*this, std::placeholders::_1, index)); }
 };
 
+struct reverse_fn
+{
+    template <class Iter, enable_if_t<is_bidirectional_iterator<Iter>::value> = 0>
+    auto operator()(subrange_t<Iter> value) const -> typename subrange_t<Iter>::reverse_type
+    {
+        return ::zx::detail::make_reverse(value.begin(), value.end());
+    }
+};
+
+template <bool First, bool Reverse>
+struct take_drop_fn
+{
+    template <class Iter>
+    auto operator()(subrange_t<Iter> value, std::ptrdiff_t n) const -> subrange_t<Iter>
+    {
+        if constexpr (Reverse)
+        {
+            static const auto reverse = reverse_fn{};
+            static const auto self = take_drop_fn<First, false>{};
+            return reverse(self(reverse(value), n));
+        }
+        else
+        {
+            const auto middle = ::zx::detail::advance(value.begin(), value.end(), n);
+            if constexpr (First)
+            {
+                return subrange_t<Iter>{ value.begin(), middle };
+            }
+            else
+            {
+                return subrange_t<Iter>{ middle, value.end() };
+            }
+        }
+    }
+
+    auto operator()(std::ptrdiff_t n) const { return fn(std::bind(*this, std::placeholders::_1, n)); }
+};
+
+template <bool First, bool Reverse>
+struct take_drop_while_fn
+{
+    template <class Iter, class Pred>
+    auto operator()(subrange_t<Iter> value, const Pred& pred) const -> subrange_t<Iter>
+    {
+        if constexpr (Reverse)
+        {
+            static const auto reverse = reverse_fn{};
+            static const auto self = take_drop_while_fn<First, false>{};
+            return reverse(self(reverse(value), pred));
+        }
+        else
+        {
+            const auto middle = std::find_if_not(value.begin(), value.end(), pred);
+            if constexpr (First)
+            {
+                return subrange_t<Iter>{ value.begin(), middle };
+            }
+            else
+            {
+                return subrange_t<Iter>{ middle, value.end() };
+            }
+        }
+    }
+
+    template <class Pred>
+    auto operator()(Pred&& pred) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Pred>(pred)));
+    }
+};
+
+struct slice_fn
+{
+    template <class Iter, enable_if_t<is_random_access_iterator<Iter>::value> = 0>
+    auto operator()(subrange_t<Iter> value, const subrange_slice_t& info) const -> subrange_t<Iter>
+    {
+        using size_type = typename subrange_t<Iter>::size_type;
+        const size_type s = value.size();
+        const size_type b = info.start ? adjust(*info.start, s) : size_type{ 0 };
+        const size_type e = info.stop ? adjust(*info.stop, s) : s;
+        return subrange_t<Iter>{ value.begin() + b, std::max(size_type{ 0 }, e - b) };
+    }
+
+    template <class Size>
+    static auto adjust(Size index, Size size) -> Size
+    {
+        return std::clamp<Size>(index >= 0 ? index : index + size, 0, size);
+    }
+
+    auto operator()(subrange_slice_t info) const { return fn(std::bind(*this, std::placeholders::_1, info)); }
+};
+
+struct find_fn
+{
+    template <class Iter, class T, class Res = typename subrange_t<Iter>::maybe_reference>
+    auto operator()(subrange_t<Iter> value, const T& element) const -> Res
+    {
+        const auto it = std::find(value.begin(), value.end(), element);
+        return it != value.end() ? Res{ *it } : Res{};
+    }
+
+    template <class T>
+    auto operator()(T&& element) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<T>(element)));
+    }
+};
+
+struct find_if_fn
+{
+    template <class Iter, class Pred, class Res = typename subrange_t<Iter>::maybe_reference>
+    auto operator()(subrange_t<Iter> value, const Pred& pred) const -> Res
+    {
+        const auto it = std::find_if(value.begin(), value.end(), pred);
+        return it != value.end() ? Res{ *it } : Res{};
+    }
+
+    template <class Pred>
+    auto operator()(Pred&& pred) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Pred>(pred)));
+    }
+};
+
+struct all_of_fn
+{
+    template <class Iter, class Pred>
+    bool operator()(subrange_t<Iter> value, Pred&& pred) const
+    {
+        return std::all_of(value.begin(), value.end(), std::forward<Pred>(pred));
+    }
+
+    template <class Pred>
+    auto operator()(Pred&& pred) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Pred>(pred)));
+    }
+};
+
+struct any_of_fn
+{
+    template <class Iter, class Pred>
+    bool operator()(subrange_t<Iter> value, Pred&& pred) const
+    {
+        return std::any_of(value.begin(), value.end(), std::forward<Pred>(pred));
+    }
+
+    template <class Pred>
+    auto operator()(Pred&& pred) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Pred>(pred)));
+    }
+};
+
+struct none_of_fn
+{
+    template <class Iter, class Pred>
+    bool operator()(subrange_t<Iter> value, Pred&& pred) const
+    {
+        return std::none_of(value.begin(), value.end(), std::forward<Pred>(pred));
+    }
+
+    template <class Pred>
+    auto operator()(Pred&& pred) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Pred>(pred)));
+    }
+};
+
 }  // namespace detail
 
 constexpr inline auto front = fn(detail::front_fn{});
 constexpr inline auto back = fn(detail::back_fn{});
 constexpr inline auto maybe_front = fn(detail::maybe_front_fn{});
 constexpr inline auto maybe_back = fn(detail::maybe_back_fn{});
-constexpr inline auto maybe_at = fn(detail::maybe_at_fn{});
-constexpr inline auto at = fn(detail::at_fn{});
+constexpr inline auto maybe_at = detail::maybe_at_fn{};
+constexpr inline auto at = detail::at_fn{};
+constexpr inline auto reverse = fn(detail::reverse_fn{});
+constexpr inline auto take = detail::take_drop_fn<true, false>{};
+constexpr inline auto drop = detail::take_drop_fn<false, false>{};
+constexpr inline auto take_back = detail::take_drop_fn<true, true>{};
+constexpr inline auto drop_back = detail::take_drop_fn<false, true>{};
+constexpr inline auto take_while = detail::take_drop_while_fn<true, false>{};
+constexpr inline auto drop_while = detail::take_drop_while_fn<false, false>{};
+constexpr inline auto take_back_while = detail::take_drop_while_fn<true, true>{};
+constexpr inline auto drop_back_while = detail::take_drop_while_fn<false, true>{};
+constexpr inline auto slice = detail::slice_fn{};
+constexpr inline auto find = detail::find_fn{};
+constexpr inline auto find_if = detail::find_if_fn{};
+
+constexpr inline auto all_of = detail::all_of_fn{};
+constexpr inline auto any_of = detail::any_of_fn{};
+constexpr inline auto none_of = detail::none_of_fn{};
 
 }  // namespace subrange
 

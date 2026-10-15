@@ -8,20 +8,31 @@ TEST(subrange, slicing)
     const auto span = zx::span_t<int>{ vect };
     EXPECT_THAT(span, testing::ElementsAre(1, 2, 3, 4, 5, 6, 7));
 
-    EXPECT_THAT(span.take(4), testing::ElementsAre(1, 2, 3, 4));
-    EXPECT_THAT(span.drop(4), testing::ElementsAre(5, 6, 7));
-    EXPECT_THAT(span.take_back(4), testing::ElementsAre(4, 5, 6, 7));
-    EXPECT_THAT(span.drop_back(4), testing::ElementsAre(1, 2, 3));
+    EXPECT_THAT(span |= zx::subrange::take(4), testing::ElementsAre(1, 2, 3, 4));
+    EXPECT_THAT(span |= zx::subrange::drop(4), testing::ElementsAre(5, 6, 7));
+    EXPECT_THAT(span |= zx::subrange::take_back(4), testing::ElementsAre(4, 5, 6, 7));
+    EXPECT_THAT(span |= zx::subrange::drop_back(4), testing::ElementsAre(1, 2, 3));
 
-    EXPECT_THAT(span.slice({ {}, 3 }), testing::ElementsAre(1, 2, 3));
-    EXPECT_THAT(span.slice({ 0, 3 }), testing::ElementsAre(1, 2, 3));
-    EXPECT_THAT(span.slice({ 1, 3 }), testing::ElementsAre(2, 3));
-    EXPECT_THAT(span.slice({ 3, {} }), testing::ElementsAre(4, 5, 6, 7));
-    EXPECT_THAT(span.slice({ 3, 5 }), testing::ElementsAre(4, 5));
-    EXPECT_THAT(span.slice({ -2, {} }), testing::ElementsAre(6, 7));
-    EXPECT_THAT(span.slice({ {}, -2 }), testing::ElementsAre(1, 2, 3, 4, 5));
-    EXPECT_THAT(span.slice({ -4, -2 }), testing::ElementsAre(4, 5));
-    EXPECT_THAT(span.slice({ -2, -4 }), testing::IsEmpty());
+    EXPECT_THAT(span |= zx::subrange::slice({ {}, 3 }), testing::ElementsAre(1, 2, 3));
+    EXPECT_THAT(span |= zx::subrange::slice({ 0, 3 }), testing::ElementsAre(1, 2, 3));
+    EXPECT_THAT(span |= zx::subrange::slice({ 1, 3 }), testing::ElementsAre(2, 3));
+    EXPECT_THAT(span |= zx::subrange::slice({ 3, {} }), testing::ElementsAre(4, 5, 6, 7));
+    EXPECT_THAT(span |= zx::subrange::slice({ 3, 5 }), testing::ElementsAre(4, 5));
+    EXPECT_THAT(span |= zx::subrange::slice({ -2, {} }), testing::ElementsAre(6, 7));
+    EXPECT_THAT(span |= zx::subrange::slice({ {}, -2 }), testing::ElementsAre(1, 2, 3, 4, 5));
+    EXPECT_THAT(span |= zx::subrange::slice({ -4, -2 }), testing::ElementsAre(4, 5));
+    EXPECT_THAT(span |= zx::subrange::slice({ -2, -4 }), testing::IsEmpty());
+}
+
+TEST(subrange, take_drop_while)
+{
+    const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
+    const auto span = zx::span_t<int>{ vect };
+
+    EXPECT_THAT(span |= zx::subrange::take_while([](int x) { return x < 4; }), testing::ElementsAre(1, 2, 3));
+    EXPECT_THAT(span |= zx::subrange::drop_while([](int x) { return x < 4; }), testing::ElementsAre(4, 5, 6, 7));
+    EXPECT_THAT(span |= zx::subrange::take_back_while([](int x) { return x > 4; }), testing::ElementsAre(5, 6, 7));
+    EXPECT_THAT(span |= zx::subrange::drop_back_while([](int x) { return x > 4; }), testing::ElementsAre(1, 2, 3, 4));
 }
 
 TEST(subrange, at)
@@ -50,16 +61,16 @@ TEST(iterator_range, find)
 {
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
     const auto span = zx::span_t<int>{ vect };
-    EXPECT_THAT(span.find(4), testing::Optional(4));
-    EXPECT_THAT(span.find(-1), testing::Eq(zx::none));
+    EXPECT_THAT(span |= zx::subrange::find(4), testing::Optional(4));
+    EXPECT_THAT(span |= zx::subrange::find(-1), testing::Eq(zx::none));
 }
 
 TEST(iterator_range, find_if)
 {
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
     const auto span = zx::span_t<int>{ vect };
-    EXPECT_THAT(span.find_if([](int x) { return x % 2 == 0; }), testing::Optional(2));
-    EXPECT_THAT(span.find_if([](int x) { return x < 0; }), testing::Eq(zx::none));
+    EXPECT_THAT(span |= zx::subrange::find_if([](int x) { return x % 2 == 0; }), testing::Optional(2));
+    EXPECT_THAT(span |= zx::subrange::find_if([](int x) { return x < 0; }), testing::Eq(zx::none));
 }
 
 TEST(iterator_range, starts_with)
@@ -98,12 +109,12 @@ TEST(iterator_range, all_any_none_of)
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
     const auto span = zx::span_t<int>{ vect };
 
-    EXPECT_THAT(span.all_of(is_positive), testing::IsTrue());
-    EXPECT_THAT(span.all_of(is_even), testing::IsFalse());
-    EXPECT_THAT(span.any_of(is_even), testing::IsTrue());
-    EXPECT_THAT(span.any_of(is_negative), testing::IsFalse());
-    EXPECT_THAT(span.none_of(is_negative), testing::IsTrue());
-    EXPECT_THAT(span.none_of(is_even), testing::IsFalse());
+    EXPECT_THAT(span |= zx::subrange::all_of(is_positive), testing::IsTrue());
+    EXPECT_THAT(span |= zx::subrange::all_of(is_even), testing::IsFalse());
+    EXPECT_THAT(span |= zx::subrange::any_of(is_even), testing::IsTrue());
+    EXPECT_THAT(span |= zx::subrange::any_of(is_negative), testing::IsFalse());
+    EXPECT_THAT(span |= zx::subrange::none_of(is_negative), testing::IsTrue());
+    EXPECT_THAT(span |= zx::subrange::none_of(is_even), testing::IsFalse());
 }
 
 TEST(iterator_range, comparison_operators)
