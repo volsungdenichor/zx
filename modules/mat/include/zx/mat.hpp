@@ -1033,13 +1033,13 @@ struct segments_fn
     template <class T, std::size_t D, std::size_t N, class Space>
     constexpr auto operator()(const polygonal_shape_t<D, T, N, Space>& value) const -> sequence_t<segment_t<D, T, Space>>
     {
-        return seq::range(value.size()).transform([&](std::size_t i) { return segment(value, i); });
+        return seq::range(value.size()) |= seq::transform([&](std::size_t i) { return segment(value, i); });
     }
 
     template <class T, std::size_t D, class Space>
     constexpr auto operator()(const polygon_t<D, T, Space>& value) const -> sequence_t<segment_t<D, T, Space>>
     {
-        return seq::range(value.size()).transform([&](std::size_t i) { return segment(value, i); });
+        return seq::range(value.size()) |= seq::transform([&](std::size_t i) { return segment(value, i); });
     }
 
     template <class T, std::size_t D, class Space>
@@ -1050,32 +1050,32 @@ struct segments_fn
             return {};
         }
         return seq::range(static_cast<std::size_t>(value.size() - 1))
-            .transform([&](std::size_t i) { return segment(value, i); });
+               |= seq::transform([&](std::size_t i) { return segment(value, i); });
     }
 
     template <class T, class Space>
     constexpr auto operator()(const box_shape_t<2, T, Space>& value) const -> sequence_t<segment_t<2, T, Space>>
     {
-        return seq::range(4).transform(
-            [&](std::size_t i)
-            {
-                switch (i)
-                {
-                    case 0:
-                        return segment(
-                            value.get({ side_t::first, side_t::first }), value.get({ side_t::last, side_t::first }));
-                    case 1:
-                        return segment(
-                            value.get({ side_t::last, side_t::first }), value.get({ side_t::last, side_t::last }));
-                    case 2:
-                        return segment(
-                            value.get({ side_t::last, side_t::last }), value.get({ side_t::first, side_t::last }));
-                    case 3:
-                        return segment(
-                            value.get({ side_t::first, side_t::last }), value.get({ side_t::first, side_t::first }));
-                };
-                throw std::logic_error{ "Invalid segment index for box_shape_t<2, T>" };
-            });
+        return seq::range(4) |= seq::transform(
+                   [&](std::size_t i)
+                   {
+                       switch (i)
+                       {
+                           case 0:
+                               return segment(
+                                   value.get({ side_t::first, side_t::first }), value.get({ side_t::last, side_t::first }));
+                           case 1:
+                               return segment(
+                                   value.get({ side_t::last, side_t::first }), value.get({ side_t::last, side_t::last }));
+                           case 2:
+                               return segment(
+                                   value.get({ side_t::last, side_t::last }), value.get({ side_t::first, side_t::last }));
+                           case 3:
+                               return segment(
+                                   value.get({ side_t::first, side_t::last }), value.get({ side_t::first, side_t::first }));
+                       };
+                       throw std::logic_error{ "Invalid segment index for box_shape_t<2, T>" };
+                   });
     }
 };
 

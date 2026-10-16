@@ -100,17 +100,19 @@ public:
 
     sequence_t<vertex_t> vertices() const
     {
-        return zx::seq::view(m_vertices).transform([this](const vertex_info_t& v) { return vertex_t{ this, v.id }; });
+        return zx::seq::view(m_vertices)
+               |= zx::seq::transform([this](const vertex_info_t& v) { return vertex_t{ this, v.id }; });
     }
 
     sequence_t<face_t> faces() const
     {
-        return zx::seq::view(m_faces).transform([this](const face_info_t& f) { return face_t{ this, f.id }; });
+        return zx::seq::view(m_faces) |= zx::seq::transform([this](const face_info_t& f) { return face_t{ this, f.id }; });
     }
 
     sequence_t<halfedge_t> halfedges() const
     {
-        return zx::seq::view(m_halfedges).transform([this](const halfedge_info_t& h) { return halfedge_t{ this, h.id }; });
+        return zx::seq::view(m_halfedges)
+               |= zx::seq::transform([this](const halfedge_info_t& h) { return halfedge_t{ this, h.id }; });
     }
 
     sequence_t<halfedge_t> outer_halfedges() const
@@ -337,7 +339,7 @@ public:
 
         polygon_type as_polygon() const
         {
-            return vertices().transform([](const vertex_t& v) { return v.location(); });
+            return vertices() |= zx::seq::transform([](const vertex_t& v) { return v.location(); });
         }
 
         friend std::ostream& operator<<(std::ostream& os, const face_t& item) { return os << "F " << item.id; }

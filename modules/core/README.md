@@ -29,13 +29,13 @@ result_t<void, E> err_void{ zx::error(e) };  // error
 
 ### Value / error access
 
-| Expression             | Return type | Description                                 |
-| ---------------------- | ----------- | ------------------------------------------- |
-| `*r`                   | `T&`        | Value — throws `bad_result_access` if error |
-| `r.value()`            | `T&`        | Same as `*r`                                |
-| `r->member`            | `T*`        | Pointer to value                            |
-| `r.error()`            | `E&`        | Error — throws `bad_result_access` if value |
-| `r.value_or(fallback)` | `T`         | Value, or `fallback` if error               |
+| Expression                | Return type | Description                                 |
+| ------------------------- | ----------- | ------------------------------------------- |
+| `*r`                      | `T&`        | Value — throws `bad_result_access` if error |
+| `r.value()`               | `T&`        | Same as `*r`                                |
+| `r->member`               | `T*`        | Pointer to value                            |
+| `r.error()`               | `E&`        | Error — throws `bad_result_access` if value |
+| `r |= value_or(fallback)` | `T`         | Value, or `fallback` if error               |
 
 ### Monadic operations
 
@@ -43,21 +43,21 @@ result_t<void, E> err_void{ zx::error(e) };  // error
 
 ```cpp
 result_t<T, E> r = ...;
-result_t<U, E> s = r.transform([](T v) -> U { ... });
+result_t<U, E> s = r |= result::transform([](T v) -> U { ... });
 // value path: s holds func(v)
 // error path: s holds the original error
 ```
 
 For `result_t<void, E>`, the function takes no arguments:
 ```cpp
-result_t<U, E> s = r.transform([]() -> U { ... });
+result_t<U, E> s = r |= result::transform([]() -> U { ... });
 ```
 
 #### `and_then` — flatMap over value (function returns a `result_t`)
 
 ```cpp
 result_t<T, E> r = ...;
-result_t<U, E> s = r.and_then([](T v) -> result_t<U, E> { ... });
+result_t<U, E> s = r |= result::and_then([](T v) -> result_t<U, E> { ... });
 // value path: s = func(v)
 // error path: s holds the original error
 ```
@@ -66,7 +66,7 @@ result_t<U, E> s = r.and_then([](T v) -> result_t<U, E> { ... });
 
 ```cpp
 result_t<T, E> r = ...;
-result_t<T, F> s = r.transform_error([](E e) -> F { ... });
+result_t<T, F> s = r |= result::transform_error([](E e) -> F { ... });
 // value path: s holds the original value
 // error path: s holds zx::error(func(e))
 ```
@@ -76,14 +76,14 @@ result_t<T, F> s = r.transform_error([](E e) -> F { ... });
 **With a function returning `result_t`** — can change the error type:
 ```cpp
 result_t<T, E> r = ...;
-result_t<T, F> s = r.or_else([](E e) -> result_t<T, F> { ... });
+result_t<T, F> s = r |= result::or_else([](E e) -> result_t<T, F> { ... });
 // value path: s holds the original value
 // error path: s = func(e)
 ```
 
 **With a `void`-returning function** — side-effect only, type unchanged:
 ```cpp
-result_t<T, E> s = r.or_else([](E e) { /* log, etc. */ });
+result_t<T, E> s = r |= result::or_else([](E e) { /* log, etc. */ });
 // value path: unchanged
 // error path: func(e) called, original result returned
 ```
@@ -104,10 +104,10 @@ bool ne = (a != b);
 result_t<T, E> r = parse(input);
 
 auto final = r
-    .transform([](T v)          -> U   { return process(v); })
-    .and_then([](U v)           -> result_t<V, E> { return validate(v); })
-    .transform_error([](E e)    -> F   { return remap(e); })
-    .value_or(V{});
+    |= result::transform([](T v)          -> U   { return process(v); })
+    |= result::and_then([](U v)           -> result_t<V, E> { return validate(v); })
+    |= result::transform_error([](E e)    -> F   { return remap(e); })
+    |= result::value_or(V{});
 ```
 
 ### Exception type
@@ -152,7 +152,7 @@ Converting construction from `maybe_t<U>` is supported when `U` is convertible t
 
 ```cpp
 maybe_t<T> m = ...;
-maybe_t<U> n = m.transform([](T v) -> U { ... });
+maybe_t<U> n = m |= maybe::transform([](T v) -> U { ... });
 // value path: n holds func(v)
 // empty path: n is empty
 ```
@@ -161,7 +161,7 @@ maybe_t<U> n = m.transform([](T v) -> U { ... });
 
 ```cpp
 maybe_t<T> m = ...;
-maybe_t<U> n = m.and_then([](T v) -> maybe_t<U> { ... });
+maybe_t<U> n = m |= maybe::and_then([](T v) -> maybe_t<U> { ... });
 // value path: n = func(v)
 // empty path: n is empty
 ```
@@ -170,14 +170,14 @@ maybe_t<U> n = m.and_then([](T v) -> maybe_t<U> { ... });
 
 **With a function returning `maybe_t`** — can change the value type:
 ```cpp
-maybe_t<T> n = m.or_else([]() -> maybe_t<T> { return fallback(); });
+maybe_t<T> n = m |= maybe::or_else([]() -> maybe_t<T> { return fallback(); });
 // value path: unchanged
 // empty path: n = func()
 ```
 
 **With a `void`-returning function** — side-effect only, type unchanged:
 ```cpp
-maybe_t<T> n = m.or_else([]() { /* log, etc. */ });
+maybe_t<T> n = m |= maybe::or_else([]() { /* log, etc. */ });
 // value path: unchanged
 // empty path: func() called, original (empty) maybe returned
 ```
@@ -185,7 +185,7 @@ maybe_t<T> n = m.or_else([]() { /* log, etc. */ });
 #### `filter` — conditionally clear the value
 
 ```cpp
-maybe_t<T> n = m.filter([](const T& v) -> bool { ... });
+maybe_t<T> n = m |= maybe::filter([](const T& v) -> bool { ... });
 // value path: n holds v if pred(v) is true, otherwise empty
 // empty path: n is empty
 ```
@@ -207,10 +207,10 @@ maybe_t<T> n = m.filter([](const T& v) -> bool { ... });
 maybe_t<T> m = lookup(key);
 
 auto result = m
-    .filter([](const T& v)   -> bool      { return is_valid(v); })
-    .transform([](T v)       -> U         { return process(v); })
-    .and_then([](U v)        -> maybe_t<V>{ return resolve(v); })
-    .value_or(V{});
+    |= maybe::filter([](const T& v)   -> bool      { return is_valid(v); })
+    |= maybe::transform([](T v)       -> U         { return process(v); })
+    |= maybe::and_then([](U v)        -> maybe_t<V>{ return resolve(v); })
+    |= maybe::value_or(V{});
 ```
 
 ### Exception type
@@ -219,23 +219,22 @@ auto result = m
 
 ---
 
-## `iterator_range_t<Iter>` — `<zx/iterator_range.hpp>`
+## `subrange_t<Iter>` — `<zx/subrange.hpp>`
 
 A lightweight non-owning view over a half-open iterator range `[begin, end)`. It works with general iterators and enables extra operations for bidirectional or random-access iterators.
 
 Common aliases:
 
-- `span_t<T>` = `iterator_range_t<const T*>`
-- `mut_span_t<T>` = `iterator_range_t<T*>`
-- `subrange_t<Container>` = `iterator_range_t<iterator_t<Container>>`
+- `span_t<T>` = `subrange_t<const T*>`
+- `mut_span_t<T>` = `subrange_t<T*>`
 
 ### Construction
 
 ```cpp
 std::vector<int> v = {1, 2, 3, 4};
 
-zx::iterator_range_t r1(v.begin(), v.end()); // from iterators
-zx::iterator_range_t r2(v);                  // from range (CTAD)
+zx::subrange_t r1(v.begin(), v.end()); // from iterators
+zx::subrange_t r2(v);                  // from range (CTAD)
 
 zx::span_t<int> s1(v);                       // const pointer span
 zx::mut_span_t<int> s2(v.data(), v.size());  // pointer + count
@@ -256,26 +255,26 @@ For pointer-based ranges, construction from contiguous ranges with `.data()`/`.s
 
 ### Element access
 
-| Expression          | Return type | Description |
-| ------------------- | ----------- | ----------- |
-| `r.maybe_front()`   | `maybe_t<reference>` | First element or empty maybe |
-| `r.front()`         | `reference` | First element, throws on empty |
-| `r.maybe_back()`    | `maybe_t<reference>` | Last element or empty maybe (bidirectional only) |
-| `r.back()`          | `reference` | Last element, throws on empty (bidirectional only) |
-| `r.maybe_at(i)`     | `maybe_t<reference>` | Element at index `i` or empty maybe (random-access only) |
-| `r.at(i)`           | `reference` | Element at index `i`, throws out-of-range (random-access only) |
-| `r[i]`              | `reference` | Same as `at(i)` (random-access only) |
+| Expression                       | Return type | Description |
+| -------------------------------- | ----------- | ----------- |
+| `r |= subrange::maybe_front()`   | `maybe_t<reference>` | First element or empty maybe |
+| `r |= subrange::front()`         | `reference` | First element, throws on empty |
+| `r |= subrange::maybe_back()`    | `maybe_t<reference>` | Last element or empty maybe (bidirectional only) |
+| `r |= subrange::back()`          | `reference` | Last element, throws on empty (bidirectional only) |
+| `r |= subrange::maybe_at(i)`     | `maybe_t<reference>` | Element at index `i` or empty maybe (random-access only) |
+| `r |= subrange::at(i)`           | `reference` | Element at index `i`, throws out-of-range (random-access only) |
+| `r[i]`                           | `reference` | Same as `at(i)` (random-access only) |
 
 `front()`, `back()`, and `at()` throw `std::out_of_range` when invalid.
 
 ### Slicing and traversal
 
 ```cpp
-auto head  = r.take(3);      // first n elements
-auto tail  = r.drop(3);      // skip first n elements
-auto rrev  = r.reverse();    // reversed view (bidirectional only)
-auto last  = r.take_back(2); // last n elements (bidirectional only)
-auto init  = r.drop_back(2); // all but last n (bidirectional only)
+auto head  = r |= subrange::take(3);      // first n elements
+auto tail  = r |= subrange::drop(3);      // skip first n elements
+auto rrev  = r |= subrange::reverse();    // reversed view (bidirectional only)
+auto last  = r |= subrange::take_back(2); // last n elements (bidirectional only)
+auto init  = r |= subrange::drop_back(2); // all but last n (bidirectional only)
 ```
 
 Predicate-based slicing:
@@ -289,7 +288,7 @@ Index slicing for random-access ranges uses `iterator_range_slice_t`:
 
 ```cpp
 // start/stop are optional and support negative indices (from end)
-auto mid = r.slice({1, -1});
+auto mid = r |= subrange::slice({1, -1});
 ```
 
 Both `start` and `stop` are clamped to `[0, size]`. When `stop < start`, the result is empty.
@@ -298,14 +297,14 @@ Both `start` and `stop` are clamped to `[0, size]`. When `stop < start`, the res
 
 | Expression | Description |
 | ---------- | ----------- |
-| `r.find(value)` | Returns first matching element as `maybe_t<reference>` |
-| `r.find_if(pred)` | Returns first element matching predicate |
+| `r |= subrange::find(value)` | Returns first matching element as `maybe_t<reference>` |
+| `r |= subrange::find_if(pred)` | Returns first element matching predicate |
 | `r.starts_with(prefix)` | Prefix check |
-| `r.ends_with(suffix)` | Suffix check |
-| `r.contains_subrange(sub)` | Subsequence check |
-| `r.all_of(pred)` | `true` if all elements satisfy predicate |
-| `r.any_of(pred)` | `true` if any element satisfies predicate |
-| `r.none_of(pred)` | `true` if no elements satisfy predicate |
+| `r.ends_with(suffix)`          | Suffix check |
+| `r.contains_subrange(sub)`     | Subsequence check |
+| `r |= subrange::all_of(pred)`  | `true` if all elements satisfy predicate |
+| `r |= subrange::any_of(pred)`  | `true` if any element satisfies predicate |
+| `r |= subrange::none_of(pred)` | `true` if no elements satisfy predicate |
 
 Comparison helpers:
 
@@ -313,11 +312,11 @@ Comparison helpers:
 - `is_less(other, compare = {})`
 - `is_greater(other, compare = {})`
 
-Free operators (`==`, `!=`, `<`, `>`, `<=`, `>=`) are provided between `iterator_range_t` and range-like types, on either side.
+Free operators (`==`, `!=`, `<`, `>`, `<=`, `>=`) are provided between `subrange_t` and range-like types, on either side.
 
 ### Conversion
 
-An `iterator_range_t` can be converted to a container type constructible from `(begin, end)`:
+An `subrange_t` can be converted to a container type constructible from `(begin, end)`:
 
 ```cpp
 std::vector<int> out = static_cast<std::vector<int>>(r);

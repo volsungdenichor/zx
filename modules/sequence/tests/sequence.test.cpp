@@ -48,7 +48,7 @@ TEST(sequence_t, inspect)
 
     std::vector<int> inspected;
 
-    const std::vector<int> result = seq.inspect([&inspected](int value) { inspected.push_back(value * 10); });
+    const std::vector<int> result = seq |= zx::seq::inspect([&inspected](int value) { inspected.push_back(value * 10); });
 
     EXPECT_THAT(result, testing::ElementsAre(1, 2, 3));
     EXPECT_THAT(inspected, testing::ElementsAre(10, 20, 30));
@@ -61,8 +61,8 @@ TEST(sequence_t, inspect_indexed)
 
     std::vector<std::pair<std::ptrdiff_t, int>> inspected;
 
-    const std::vector<int> result
-        = seq.inspect_indexed([&inspected](std::ptrdiff_t index, int value) { inspected.emplace_back(index, value * 10); });
+    const std::vector<int> result = seq |= zx::seq::inspect_indexed([&inspected](std::ptrdiff_t index, int value)
+                                                                    { inspected.emplace_back(index, value * 10); });
 
     EXPECT_THAT(result, testing::ElementsAre(1, 2, 3));
     EXPECT_THAT(inspected, testing::ElementsAre(testing::Pair(0, 10), testing::Pair(1, 20), testing::Pair(2, 30)));
@@ -73,7 +73,7 @@ TEST(sequence_t, transform)
     std::vector<int> vec = { 1, 2, 3 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result = seq.transform([](int value) { return value * 2; });
+    const std::vector<int> result = seq |= zx::seq::transform([](int value) { return value * 2; });
 
     EXPECT_THAT(result, testing::ElementsAre(2, 4, 6));
 }
@@ -83,8 +83,8 @@ TEST(sequence_t, transform_indexed)
     std::vector<int> vec = { 1, 2, 3 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result
-        = seq.transform_indexed([](std::ptrdiff_t index, int value) { return value + static_cast<int>(index); });
+    const std::vector<int> result = seq
+        |= zx::seq::transform_indexed([](std::ptrdiff_t index, int value) { return value + static_cast<int>(index); });
 
     EXPECT_THAT(result, testing::ElementsAre(1, 3, 5));
 }
@@ -94,7 +94,7 @@ TEST(sequence_t, filter)
     std::vector<int> vec = { 1, 2, 3, 4, 5, 6 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result = seq.filter([](int value) { return value % 2 == 0; });
+    const std::vector<int> result = seq |= zx::seq::filter([](int value) { return value % 2 == 0; });
 
     EXPECT_THAT(result, testing::ElementsAre(2, 4, 6));
 }
@@ -104,7 +104,7 @@ TEST(sequence_t, filter_indexed)
     std::vector<int> vec = { 10, 20, 30, 40, 50 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result = seq.filter_indexed([](std::ptrdiff_t index, int) { return index % 2 == 0; });
+    const std::vector<int> result = seq |= zx::seq::filter_indexed([](std::ptrdiff_t index, int) { return index % 2 == 0; });
 
     EXPECT_THAT(result, testing::ElementsAre(10, 30, 50));
 }
@@ -114,7 +114,7 @@ TEST(sequence_t, transform_maybe)
     std::vector<int> vec = { 1, 2, 3, 4, 5 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result = seq.transform_maybe(
+    const std::vector<int> result = seq |= zx::seq::transform_maybe(
         [](int value) -> zx::maybe_t<int>
         {
             if (value % 2 == 0)
@@ -132,7 +132,7 @@ TEST(sequence_t, transform_maybe_indexed)
     std::vector<int> vec = { 5, 10, 15, 20, 25 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result = seq.transform_maybe_indexed(
+    const std::vector<int> result = seq |= zx::seq::transform_maybe_indexed(
         [](std::ptrdiff_t index, int value) -> zx::maybe_t<int>
         {
             if (index % 2 == 1)
@@ -150,7 +150,7 @@ TEST(sequence_t, take)
     std::vector<int> vec = { 1, 2, 3, 4, 5 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result = seq.take(3);
+    const std::vector<int> result = seq |= zx::seq::take(3);
 
     EXPECT_THAT(result, testing::ElementsAre(1, 2, 3));
 }
@@ -160,7 +160,7 @@ TEST(sequence_t, drop)
     std::vector<int> vec = { 1, 2, 3, 4, 5 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result = seq.drop(2);
+    const std::vector<int> result = seq |= zx::seq::drop(2);
 
     EXPECT_THAT(result, testing::ElementsAre(3, 4, 5));
 }
@@ -170,7 +170,7 @@ TEST(sequence_t, step)
     std::vector<int> vec = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result = seq.step(3);
+    const std::vector<int> result = seq |= zx::seq::step(3);
 
     EXPECT_THAT(result, testing::ElementsAre(0, 3, 6, 9));
 }
@@ -180,7 +180,7 @@ TEST(sequence_t, take_while)
     std::vector<int> vec = { 2, 4, 6, 7, 8 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result = seq.take_while([](int value) { return value % 2 == 0; });
+    const std::vector<int> result = seq |= zx::seq::take_while([](int value) { return value % 2 == 0; });
 
     EXPECT_THAT(result, testing::ElementsAre(2, 4, 6));
 }
@@ -190,7 +190,7 @@ TEST(sequence_t, drop_while)
     std::vector<int> vec = { 1, 3, 5, 6, 7 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result = seq.drop_while([](int value) { return value % 2 != 0; });
+    const std::vector<int> result = seq |= zx::seq::drop_while([](int value) { return value % 2 != 0; });
 
     EXPECT_THAT(result, testing::ElementsAre(6, 7));
 }
@@ -200,8 +200,8 @@ TEST(sequence_t, take_while_indexed)
     std::vector<int> vec = { 10, 20, 30, 25, 40 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result
-        = seq.take_while_indexed([](std::ptrdiff_t index, int value) { return value > static_cast<int>(index * 10); });
+    const std::vector<int> result = seq
+        |= zx::seq::take_while_indexed([](std::ptrdiff_t index, int value) { return value > static_cast<int>(index * 10); });
 
     EXPECT_THAT(result, testing::ElementsAre(10, 20, 30));
 }
@@ -211,8 +211,8 @@ TEST(sequence_t, drop_while_indexed)
     std::vector<int> vec = { 5, 15, 25, 20, 30 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result
-        = seq.drop_while_indexed([](std::ptrdiff_t index, int value) { return value > static_cast<int>(index * 10); });
+    const std::vector<int> result = seq
+        |= zx::seq::drop_while_indexed([](std::ptrdiff_t index, int value) { return value > static_cast<int>(index * 10); });
 
     EXPECT_THAT(result, testing::ElementsAre(20, 30));
 }
@@ -222,7 +222,7 @@ TEST(sequence_t, intersperse)
     std::vector<int> vec = { 1, 2, 3 };
     zx::sequence_t<int> seq = zx::sequence_t<int>(vec);
 
-    const std::vector<int> result = seq.intersperse(0);
+    const std::vector<int> result = seq |= zx::seq::intersperse(0);
 
     EXPECT_THAT(result, testing::ElementsAre(1, 0, 2, 0, 3));
 }
@@ -260,7 +260,7 @@ TEST(sequence_t, init_infinite)
 {
     zx::sequence_t<int> seq = zx::seq::init_infinite([](std::ptrdiff_t index) { return static_cast<int>(index + 1); });
 
-    const std::vector<int> result = seq.take(10);
+    const std::vector<int> result = seq |= zx::seq::take(10);
 
     EXPECT_THAT(result, testing::ElementsAre(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
 }
@@ -269,7 +269,7 @@ TEST(sequence_t, iota)
 {
     zx::sequence_t<int> seq = zx::seq::iota(5);
 
-    const std::vector<int> result = seq.take(10);
+    const std::vector<int> result = seq |= zx::seq::take(10);
 
     EXPECT_THAT(result, testing::ElementsAre(5, 6, 7, 8, 9, 10, 11, 12, 13, 14));
 }
@@ -315,7 +315,7 @@ TEST(sequence_t, repeat)
 {
     zx::sequence_t<char> seq = zx::seq::repeat('x');
 
-    const std::vector<char> result = seq.take(6);
+    const std::vector<char> result = seq |= zx::seq::take(6);
 
     EXPECT_THAT(result, testing::ElementsAre('x', 'x', 'x', 'x', 'x', 'x'));
 }
@@ -343,16 +343,16 @@ TEST(sequence_t, join)
     zx::sequence_t<zx::sequence_t<const int&>> seq_of_seqs
         = zx::seq::vec(zx::seq::vec(1, 2), zx::seq::vec(3), zx::seq::vec(4, 5, 6));
 
-    const std::vector<int> result = seq_of_seqs.join();
+    const std::vector<int> result = seq_of_seqs |= zx::seq::join();
 
     EXPECT_THAT(result, testing::ElementsAre(1, 2, 3, 4, 5, 6));
 }
 
 TEST(sequence_t, multiple_operators)
 {
-    const std::vector<int> result = zx::seq::range(1, 10)
-                                        .filter([](int value) { return value % 2 == 0; })
-                                        .transform([](int value) { return value * value; })
-                                        .take(3);
+    const std::vector<int> result = zx::seq::range(1, 10)               //
+        |= zx::seq::filter([](int value) { return value % 2 == 0; })    //
+        |= zx::seq::transform([](int value) { return value * value; })  //
+        |= zx::seq::take(3);
     EXPECT_THAT(result, testing::ElementsAre(4, 16, 36));
 }

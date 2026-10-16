@@ -2,8 +2,10 @@
 
 #include <limits>
 #include <memory>
+#include <utility>
 #include <zx/iterator_interface.hpp>
 #include <zx/maybe.hpp>
+#include <zx/pipe.hpp>
 
 namespace zx
 {
@@ -19,808 +21,6 @@ struct sequence_t;
 
 namespace detail
 {
-
-template <class T, class NextFn>
-struct inspect_mixin
-{
-    template <class Func>
-    struct next_function
-    {
-        Func m_func;
-        NextFn m_next;
-
-        auto operator()() const -> iteration_result_t<T>
-        {
-            iteration_result_t<T> next = m_next();
-            if (next)
-            {
-                std::invoke(m_func, *next);
-            }
-            return next;
-        }
-    };
-
-    template <class Func, class Seq = sequence_t<T, next_function<std::decay_t<Func>>>>
-    auto inspect(Func&& func) const& -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Func>(func),
-                    static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    template <class Func, class Seq = sequence_t<T, next_function<std::decay_t<Func>>>>
-    auto inspect(Func&& func) && -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Func>(func),
-                    static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct inspect_indexed_mixin
-{
-    template <class Func>
-    struct next_function
-    {
-        Func m_func;
-        NextFn m_next;
-        mutable std::ptrdiff_t m_index = 0;
-
-        auto operator()() const -> iteration_result_t<T>
-        {
-            iteration_result_t<T> next = m_next();
-            if (next)
-            {
-                std::invoke(m_func, m_index++, *next);
-            }
-            return next;
-        }
-    };
-
-    template <class Func, class Seq = sequence_t<T, next_function<std::decay_t<Func>>>>
-    auto inspect_indexed(Func&& func) const& -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Func>(func),
-                    static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    template <class Func, class Seq = sequence_t<T, next_function<std::decay_t<Func>>>>
-    auto inspect_indexed(Func&& func) && -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Func>(func),
-                    static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct transform_mixin
-{
-    template <class Func, class Out>
-    struct next_function
-    {
-        Func m_func;
-        NextFn m_next;
-
-        auto operator()() const -> iteration_result_t<Out>
-        {
-            iteration_result_t<T> next = m_next();
-            if (next)
-            {
-                return std::invoke(m_func, *std::move(next));
-            }
-            return {};
-        }
-    };
-
-    template <
-        class Func,
-        class Res = remove_rvalue_reference_t<std::invoke_result_t<Func, T>>,
-        class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
-    auto transform(Func&& func) const& -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Func>(func),
-                    static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    template <
-        class Func,
-        class Res = remove_rvalue_reference_t<std::invoke_result_t<Func, T>>,
-        class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
-    auto transform(Func&& func) && -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Func>(func),
-                    static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct transform_indexed_mixin
-{
-    template <class Func, class Out>
-    struct next_function
-    {
-        Func m_func;
-        NextFn m_next;
-        mutable std::ptrdiff_t m_index = 0;
-
-        auto operator()() const -> iteration_result_t<Out>
-        {
-            iteration_result_t<T> next = m_next();
-            if (next)
-            {
-                return std::invoke(m_func, m_index++, *std::move(next));
-            }
-            return {};
-        }
-    };
-
-    template <
-        class Func,
-        class Res = remove_rvalue_reference_t<std::invoke_result_t<Func, std::ptrdiff_t, T>>,
-        class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
-    auto transform_indexed(Func&& func) const& -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Func>(func),
-                    static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    template <
-        class Func,
-        class Res = remove_rvalue_reference_t<std::invoke_result_t<Func, std::ptrdiff_t, T>>,
-        class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
-    auto transform_indexed(Func&& func) && -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Func>(func),
-                    static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct transform_maybe_mixin
-{
-    template <class Func, class Out>
-    struct next_function
-    {
-        Func m_func;
-        NextFn m_next;
-
-        auto operator()() const -> iteration_result_t<Out>
-        {
-            while (true)
-            {
-                iteration_result_t<T> res = m_next();
-                if (!res)
-                {
-                    break;
-                }
-
-                iteration_result_t<Out> r = std::invoke(m_func, *std::move(res));
-                if (r)
-                {
-                    return r;
-                }
-            }
-            return {};
-        }
-    };
-
-    template <
-        class Func,
-        class Res = remove_rvalue_reference_t<maybe_underlying_type_t<std::invoke_result_t<Func, T>>>,
-        class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
-    auto transform_maybe(Func&& func) const& -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Func>(func),
-                    static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    template <
-        class Func,
-        class Res = remove_rvalue_reference_t<maybe_underlying_type_t<std::invoke_result_t<Func, T>>>,
-        class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
-    auto transform_maybe(Func&& func) && -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Func>(func),
-                    static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct transform_maybe_indexed_mixin
-{
-    template <class Func, class Out>
-    struct next_function
-    {
-        Func m_func;
-        NextFn m_next;
-        mutable std::ptrdiff_t m_index = 0;
-
-        auto operator()() const -> iteration_result_t<Out>
-        {
-            while (true)
-            {
-                iteration_result_t<T> res = m_next();
-                if (!res)
-                {
-                    break;
-                }
-
-                iteration_result_t<Out> r = std::invoke(m_func, m_index++, *std::move(res));
-                if (r)
-                {
-                    return r;
-                }
-            }
-            return {};
-        }
-    };
-
-    template <
-        class Func,
-        class Res = remove_rvalue_reference_t<maybe_underlying_type_t<std::invoke_result_t<Func, std::ptrdiff_t, T>>>,
-        class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
-    auto transform_maybe_indexed(Func&& func) const& -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Func>(func),
-                    static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    template <
-        class Func,
-        class Res = remove_rvalue_reference_t<maybe_underlying_type_t<std::invoke_result_t<Func, std::ptrdiff_t, T>>>,
-        class Seq = sequence_t<Res, next_function<std::decay_t<Func>, Res>>>
-    auto transform_maybe_indexed(Func&& func) && -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Func>(func),
-                    static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct filter_mixin
-{
-    template <class Pred>
-    struct next_function
-    {
-        Pred m_pred;
-        NextFn m_next;
-
-        auto operator()() const -> iteration_result_t<T>
-        {
-            while (true)
-            {
-                iteration_result_t<T> res = m_next();
-                if (!res)
-                {
-                    break;
-                }
-
-                if (std::invoke(m_pred, *res))
-                {
-                    return res;
-                }
-            }
-            return {};
-        }
-    };
-
-    template <class Pred, class Seq = sequence_t<T, next_function<std::decay_t<Pred>>>>
-    auto filter(Pred&& pred) const& -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Pred>(pred),
-                    static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    template <class Pred, class Seq = sequence_t<T, next_function<std::decay_t<Pred>>>>
-    auto filter(Pred&& pred) && -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Pred>(pred),
-                    static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct filter_indexed_mixin
-{
-    template <class Pred>
-    struct next_function
-    {
-        Pred m_pred;
-        NextFn m_next;
-        mutable std::ptrdiff_t m_index = 0;
-
-        auto operator()() const -> iteration_result_t<T>
-        {
-            while (true)
-            {
-                iteration_result_t<T> res = m_next();
-                if (!res)
-                {
-                    break;
-                }
-
-                if (std::invoke(m_pred, m_index++, *res))
-                {
-                    return res;
-                }
-            }
-            return {};
-        }
-    };
-
-    template <class Pred, class Seq = sequence_t<T, next_function<std::decay_t<Pred>>>>
-    auto filter_indexed(Pred&& pred) const& -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Pred>(pred),
-                    static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    template <class Pred, class Seq = sequence_t<T, next_function<std::decay_t<Pred>>>>
-    auto filter_indexed(Pred&& pred) && -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Pred>(pred),
-                    static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct drop_while_mixin
-{
-    template <class Pred>
-    struct next_function
-    {
-        Pred m_pred;
-        NextFn m_next;
-        mutable bool m_init = true;
-
-        auto operator()() const -> iteration_result_t<T>
-        {
-            if (m_init)
-            {
-                while (true)
-                {
-                    iteration_result_t<T> res = m_next();
-                    if (!res)
-                    {
-                        return {};
-                    }
-                    if (!std::invoke(m_pred, *res))
-                    {
-                        m_init = false;
-                        return res;
-                    }
-                }
-            }
-            return m_next();
-        }
-    };
-
-    template <class Pred, class Seq = sequence_t<T, next_function<std::decay_t<Pred>>>>
-    auto drop_while(Pred&& pred) const& -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Pred>(pred),
-                    static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    template <class Pred, class Seq = sequence_t<T, next_function<std::decay_t<Pred>>>>
-    auto drop_while(Pred&& pred) && -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Pred>(pred),
-                    static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct drop_while_indexed_mixin
-{
-    template <class Pred>
-    struct next_function
-    {
-        Pred m_pred;
-        NextFn m_next;
-        mutable bool m_init = true;
-        mutable std::ptrdiff_t m_index = 0;
-
-        auto operator()() const -> iteration_result_t<T>
-        {
-            if (m_init)
-            {
-                while (true)
-                {
-                    iteration_result_t<T> res = m_next();
-                    if (!res)
-                    {
-                        return {};
-                    }
-                    if (!std::invoke(m_pred, m_index++, *res))
-                    {
-                        m_init = false;
-                        return res;
-                    }
-                }
-            }
-            return m_next();
-        }
-    };
-
-    template <class Pred, class Seq = sequence_t<T, next_function<std::decay_t<Pred>>>>
-    auto drop_while_indexed(Pred&& pred) const& -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Pred>(pred),
-                    static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    template <class Pred, class Seq = sequence_t<T, next_function<std::decay_t<Pred>>>>
-    auto drop_while_indexed(Pred&& pred) && -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Pred>(pred),
-                    static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct take_while_mixin
-{
-    template <class Pred>
-    struct next_function
-    {
-        Pred m_pred;
-        NextFn m_next;
-
-        auto operator()() const -> iteration_result_t<T>
-        {
-            iteration_result_t<T> res = m_next();
-            if (!(res && std::invoke(m_pred, *res)))
-            {
-                return {};
-            }
-            return res;
-        }
-    };
-
-    template <class Pred, class Seq = sequence_t<T, next_function<std::decay_t<Pred>>>>
-    auto take_while(Pred&& pred) const& -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Pred>(pred),
-                    static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    template <class Pred, class Seq = sequence_t<T, next_function<std::decay_t<Pred>>>>
-    auto take_while(Pred&& pred) && -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Pred>(pred),
-                    static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct take_while_indexed_mixin
-{
-    template <class Pred>
-    struct next_function
-    {
-        Pred m_pred;
-        NextFn m_next;
-        mutable std::ptrdiff_t m_index = 0;
-
-        auto operator()() const -> iteration_result_t<T>
-        {
-            iteration_result_t<T> res = m_next();
-            if (!(res && std::invoke(m_pred, m_index++, *res)))
-            {
-                return {};
-            }
-            return res;
-        }
-    };
-
-    template <class Pred, class Seq = sequence_t<T, next_function<std::decay_t<Pred>>>>
-    auto take_while_indexed(Pred&& pred) const& -> Seq
-    {
-        return Seq{ std::in_place, std::forward<Pred>(pred), static_cast<const sequence_t<T>&>(*this).get_next_function() };
-    }
-
-    template <class Pred, class Seq = sequence_t<T, next_function<std::decay_t<Pred>>>>
-    auto take_while_indexed(Pred&& pred) && -> Seq
-    {
-        return Seq{ std::in_place,
-                    std::forward<Pred>(pred),
-                    static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct drop_mixin
-{
-    struct next_function
-    {
-        mutable std::ptrdiff_t m_count;
-        NextFn m_next;
-        mutable bool m_init = false;
-
-        auto operator()() const -> iteration_result_t<T>
-        {
-            if (!m_init)
-            {
-                while (m_count > 0)
-                {
-                    --m_count;
-                    m_next();
-                }
-                m_init = true;
-            }
-            return m_next();
-        }
-    };
-
-    using Seq = sequence_t<T, next_function>;
-
-    auto drop(std::ptrdiff_t n) const& -> Seq
-    {
-        return Seq{ std::in_place, n, static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    auto drop(std::ptrdiff_t n) && -> Seq
-    {
-        return Seq{ std::in_place, n, static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct take_mixin
-{
-    struct next_function
-    {
-        mutable std::ptrdiff_t m_count;
-        NextFn m_next;
-
-        auto operator()() const -> iteration_result_t<T>
-        {
-            if (m_count == 0)
-            {
-                return {};
-            }
-            --m_count;
-            return m_next();
-        }
-    };
-
-    using Seq = sequence_t<T, next_function>;
-
-    auto take(std::ptrdiff_t n) const& -> Seq
-    {
-        return Seq{ std::in_place, n, static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    auto take(std::ptrdiff_t n) && -> Seq
-    {
-        return Seq{ std::in_place, n, static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct step_mixin
-{
-    struct next_function
-    {
-        mutable std::ptrdiff_t m_count;
-        NextFn m_next;
-        mutable std::ptrdiff_t m_index = 0;
-
-        auto operator()() const -> iteration_result_t<T>
-        {
-            while (true)
-            {
-                iteration_result_t<T> res = m_next();
-                if (!res)
-                {
-                    break;
-                }
-
-                if (m_index++ % m_count == 0)
-                {
-                    return res;
-                }
-            }
-            return {};
-        }
-    };
-
-    using Seq = sequence_t<T, next_function>;
-
-    auto step(std::ptrdiff_t n) const& -> Seq
-    {
-        return Seq{ std::in_place, n, static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function() };
-    }
-
-    auto step(std::ptrdiff_t n) && -> Seq
-    {
-        return Seq{ std::in_place, n, static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct intersperse_mixin
-{
-    enum class state_t
-    {
-        start,
-        yield_item,
-        yield_separator
-    };
-    template <class E, class Out>
-    struct next_function
-    {
-        NextFn m_next;
-        E m_element;
-        mutable state_t m_state = state_t::start;
-        mutable iteration_result_t<Out> m_next_item = {};
-
-        auto operator()() const -> iteration_result_t<Out>
-        {
-            switch (m_state)
-            {
-                case state_t::start:
-                    m_next_item = m_next();
-                    if (m_next_item)
-                    {
-                        m_state = state_t::yield_separator;
-                        return *m_next_item;
-                    }
-                    else
-                    {
-                        return {};
-                    }
-                case state_t::yield_item: m_state = state_t::yield_separator; return m_next_item;
-                case state_t::yield_separator:
-                    m_state = state_t::yield_item;
-                    m_next_item = m_next();
-                    if (m_next_item)
-                    {
-                        return m_element;
-                    }
-                    else
-                    {
-                        return {};
-                    }
-            }
-            return {};
-        }
-    };
-
-    template <class E, class Out = std::common_type_t<T, E>, class Seq = sequence_t<Out, next_function<E, Out>>>
-    auto intersperse(E element) const& -> Seq
-    {
-        return Seq{ std::in_place,
-                    static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function(),
-                    std::move(element) };
-    }
-
-    template <class E, class Out = std::common_type_t<T, E>, class Seq = sequence_t<Out, next_function<E, Out>>>
-    auto intersperse(E element) && -> Seq
-    {
-        return Seq{ std::in_place, static_cast<sequence_t<T, NextFn>&&>(*this).get_next_function(), std::move(element) };
-    }
-};
-
-template <class T, class NextFn>
-struct join_mixin
-{
-};
-
-template <class T, class InnerNextFn, class OuterNextFn>
-struct join_mixin<sequence_t<T, InnerNextFn>, OuterNextFn>
-{
-    struct next_function
-    {
-        OuterNextFn m_next;
-        mutable std::optional<InnerNextFn> m_sub = {};
-
-        auto operator()() const -> iteration_result_t<T>
-        {
-            while (true)
-            {
-                if (!m_sub)
-                {
-                    iteration_result_t<sequence_t<T, InnerNextFn>> next = m_next();
-                    if (!next)
-                    {
-                        return {};
-                    }
-                    m_sub = next->get_next_function();
-                    continue;
-                }
-                iteration_result_t<T> next_sub = (*m_sub)();
-                if (next_sub)
-                {
-                    return next_sub;
-                }
-                else
-                {
-                    m_sub = {};
-                    continue;
-                }
-            }
-            return {};
-        }
-    };
-
-    using Seq = sequence_t<T, next_function>;
-
-    auto join() const& -> Seq
-    {
-        return Seq{ std::in_place,
-                    static_cast<const sequence_t<sequence_t<T, InnerNextFn>, OuterNextFn>&>(*this).get_next_function() };
-    }
-
-    auto join() && -> Seq
-    {
-        return Seq{ std::in_place,
-                    static_cast<sequence_t<sequence_t<T, InnerNextFn>, OuterNextFn>&&>(*this).get_next_function() };
-    }
-};
-
-template <class T, class NextFn>
-struct for_each_mixin
-{
-    template <class Func>
-    Func for_each(Func func) const&
-    {
-        const auto next_function = static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function();
-        while (true)
-        {
-            const iteration_result_t<T> next = next_function();
-            if (!next)
-            {
-                break;
-            }
-            std::invoke(func, *next);
-        }
-        return func;
-    }
-};
-
-template <class T, class NextFn>
-struct for_each_indexed_mixin
-{
-    template <class Func>
-    Func for_each_indexed(Func func) const&
-    {
-        const auto next_function = static_cast<const sequence_t<T, NextFn>&>(*this).get_next_function();
-        std::ptrdiff_t index = 0;
-        while (true)
-        {
-            const iteration_result_t<T> next = next_function();
-            if (!next)
-            {
-                break;
-            }
-            std::invoke(func, index++, *next);
-        }
-        return func;
-    }
-};
 
 template <class Func>
 struct default_constructible_func
@@ -1002,25 +202,7 @@ struct is_sequence<sequence_t<T, NextFn>> : std::true_type
 }  // namespace detail
 
 template <class T, class NextFn>
-struct sequence_t : detail::inspect_mixin<T, NextFn>,
-                    detail::inspect_indexed_mixin<T, NextFn>,
-                    detail::transform_mixin<T, NextFn>,
-                    detail::transform_indexed_mixin<T, NextFn>,
-                    detail::filter_mixin<T, NextFn>,
-                    detail::filter_indexed_mixin<T, NextFn>,
-                    detail::transform_maybe_mixin<T, NextFn>,
-                    detail::transform_maybe_indexed_mixin<T, NextFn>,
-                    detail::drop_while_mixin<T, NextFn>,
-                    detail::drop_while_indexed_mixin<T, NextFn>,
-                    detail::take_while_mixin<T, NextFn>,
-                    detail::take_while_indexed_mixin<T, NextFn>,
-                    detail::drop_mixin<T, NextFn>,
-                    detail::take_mixin<T, NextFn>,
-                    detail::step_mixin<T, NextFn>,
-                    detail::intersperse_mixin<T, NextFn>,
-                    detail::join_mixin<T, NextFn>,
-                    detail::for_each_mixin<T, NextFn>,
-                    detail::for_each_indexed_mixin<T, NextFn>
+struct sequence_t
 {
     static_assert(!std::is_rvalue_reference_v<T>, "sequence_t element type must not be an rvalue reference");
 
@@ -1111,34 +293,6 @@ struct sequence_t : detail::inspect_mixin<T, NextFn>,
     auto at(difference_type n) const -> reference { return maybe_at(n).value(); }
 
     bool empty() const { return begin() == end(); }
-
-    template <class Pred>
-    auto find_if(Pred pred) const -> maybe_t<reference>
-    {
-        return this->drop_while(std::not_fn(std::move(pred))).maybe_front();
-    }
-
-    template <class Pred>
-    auto index_of(Pred pred) const -> maybe_t<difference_type>
-    {
-        difference_type index = 0;
-        iterator it = begin();
-        const iterator e = end();
-        for (; it != e; ++it, ++index)
-        {
-            if (std::invoke(pred, *it))
-            {
-                return index;
-            }
-        }
-        return {};
-    }
-
-    template <class Func>
-    auto transform_join(Func&& func) const -> decltype(this->transform(std::forward<Func>(func)).join())
-    {
-        return this->transform(std::forward<Func>(func)).join();
-    }
 };
 
 namespace detail
@@ -1510,12 +664,755 @@ struct vec_fn
     }
 };
 
+template <class T>
+struct empty_fn
+{
+    auto operator()() const -> sequence_t<T, empty_sequence<T>> { return sequence_t<T, empty_sequence<T>>{}; }
+};
+
+struct transform_fn
+{
+    template <class T, class NextFn, class Func, class Out>
+    struct next_function
+    {
+        Func m_func;
+        NextFn m_next;
+
+        auto operator()() const -> iteration_result_t<Out>
+        {
+            iteration_result_t<T> next = m_next();
+            if (next)
+            {
+                return std::invoke(m_func, *std::move(next));
+            }
+            return {};
+        }
+    };
+
+    template <
+        class T,
+        class NextFn,
+        class Func,
+        class Res = remove_rvalue_reference_t<std::invoke_result_t<Func, T>>,
+        class Seq = sequence_t<Res, next_function<T, NextFn, std::decay_t<Func>, Res>>>
+    auto operator()(sequence_t<T, NextFn> value, Func&& func) const -> Seq
+    {
+        return Seq{ std::in_place, std::forward<Func>(func), std::move(value).get_next_function() };
+    }
+
+    template <class Func>
+    auto operator()(Func&& func) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Func>(func)));
+    }
+};
+
+struct transform_indexed_fn
+{
+    template <class T, class NextFn, class Func, class Out>
+    struct next_function
+    {
+        Func m_func;
+        NextFn m_next;
+        mutable std::ptrdiff_t m_index = 0;
+
+        auto operator()() const -> iteration_result_t<Out>
+        {
+            iteration_result_t<T> next = m_next();
+            if (next)
+            {
+                return std::invoke(m_func, m_index++, *std::move(next));
+            }
+            return {};
+        }
+    };
+
+    template <
+        class T,
+        class NextFn,
+        class Func,
+        class Res = remove_rvalue_reference_t<std::invoke_result_t<Func, std::ptrdiff_t, T>>,
+        class Seq = sequence_t<Res, next_function<T, NextFn, std::decay_t<Func>, Res>>>
+    auto operator()(sequence_t<T, NextFn> value, Func&& func) const -> Seq
+    {
+        return Seq{ std::in_place, std::forward<Func>(func), std::move(value).get_next_function() };
+    }
+
+    template <class Func>
+    auto operator()(Func&& func) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Func>(func)));
+    }
+};
+
+struct transform_maybe_fn
+{
+    template <class T, class NextFn, class Func, class Out>
+    struct next_function
+    {
+        Func m_func;
+        NextFn m_next;
+
+        auto operator()() const -> iteration_result_t<Out>
+        {
+            while (true)
+            {
+                iteration_result_t<T> res = m_next();
+                if (!res)
+                {
+                    break;
+                }
+
+                iteration_result_t<Out> r = std::invoke(m_func, *std::move(res));
+                if (r)
+                {
+                    return r;
+                }
+            }
+            return {};
+        }
+    };
+
+    template <
+        class T,
+        class NextFn,
+        class Func,
+        class Res = remove_rvalue_reference_t<maybe_underlying_type_t<std::invoke_result_t<Func, T>>>,
+        class Seq = sequence_t<Res, next_function<T, NextFn, std::decay_t<Func>, Res>>>
+    auto operator()(sequence_t<T, NextFn> value, Func&& func) const -> Seq
+    {
+        return Seq{ std::in_place, std::forward<Func>(func), std::move(value).get_next_function() };
+    }
+
+    template <class Func>
+    auto operator()(Func&& func) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Func>(func)));
+    }
+};
+
+struct transform_maybe_indexed_fn
+{
+    template <class T, class NextFn, class Func, class Out>
+    struct next_function
+    {
+        Func m_func;
+        NextFn m_next;
+        mutable std::ptrdiff_t m_index = 0;
+
+        auto operator()() const -> iteration_result_t<Out>
+        {
+            while (true)
+            {
+                iteration_result_t<T> res = m_next();
+                if (!res)
+                {
+                    break;
+                }
+
+                iteration_result_t<Out> r = std::invoke(m_func, m_index++, *std::move(res));
+                if (r)
+                {
+                    return r;
+                }
+            }
+            return {};
+        }
+    };
+
+    template <
+        class T,
+        class NextFn,
+        class Func,
+        class Res = remove_rvalue_reference_t<maybe_underlying_type_t<std::invoke_result_t<Func, std::ptrdiff_t, T>>>,
+        class Seq = sequence_t<Res, next_function<T, NextFn, std::decay_t<Func>, Res>>>
+    auto operator()(sequence_t<T, NextFn> value, Func&& func) const -> Seq
+    {
+        return Seq{ std::in_place, std::forward<Func>(func), std::move(value).get_next_function() };
+    }
+
+    template <class Func>
+    auto operator()(Func&& func) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Func>(func)));
+    }
+};
+
+struct filter_fn
+{
+    template <class T, class NextFn, class Pred>
+    struct next_function
+    {
+        Pred m_pred;
+        NextFn m_next;
+
+        auto operator()() const -> iteration_result_t<T>
+        {
+            while (true)
+            {
+                iteration_result_t<T> res = m_next();
+                if (!res)
+                {
+                    break;
+                }
+
+                if (std::invoke(m_pred, *res))
+                {
+                    return res;
+                }
+            }
+            return {};
+        }
+    };
+
+    template <class T, class NextFn, class Pred, class Seq = sequence_t<T, next_function<T, NextFn, std::decay_t<Pred>>>>
+    auto operator()(sequence_t<T, NextFn> value, Pred&& pred) const -> Seq
+    {
+        return Seq{ std::in_place, std::forward<Pred>(pred), std::move(value).get_next_function() };
+    }
+
+    template <class Pred>
+    auto operator()(Pred&& pred) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Pred>(pred)));
+    }
+};
+
+struct filter_indexed_fn
+{
+    template <class T, class NextFn, class Pred>
+    struct next_function
+    {
+        Pred m_pred;
+        NextFn m_next;
+        mutable std::ptrdiff_t m_index = 0;
+
+        auto operator()() const -> iteration_result_t<T>
+        {
+            while (true)
+            {
+                iteration_result_t<T> res = m_next();
+                if (!res)
+                {
+                    break;
+                }
+
+                if (std::invoke(m_pred, m_index++, *res))
+                {
+                    return res;
+                }
+            }
+            return {};
+        }
+    };
+
+    template <class T, class NextFn, class Pred, class Seq = sequence_t<T, next_function<T, NextFn, std::decay_t<Pred>>>>
+    auto operator()(sequence_t<T, NextFn> value, Pred&& pred) const -> Seq
+    {
+        return Seq{ std::in_place, std::forward<Pred>(pred), std::move(value).get_next_function() };
+    }
+
+    template <class Pred>
+    auto operator()(Pred&& pred) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Pred>(pred)));
+    }
+};
+
+struct drop_while_fn
+{
+    template <class T, class NextFn, class Pred>
+    struct next_function
+    {
+        Pred m_pred;
+        NextFn m_next;
+        mutable bool m_init = true;
+
+        auto operator()() const -> iteration_result_t<T>
+        {
+            if (m_init)
+            {
+                while (true)
+                {
+                    iteration_result_t<T> res = m_next();
+                    if (!res)
+                    {
+                        return {};
+                    }
+                    if (!std::invoke(m_pred, *res))
+                    {
+                        m_init = false;
+                        return res;
+                    }
+                }
+            }
+            return m_next();
+        }
+    };
+
+    template <class T, class NextFn, class Pred, class Seq = sequence_t<T, next_function<T, NextFn, std::decay_t<Pred>>>>
+    auto operator()(sequence_t<T, NextFn> value, Pred&& pred) const -> Seq
+    {
+        return Seq{ std::in_place, std::forward<Pred>(pred), std::move(value).get_next_function() };
+    }
+
+    template <class Pred>
+    auto operator()(Pred&& pred) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Pred>(pred)));
+    }
+};
+
+struct drop_while_indexed_fn
+{
+    template <class T, class NextFn, class Pred>
+    struct next_function
+    {
+        Pred m_pred;
+        NextFn m_next;
+        mutable bool m_init = true;
+        mutable std::ptrdiff_t m_index = 0;
+
+        auto operator()() const -> iteration_result_t<T>
+        {
+            if (m_init)
+            {
+                while (true)
+                {
+                    iteration_result_t<T> res = m_next();
+                    if (!res)
+                    {
+                        return {};
+                    }
+                    if (!std::invoke(m_pred, m_index++, *res))
+                    {
+                        m_init = false;
+                        return res;
+                    }
+                }
+            }
+            return m_next();
+        }
+    };
+
+    template <class T, class NextFn, class Pred, class Seq = sequence_t<T, next_function<T, NextFn, std::decay_t<Pred>>>>
+    auto operator()(sequence_t<T, NextFn> value, Pred&& pred) const& -> Seq
+    {
+        return Seq{ std::in_place, std::forward<Pred>(pred), std::move(value).get_next_function() };
+    }
+
+    template <class Pred>
+    auto operator()(Pred&& pred) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Pred>(pred)));
+    }
+};
+
+struct take_while_fn
+{
+    template <class T, class NextFn, class Pred>
+    struct next_function
+    {
+        Pred m_pred;
+        NextFn m_next;
+        mutable bool m_init = true;
+
+        auto operator()() const -> iteration_result_t<T>
+        {
+            iteration_result_t<T> res = m_next();
+            if (!(res && std::invoke(m_pred, *res)))
+            {
+                return {};
+            }
+            return res;
+        }
+    };
+
+    template <class T, class NextFn, class Pred, class Seq = sequence_t<T, next_function<T, NextFn, std::decay_t<Pred>>>>
+    auto operator()(sequence_t<T, NextFn> value, Pred&& pred) const -> Seq
+    {
+        return Seq{ std::in_place, std::forward<Pred>(pred), std::move(value).get_next_function() };
+    }
+
+    template <class Pred>
+    auto operator()(Pred&& pred) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Pred>(pred)));
+    }
+};
+
+struct take_while_indexed_fn
+{
+    template <class T, class NextFn, class Pred>
+    struct next_function
+    {
+        Pred m_pred;
+        NextFn m_next;
+        mutable std::ptrdiff_t m_index = 0;
+
+        auto operator()() const -> iteration_result_t<T>
+        {
+            iteration_result_t<T> res = m_next();
+            if (!(res && std::invoke(m_pred, m_index++, *res)))
+            {
+                return {};
+            }
+            return res;
+        }
+    };
+
+    template <class T, class NextFn, class Pred, class Seq = sequence_t<T, next_function<T, NextFn, std::decay_t<Pred>>>>
+    auto operator()(sequence_t<T, NextFn> value, Pred&& pred) const& -> Seq
+    {
+        return Seq{ std::in_place, std::forward<Pred>(pred), std::move(value).get_next_function() };
+    }
+
+    template <class Pred>
+    auto operator()(Pred&& pred) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Pred>(pred)));
+    }
+};
+
+struct drop_fn
+{
+    template <class T, class NextFn>
+    struct next_function
+    {
+        mutable std::ptrdiff_t m_count;
+        NextFn m_next;
+        mutable bool m_init = false;
+
+        auto operator()() const -> iteration_result_t<T>
+        {
+            if (!m_init)
+            {
+                while (m_count > 0)
+                {
+                    --m_count;
+                    m_next();
+                }
+                m_init = true;
+            }
+            return m_next();
+        }
+    };
+
+    template <class T, class NextFn, class Seq = sequence_t<T, next_function<T, NextFn>>>
+    auto operator()(sequence_t<T, NextFn> value, std::ptrdiff_t n) const -> Seq
+    {
+        return Seq{ std::in_place, n, std::move(value).get_next_function() };
+    }
+
+    auto operator()(std::ptrdiff_t n) const { return fn(std::bind(*this, std::placeholders::_1, n)); }
+};
+
+struct take_fn
+{
+    template <class T, class NextFn>
+    struct next_function
+    {
+        mutable std::ptrdiff_t m_count;
+        NextFn m_next;
+
+        auto operator()() const -> iteration_result_t<T>
+        {
+            if (m_count == 0)
+            {
+                return {};
+            }
+            --m_count;
+            return m_next();
+        }
+    };
+
+    template <class T, class NextFn, class Seq = sequence_t<T, next_function<T, NextFn>>>
+    auto operator()(sequence_t<T, NextFn> value, std::ptrdiff_t n) const -> Seq
+    {
+        return Seq{ std::in_place, n, std::move(value).get_next_function() };
+    }
+
+    auto operator()(std::ptrdiff_t n) const { return fn(std::bind(*this, std::placeholders::_1, n)); }
+};
+
+struct step_fn
+{
+    template <class T, class NextFn>
+    struct next_function
+    {
+        mutable std::ptrdiff_t m_count;
+        NextFn m_next;
+        mutable std::ptrdiff_t m_index = 0;
+
+        auto operator()() const -> iteration_result_t<T>
+        {
+            while (true)
+            {
+                iteration_result_t<T> res = m_next();
+                if (!res)
+                {
+                    break;
+                }
+
+                if (m_index++ % m_count == 0)
+                {
+                    return res;
+                }
+            }
+            return {};
+        }
+    };
+
+    template <class T, class NextFn, class Seq = sequence_t<T, next_function<T, NextFn>>>
+    auto operator()(sequence_t<T, NextFn> value, std::ptrdiff_t n) const -> Seq
+    {
+        return Seq{ std::in_place, n, std::move(value).get_next_function() };
+    }
+
+    auto operator()(std::ptrdiff_t n) const { return fn(std::bind(*this, std::placeholders::_1, n)); }
+};
+
+struct inspect_fn
+{
+    template <class T, class NextFn, class Func>
+    struct next_function
+    {
+        Func m_func;
+        NextFn m_next;
+
+        auto operator()() const -> iteration_result_t<T>
+        {
+            iteration_result_t<T> next = m_next();
+            if (next)
+            {
+                std::invoke(m_func, *next);
+            }
+            return next;
+        }
+    };
+
+    template <class T, class NextFn, class Func, class Seq = sequence_t<T, next_function<T, NextFn, std::decay_t<Func>>>>
+    auto operator()(sequence_t<T, NextFn> value, Func&& func) const -> Seq
+    {
+        return Seq{ std::in_place, std::forward<Func>(func), std::move(value).get_next_function() };
+    }
+
+    template <class Func>
+    auto operator()(Func&& func) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Func>(func)));
+    }
+};
+
+struct inspect_indexed_fn
+{
+    template <class T, class NextFn, class Func>
+    struct next_function
+    {
+        Func m_func;
+        NextFn m_next;
+        mutable std::ptrdiff_t m_index = 0;
+
+        auto operator()() const -> iteration_result_t<T>
+        {
+            iteration_result_t<T> next = m_next();
+            if (next)
+            {
+                std::invoke(m_func, m_index++, *next);
+            }
+            return next;
+        }
+    };
+
+    template <class T, class NextFn, class Func, class Seq = sequence_t<T, next_function<T, NextFn, std::decay_t<Func>>>>
+    auto operator()(sequence_t<T, NextFn> value, Func&& func) const -> Seq
+    {
+        return Seq{ std::in_place, std::forward<Func>(func), std::move(value).get_next_function() };
+    }
+
+    template <class Func>
+    auto operator()(Func&& func) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Func>(func)));
+    }
+};
+
+struct intersperse_fn
+{
+    enum class state_t
+    {
+        start,
+        yield_item,
+        yield_separator
+    };
+
+    template <class T, class NextFn, class E, class Out>
+    struct next_function
+    {
+        NextFn m_next;
+        E m_element;
+        mutable state_t m_state = state_t::start;
+        mutable iteration_result_t<Out> m_next_item = {};
+
+        auto operator()() const -> iteration_result_t<Out>
+        {
+            switch (m_state)
+            {
+                case state_t::start:
+                    m_next_item = m_next();
+                    if (m_next_item)
+                    {
+                        m_state = state_t::yield_separator;
+                        return *m_next_item;
+                    }
+                    else
+                    {
+                        return {};
+                    }
+                case state_t::yield_item: m_state = state_t::yield_separator; return m_next_item;
+                case state_t::yield_separator:
+                    m_state = state_t::yield_item;
+                    m_next_item = m_next();
+                    if (m_next_item)
+                    {
+                        return m_element;
+                    }
+                    else
+                    {
+                        return {};
+                    }
+            }
+            return {};
+        }
+    };
+
+    template <
+        class T,
+        class NextFn,
+        class E,
+        class Out = std::common_type_t<T, E>,
+        class Seq = sequence_t<Out, next_function<T, NextFn, E, Out>>>
+    auto operator()(sequence_t<T, NextFn> value, E element) const -> Seq
+    {
+        return Seq{ std::in_place, std::move(value).get_next_function(), std::move(element) };
+    }
+
+    template <class E>
+    auto operator()(E element) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::move(element)));
+    }
+};
+
+struct join_fn
+{
+    template <class T, class InnerNextFn, class OuterNextFn>
+    struct next_function
+    {
+        OuterNextFn m_next;
+        mutable std::optional<InnerNextFn> m_sub = {};
+
+        auto operator()() const -> iteration_result_t<T>
+        {
+            while (true)
+            {
+                if (!m_sub)
+                {
+                    iteration_result_t<sequence_t<T, InnerNextFn>> next = m_next();
+                    if (!next)
+                    {
+                        return {};
+                    }
+                    m_sub = next->get_next_function();
+                    continue;
+                }
+                iteration_result_t<T> next_sub = (*m_sub)();
+                if (next_sub)
+                {
+                    return next_sub;
+                }
+                else
+                {
+                    m_sub = {};
+                    continue;
+                }
+            }
+            return {};
+        }
+    };
+
+    template <
+        class T,
+        class InnerNextFn,
+        class OuterNextFn,
+        class Seq = sequence_t<T, next_function<T, InnerNextFn, OuterNextFn>>>
+    auto operator()(sequence_t<sequence_t<T, InnerNextFn>, OuterNextFn> value) const -> Seq
+    {
+        return Seq{ std::in_place, std::move(value).get_next_function() };
+    }
+
+    auto operator()() const { return fn(std::bind(*this, std::placeholders::_1)); }
+};
+
+struct for_each_fn
+{
+    template <class T, class NextFn, class Func>
+    Func operator()(const sequence_t<T, NextFn>& value, Func func) const
+    {
+        const auto next_function = value.get_next_function();
+        while (true)
+        {
+            const iteration_result_t<T> next = next_function();
+            if (!next)
+            {
+                break;
+            }
+            std::invoke(func, *next);
+        }
+        return func;
+    }
+
+    template <class Func>
+    auto operator()(Func&& func) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Func>(func)));
+    }
+};
+
+struct for_each_indexed_fn
+{
+    template <class T, class NextFn, class Func>
+    Func operator()(const sequence_t<T, NextFn>& value, Func func) const
+    {
+        const auto next_function = value.get_next_function();
+        std::ptrdiff_t index = 0;
+        while (true)
+        {
+            const iteration_result_t<T> next = next_function();
+            if (!next)
+            {
+                break;
+            }
+            std::invoke(func, index++, *next);
+        }
+        return func;
+    }
+
+    template <class Func>
+    auto operator()(Func&& func) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Func>(func)));
+    }
+};
+
 struct init_fn
 {
     template <class Func, class Out = std::invoke_result_t<Func, std::ptrdiff_t>>
     auto operator()(std::ptrdiff_t n, Func&& func) const
     {
-        return range_fn{}(n).transform(std::forward<Func>(func));
+        static const auto range = range_fn{};
+        static const auto transform = transform_fn{};
+        return range(n) |= transform(std::forward<Func>(func));
     }
 };
 
@@ -1524,7 +1421,9 @@ struct init_infinite_fn
     template <class Func, class Out = std::invoke_result_t<Func, std::ptrdiff_t>>
     auto operator()(Func&& func) const
     {
-        return iota_fn{}(std::ptrdiff_t{ 0 }).transform(std::forward<Func>(func));
+        static const auto iota = iota_fn{};
+        static const auto transform = transform_fn{};
+        return iota(std::ptrdiff_t{ 0 }) |= transform(std::forward<Func>(func));
     }
 };
 
@@ -1533,17 +1432,12 @@ struct linspace_fn
     template <class T>
     auto operator()(T start, T end, std::size_t count, bool endpoint = true) const
     {
+        static const auto init = init_fn{};
         const auto step = endpoint ? (end - start) / static_cast<T>(count - 1) : (end - start) / static_cast<T>(count);
-        return init_fn{}(
+        return init(
             static_cast<std::ptrdiff_t>(count),
             [start, step](std::ptrdiff_t i) { return start + static_cast<T>(i) * step; });
     }
-};
-
-template <class T>
-struct empty_fn
-{
-    auto operator()() const -> sequence_t<T, empty_sequence<T>> { return sequence_t<T, empty_sequence<T>>{}; }
 };
 
 }  // namespace detail
@@ -1567,6 +1461,34 @@ inline constexpr auto zip = detail::zip_fn{};
 inline constexpr auto init = detail::init_fn{};
 inline constexpr auto linspace = detail::linspace_fn{};
 inline constexpr auto init_infinite = detail::init_infinite_fn{};
+
+inline constexpr auto transform = detail::transform_fn{};
+inline constexpr auto transform_indexed = detail::transform_indexed_fn{};
+inline constexpr auto transform_maybe = detail::transform_maybe_fn{};
+inline constexpr auto transform_maybe_indexed = detail::transform_maybe_indexed_fn{};
+
+inline constexpr auto filter = detail::filter_fn{};
+inline constexpr auto filter_indexed = detail::filter_indexed_fn{};
+
+inline constexpr auto drop_while = detail::drop_while_fn{};
+inline constexpr auto drop_while_indexed = detail::drop_while_indexed_fn{};
+
+inline constexpr auto take_while = detail::take_while_fn{};
+inline constexpr auto take_while_indexed = detail::take_while_indexed_fn{};
+
+inline constexpr auto take = detail::take_fn{};
+inline constexpr auto drop = detail::drop_fn{};
+inline constexpr auto step = detail::step_fn{};
+
+inline constexpr auto inspect = detail::inspect_fn{};
+inline constexpr auto inspect_indexed = detail::inspect_indexed_fn{};
+
+inline constexpr auto intersperse = detail::intersperse_fn{};
+
+inline constexpr auto join = detail::join_fn{};
+
+inline constexpr auto for_each = detail::for_each_fn{};
+inline constexpr auto for_each_indexed = detail::for_each_indexed_fn{};
 
 }  // namespace seq
 
