@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <limits>
 #include <memory>
 #include <utility>
@@ -283,14 +284,6 @@ struct sequence_t
     auto get_next_function() const& -> const next_function_type& { return m_next_fn; }
 
     auto get_next_function() && -> next_function_type&& { return std::move(m_next_fn); }
-
-    auto maybe_front() const& -> maybe_t<reference> { return get_next_function()(); }
-
-    auto front() const& -> reference { return maybe_front().value(); }
-
-    auto maybe_at(difference_type n) const -> maybe_t<reference> { return this->drop(n).maybe_front(); }
-
-    auto at(difference_type n) const -> reference { return maybe_at(n).value(); }
 
     bool empty() const { return begin() == end(); }
 };
@@ -1440,6 +1433,50 @@ struct linspace_fn
     }
 };
 
+struct maybe_front_fn
+{
+    template <class T, class NextFn>
+    auto operator()(const sequence_t<T, NextFn>& value) const -> maybe_t<T>
+    {
+        return value.get_next_function()();
+    }
+};
+
+struct front_fn
+{
+    template <class T, class NextFn>
+    auto operator()(const sequence_t<T, NextFn>& value) const -> T
+    {
+        return maybe_front_fn{}(value).value();
+    }
+};
+
+struct maybe_at_fn
+{
+    template <class T, class NextFn>
+    auto operator()(const sequence_t<T, NextFn>& value, std::ptrdiff_t index) const -> maybe_t<T>
+    {
+        static const auto drop = drop_fn{};
+        static const auto maybe_front = maybe_front_fn{};
+        return maybe_front(drop(value, index));
+    }
+
+    auto operator()(std::ptrdiff_t index) const { return fn(std::bind(*this, std::placeholders::_1, index)); }
+};
+
+struct at_fn
+{
+    template <class T, class NextFn>
+    auto operator()(const sequence_t<T, NextFn>& value, std::ptrdiff_t index) const -> T
+    {
+        static const auto drop = drop_fn{};
+        static const auto front = front_fn{};
+        return front(drop(value, index));
+    }
+
+    auto operator()(std::ptrdiff_t index) const { return fn(std::bind(*this, std::placeholders::_1, index)); }
+};
+
 }  // namespace detail
 
 namespace seq
@@ -1489,6 +1526,12 @@ inline constexpr auto join = detail::join_fn{};
 
 inline constexpr auto for_each = detail::for_each_fn{};
 inline constexpr auto for_each_indexed = detail::for_each_indexed_fn{};
+
+inline constexpr auto front = detail::front_fn{};
+inline constexpr auto maybe_front = detail::maybe_front_fn{};
+
+inline constexpr auto at = detail::at_fn{};
+inline constexpr auto maybe_at = detail::maybe_at_fn{};
 
 }  // namespace seq
 
