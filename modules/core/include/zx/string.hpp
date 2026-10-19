@@ -1,13 +1,14 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <iostream>
 #include <iterator>
 #include <stdexcept>
 #include <string_view>
 #include <vector>
-#include <algorithm>
-#include <zx/iterator_range.hpp>
+
+#include "zx/subrange.hpp"
 
 namespace zx
 {
@@ -160,9 +161,9 @@ struct code_point_t
     }
 };
 
-struct string_view_t : public iterator_range_t<const code_point_t*>
+struct string_view_t : public span_t<code_point_t>
 {
-    using base_t = iterator_range_t<const code_point_t*>;
+    using base_t = span_t<code_point_t>;
     using base_t::base_t;
 
     friend std::ostream& operator<<(std::ostream& os, const string_view_t& item)
