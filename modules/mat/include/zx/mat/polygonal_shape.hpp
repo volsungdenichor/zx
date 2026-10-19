@@ -10,7 +10,7 @@ namespace zx
 namespace mat
 {
 
-template <std::size_t D, class T, std::size_t N, class Space>
+template <std::size_t D, class T, std::size_t N, class Space = cartesian_space_t>
 struct polygonal_shape_t : public std::array<point_t<D, T, Space>, N>
 {
     using point_type = point_t<D, T, Space>;

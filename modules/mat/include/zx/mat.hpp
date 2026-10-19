@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>
 #include <zx/functions.hpp>
 #include <zx/mat/box_shape.hpp>
 #include <zx/mat/linear_shape.hpp>
@@ -10,6 +11,8 @@
 #include <zx/mat/vector.hpp>
 #include <zx/maybe.hpp>
 #include <zx/sequence.hpp>
+
+#include "zx/type_traits.hpp"
 
 namespace zx
 {
@@ -1089,7 +1092,7 @@ struct map_to_fn
     constexpr explicit map_to_fn(Func func) : _func(std::move(func)) { }
 
     template <class T, class U = std::invoke_result_t<const Func&, T>>
-    constexpr auto operator()(T value) const -> U
+    constexpr auto call(T value) const -> U
     {
         return std::invoke(_func, value);
     }
@@ -1100,7 +1103,7 @@ struct map_to_fn
         vector_t<D, U, Space> result;
         for (std::size_t d = 0; d < D; ++d)
         {
-            result[d] = (*this)(value[d]);
+            result[d] = call(value[d]);
         }
         return result;
     }
@@ -1108,7 +1111,7 @@ struct map_to_fn
     template <class T, class U = std::invoke_result_t<const Func&, T>>
     constexpr auto operator()(const interval_t<T>& value) const -> interval_t<U>
     {
-        return interval_t<U>{ (*this)(value[0]), (*this)(value[1]) };
+        return interval_t<U>{ call(value[0]), call(value[1]) };
     }
 
     template <std::size_t D, class T, class Space, class U = std::invoke_result_t<const Func&, T>>
@@ -1117,7 +1120,7 @@ struct map_to_fn
         box_shape_t<D, U, Space> result;
         for (std::size_t d = 0; d < D; ++d)
         {
-            result[d] = (*this)(value[d]);
+            result[d] = call(value[d]);
         }
         return result;
     }
@@ -1128,7 +1131,7 @@ struct map_to_fn
         polygonal_shape_t<D, U, N, Space> result;
         for (std::size_t n = 0; n < N; ++n)
         {
-            result[n] = (*this)(value[n]);
+            result[n] = call(value[n]);
         }
         return result;
     }
@@ -1140,7 +1143,7 @@ struct map_to_fn
         result.resize(value.size());
         for (std::size_t n = 0; n < value.size(); ++n)
         {
-            result[n] = (*this)(value[n]);
+            result[n] = call(value[n]);
         }
         return result;
     }
@@ -1152,7 +1155,7 @@ struct map_to_fn
         result.resize(value.size());
         for (std::size_t n = 0; n < value.size(); ++n)
         {
-            result[n] = (*this)(value[n]);
+            result[n] = call(value[n]);
         }
         return result;
     }
@@ -1160,7 +1163,7 @@ struct map_to_fn
     template <std::size_t D, class T, class Space, class U = std::invoke_result_t<const Func&, T>>
     constexpr auto operator()(const spherical_shape_t<D, T, Space>& value) const -> spherical_shape_t<D, U, Space>
     {
-        return { (*this)(value.center), (*this)(value.radius) };
+        return { call(value.center), call(value.radius) };
     }
 };
 

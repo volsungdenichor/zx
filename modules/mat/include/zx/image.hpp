@@ -3,10 +3,13 @@
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
+#include <type_traits>
+#include <utility>
 #include <zx/array.hpp>
 #include <zx/colors.hpp>
 #include <zx/format.hpp>
 #include <zx/function_ref.hpp>
+#include <zx/pipe.hpp>
 #include <zx/raster.hpp>
 
 #include "zx/mat.hpp"
@@ -221,6 +224,7 @@ struct image_base_t
     image_base_t(const typename storage_type::extent_type& extent) : m_data{ extent } { }
     image_base_t(const extent_type& extent) : image_base_t{ prepend(extent, Channels) } { }
     image_base_t(const view_type& view) : m_data{ view.data() } { }
+    image_base_t(const mut_view_type& view) : m_data{ view.data() } { }
 
     extent_type extent() const { return view().extent(); }
     bounds_type bounds() const { return view().bounds(); }
@@ -560,11 +564,11 @@ struct inject_t
     }
 };
 
-using color_filter_t = function_ref<rgb_color_t(const rgb_color_t&)>;
-using binary_color_filter_t = function_ref<rgb_color_t(const rgb_color_t&, const rgb_color_t&)>;
+using color_filter_t = std::function<rgb_color_t(const rgb_color_t&)>;
+using binary_color_filter_t = std::function<rgb_color_t(const rgb_color_t&, const rgb_color_t&)>;
 
-// Visits (x, y) locations lateral-first: (0, 0), (1, 0), ..., (w - 1, 0), (0, 1), ...
-inline void for_each(const rgb_image_t::extent_type& extent, function_ref<void(const rgb_image_t::location_type&)> func)
+inline void for_each(
+    const rgb_image_t::extent_type& extent, const std::function<void(const rgb_image_t::location_type&)>& func)
 {
     const auto [w, h] = extent;
 
@@ -578,33 +582,49 @@ inline void for_each(const rgb_image_t::extent_type& extent, function_ref<void(c
 }
 
 inline void for_each(
-    const shape_t<2, rgb_image_t::space_type>& shape, function_ref<void(const rgb_image_t::location_type&)> func)
+    const shape_t<2, rgb_image_t::space_type>& shape, const std::function<void(const rgb_image_t::location_type&)>& func)
 {
     for_each(shape.extent(), func);
 }
 
 struct modify_fn
 {
-    void operator()(
-        const rgb_image_t::mut_view_type& image, const rgb_image_t::location_type& loc, color_filter_t filter) const
+    rgb_image_t::mut_view_type operator()(
+        const rgb_image_t::mut_view_type& image, const rgb_image_t::location_type& loc, const color_filter_t& filter) const
     {
         image[loc] = filter(image[loc]);
+        return image;
     }
 
-    void operator()(const rgb_image_t::mut_view_type& image, color_filter_t filter) const
+    rgb_image_t::mut_view_type operator()(const rgb_image_t::mut_view_type& image, const color_filter_t& filter) const
     {
         for_each(image.extent(), [&](const rgb_image_t::location_type& loc) { (*this)(image, loc, filter); });
+        return image;
     }
+
+    auto operator()(rgb_image_t::location_type loc, color_filter_t filter) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::move(loc), std::move(filter)));
+    }
+
+    auto operator()(color_filter_t filter) const { return fn(std::bind(*this, std::placeholders::_1, std::move(filter))); }
 };
 
 struct with_fn
 {
-    template <class... Funcs>
+    template <class... Funcs, enable_if_t<(std::is_invocable_v<Funcs, rgb_image_t::mut_view_type> && ...)> = 0>
     rgb_image_t operator()(const rgb_image_t::view_type& image, Funcs&&... funcs) const
     {
         rgb_image_t result = image;
-        (std::invoke(std::forward<Funcs>(funcs), result.mut_view()), ...);
+        auto result_view = result.mut_view();
+        (std::invoke(std::forward<Funcs>(funcs), result_view), ...);
         return result;
+    }
+
+    template <class... Funcs, enable_if_t<(std::is_invocable_v<Funcs, rgb_image_t::mut_view_type> && ...)> = 0>
+    auto operator()(Funcs&&... funcs) const
+    {
+        return fn(std::bind(*this, std::placeholders::_1, std::forward<Funcs>(funcs)...));
     }
 };
 
@@ -685,6 +705,8 @@ struct rotate_fn
         return make_image_view(image, image_shape(image.data().shape(), degrees));
     }
 
+    auto operator()(int degrees) const { return fn(std::bind(*this, std::placeholders::_1, degrees)); }
+
     static auto image_shape(const shape_t<3, rgb_image_t::space_type>& shape, int degrees)
         -> std::pair<shape_t<3, rgb_image_t::space_type>, flat_offset_t>
     {
@@ -730,6 +752,8 @@ struct flip_fn
     {
         return make_image_view(image, image_shape(image.data().shape()));
     }
+
+    auto operator()() const { return fn(std::bind(*this, std::placeholders::_1)); }
 
     static auto image_shape(const shape_t<3, rgb_image_t::space_type>& shape)
         -> std::pair<shape_t<3, rgb_image_t::space_type>, flat_offset_t>
@@ -787,7 +811,7 @@ struct draw_fn
     template <std::size_t N>
     void operator()(
         const rgb_image_t::mut_view_type& image,
-        const polygonal_shape_t<2, location_base_t, N, cartesian_space_t>& polygon,
+        const polygonal_shape_t<2, location_base_t, N>& polygon,
         color_filter_t color_filter) const
     {
         for (const auto seg : segments(polygon))
@@ -798,7 +822,7 @@ struct draw_fn
 
     void operator()(
         const rgb_image_t::mut_view_type& image,
-        const polygon_t<2, location_base_t, cartesian_space_t>& polygon,
+        const polygon_t<2, location_base_t>& polygon,
         color_filter_t color_filter) const
     {
         for (const auto seg : segments(polygon))
@@ -809,7 +833,7 @@ struct draw_fn
 
     void operator()(
         const rgb_image_t::mut_view_type& image,
-        const polyline_t<2, location_base_t, cartesian_space_t>& polygon,
+        const polyline_t<2, location_base_t>& polygon,
         color_filter_t color_filter) const
     {
         for (const auto seg : segments(polygon))
