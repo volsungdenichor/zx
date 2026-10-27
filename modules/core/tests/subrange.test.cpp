@@ -40,8 +40,8 @@ TEST(subrange, at)
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
     const auto span = zx::span_t<int>{ vect };
 
-    EXPECT_THAT(zx::subrange::at(span, 2), testing::Optional(3));
-    EXPECT_THAT(span |= zx::subrange::at(2), testing::Optional(3));
+    EXPECT_THAT(zx::subrange::at(span, 2), 3);
+    EXPECT_THAT(span |= zx::subrange::at(2), 3);
     EXPECT_THROW(zx::subrange::at(span, 7), std::out_of_range);
     EXPECT_THROW((span |= zx::subrange::at(7)), std::out_of_range);
 }
@@ -61,16 +61,16 @@ TEST(iterator_range, find)
 {
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
     const auto span = zx::span_t<int>{ vect };
-    EXPECT_THAT(span |= zx::subrange::find(4), testing::Optional(4));
-    EXPECT_THAT(span |= zx::subrange::find(-1), testing::Eq(zx::none));
+    EXPECT_THAT(span |= zx::subrange::find(4), testing::ElementsAre(4));
+    EXPECT_THAT(span |= zx::subrange::find(-1), testing::IsEmpty());
 }
 
 TEST(iterator_range, find_if)
 {
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
     const auto span = zx::span_t<int>{ vect };
-    EXPECT_THAT(span |= zx::subrange::find_if([](int x) { return x % 2 == 0; }), testing::Optional(2));
-    EXPECT_THAT(span |= zx::subrange::find_if([](int x) { return x < 0; }), testing::Eq(zx::none));
+    EXPECT_THAT(span |= zx::subrange::find_if([](int x) { return x % 2 == 0; }), testing::ElementsAre(2));
+    EXPECT_THAT(span |= zx::subrange::find_if([](int x) { return x < 0; }), testing::IsEmpty());
 }
 
 TEST(iterator_range, starts_with)

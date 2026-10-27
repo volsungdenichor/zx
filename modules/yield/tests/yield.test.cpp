@@ -1,6 +1,5 @@
 #include <gmock/gmock.h>
 
-#include <memory>
 #include <zx/format.hpp>
 #include <zx/yield.hpp>
 
@@ -8,8 +7,8 @@ TEST(yield, from)
 {
     const std::vector<int> in{ 2, 3, 5, 7, 11, 13, 17, 19 };
     EXPECT_THAT(
-        zx::from(in)  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::from(in)  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(2, 3, 5, 7, 11, 13, 17, 19));
 }
 
@@ -19,18 +18,18 @@ TEST(yield, from_multiple_ranges)
     const std::vector<int> in2{ 7, 11, 13 };
     const std::vector<int> in3{ 17, 19, 23, 29, 31 };
     EXPECT_THAT(
-        zx::from(in1, in2, in3)                                                              //
-            | zx::transform([](int a, int b, int c) { return zx::str(a, "-", b, "-", c); })  //
-            | zx::into(std::vector<std::string>{}),
+        zx::yield::from(in1, in2, in3)                                                           //
+        |= zx::yield::transform([](int a, int b, int c) { return zx::str(a, "-", b, "-", c); })  //
+        |= zx::yield::into(std::vector<std::string>{}),
         testing::ElementsAre("2-7-17", "3-11-19", "5-13-23"));
 }
 
 TEST(yield, into_uninitialized_container)
 {
     EXPECT_THAT(
-        zx::range(1, 10)                                        //
-            | zx::transform([](int x) { return x * (x + 1); })  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)                                     //
+        |= zx::yield::transform([](int x) { return x * (x + 1); })  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(2, 6, 12, 20, 30, 42, 56, 72, 90));
 }
 
@@ -38,39 +37,39 @@ TEST(yield, into_initialized_container)
 {
     std::vector<int> temp = { -3, -3 };
     EXPECT_THAT(
-        zx::range(1, 10)                                        //
-            | zx::transform([](int x) { return x * (x + 1); })  //
-            | zx::into(std::move(temp)),
+        zx::yield::range(1, 10)                                     //
+        |= zx::yield::transform([](int x) { return x * (x + 1); })  //
+        |= zx::yield::into(std::move(temp)),
         testing::ElementsAre(-3, -3, 2, 6, 12, 20, 30, 42, 56, 72, 90));
 }
 
 TEST(yield, range)
 {
     EXPECT_THAT(
-        zx::range(1, 10)  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(1, 2, 3, 4, 5, 6, 7, 8, 9));
 }
 
 TEST(yield, linspace)
 {
     EXPECT_THAT(
-        zx::linspace(1.0, 10.0, 10)  //
-            | zx::into(std::vector<double>{}),
+        zx::yield::linspace(1.0, 10.0, 10)  //
+        |= zx::yield::into(std::vector<double>{}),
         testing::ElementsAre(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0));
 
     EXPECT_THAT(
-        zx::linspace(1.0, 10.0, 10, false)  //
-            | zx::into(std::vector<double>{}),
+        zx::yield::linspace(1.0, 10.0, 10, false)  //
+        |= zx::yield::into(std::vector<double>{}),
         testing::ElementsAre(1.0, 1.9, 2.8, 3.7, 4.6, 5.5, 6.4, 7.3, 8.2, 9.1));
 }
 
 TEST(yield, iota)
 {
     EXPECT_THAT(
-        zx::iota(1)        //
-            | zx::take(4)  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::iota(1)     //
+        |= zx::yield::take(4)  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(1, 2, 3, 4));
 }
 
@@ -78,179 +77,179 @@ TEST(yield, chain)
 {
     std::vector<int> in = { 6, 7, 8 };
     EXPECT_THAT(
-        zx::chain(zx::range(1, 4), zx::from(in))  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::chain(zx::yield::range(1, 4), zx::yield::from(in))  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(1, 2, 3, 6, 7, 8));
 }
 
 TEST(yield, chain_with_stop)
 {
     EXPECT_THAT(
-        zx::chain(zx::range(1, 4), zx::range(6, 9))  //
-            | zx::take(4)                            //
-            | zx::into(std::vector<int>{}),
+        zx::yield::chain(zx::yield::range(1, 4), zx::yield::range(6, 9))  //
+        |= zx::yield::take(4)                                             //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(1, 2, 3, 6));
 }
 
 TEST(yield, repeat)
 {
     EXPECT_THAT(
-        zx::repeat(3)      //
-            | zx::take(5)  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::repeat(3)   //
+        |= zx::yield::take(5)  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(3, 3, 3, 3, 3));
 }
 
 TEST(yield, repeat_multiple_args)
 {
     EXPECT_THAT(
-        zx::repeat(3, 'x')                                                     //
-            | zx::take(5)                                                      //
-            | zx::transform([](int a, char b) { return zx::str(a, "-", b); })  //
-            | zx::into(std::vector<std::string>{}),
+        zx::yield::repeat(3, 'x')                                                  //
+        |= zx::yield::take(5)                                                      //
+        |= zx::yield::transform([](int a, char b) { return zx::str(a, "-", b); })  //
+        |= zx::yield::into(std::vector<std::string>{}),
         testing::ElementsAre("3-x", "3-x", "3-x", "3-x", "3-x"));
 }
 
 TEST(yield, pad_input_with_repeated_values)
 {
     EXPECT_THAT(
-        zx::chain(zx::range(1, 4), zx::repeat(0))  //
-            | zx::take(6)                          //
-            | zx::into(std::vector<int>{}),
+        zx::yield::chain(zx::yield::range(1, 4), zx::yield::repeat(0))  //
+        |= zx::yield::take(6)                                           //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(1, 2, 3, 0, 0, 0));
 }
 
 TEST(yield, all_of)
 {
     EXPECT_THAT(
-        zx::range(1, 10)  //
-            | zx::all_of([](int x) { return x < 10; }),
+        zx::yield::range(1, 10)  //
+        |= zx::yield::all_of([](int x) { return x < 10; }),
         true);
 }
 
 TEST(yield, any_of)
 {
     EXPECT_THAT(
-        zx::range(1, 10)  //
-            | zx::any_of([](int x) { return x == 5; }),
+        zx::yield::range(1, 10)  //
+        |= zx::yield::any_of([](int x) { return x == 5; }),
         true);
 }
 
 TEST(yield, none_of)
 {
     EXPECT_THAT(
-        zx::range(1, 10)  //
-            | zx::none_of([](int x) { return x > 10; }),
+        zx::yield::range(1, 10)  //
+        |= zx::yield::none_of([](int x) { return x > 10; }),
         true);
 }
 
 TEST(yield, transform)
 {
     EXPECT_THAT(
-        zx::range(1, 10)                                  //
-            | zx::transform([](int x) { return x * x; })  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)                               //
+        |= zx::yield::transform([](int x) { return x * x; })  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(1, 4, 9, 16, 25, 36, 49, 64, 81));
 }
 
 TEST(yield, transform_indexed)
 {
     EXPECT_THAT(
-        zx::range(1, 10)                                                                                 //
-            | zx::transform_indexed([](std::size_t i, int x) { return x * (static_cast<int>(i) + 1); })  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)                                                                              //
+        |= zx::yield::transform_indexed([](std::size_t i, int x) { return x * (static_cast<int>(i) + 1); })  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(1, 4, 9, 16, 25, 36, 49, 64, 81));
 }
 
 TEST(yield, filter)
 {
     EXPECT_THAT(
-        zx::range(1, 10)                                    //
-            | zx::filter([](int x) { return x % 2 == 0; })  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)                                 //
+        |= zx::yield::filter([](int x) { return x % 2 == 0; })  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(2, 4, 6, 8));
 }
 
 TEST(yield, filter_indexed)
 {
     EXPECT_THAT(
-        zx::range(1, 10)                                                                       //
-            | zx::filter_indexed([](std::size_t i, int x) { return (i % 3 == 0) && x != 4; })  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)                                                                    //
+        |= zx::yield::filter_indexed([](std::size_t i, int x) { return (i % 3 == 0) && x != 4; })  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(1, 7));
 }
 
 TEST(yield, take_while)
 {
     EXPECT_THAT(
-        zx::range(1, 10)                                   //
-            | zx::take_while([](int x) { return x < 5; })  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)                                //
+        |= zx::yield::take_while([](int x) { return x < 5; })  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(1, 2, 3, 4));
 }
 
 TEST(yield, take_while_indexed)
 {
     EXPECT_THAT(
-        zx::range(1, 10)                                                                       //
-            | zx::take_while_indexed([](std::size_t i, int x) { return (i < 3) && (x < 5); })  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)                                                                    //
+        |= zx::yield::take_while_indexed([](std::size_t i, int x) { return (i < 3) && (x < 5); })  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(1, 2, 3));
 }
 
 TEST(yield, drop_while)
 {
     EXPECT_THAT(
-        zx::range(1, 10)                                   //
-            | zx::drop_while([](int x) { return x < 5; })  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)                                //
+        |= zx::yield::drop_while([](int x) { return x < 5; })  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(5, 6, 7, 8, 9));
 }
 
 TEST(yield, drop_while_indexed)
 {
     EXPECT_THAT(
-        zx::range(1, 10)                                                                       //
-            | zx::drop_while_indexed([](std::size_t i, int x) { return (i < 3) && (x < 5); })  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)                                                                    //
+        |= zx::yield::drop_while_indexed([](std::size_t i, int x) { return (i < 3) && (x < 5); })  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(4, 5, 6, 7, 8, 9));
 }
 
 TEST(yield, take)
 {
     EXPECT_THAT(
-        zx::range(1, 10)   //
-            | zx::take(5)  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)  //
+        |= zx::yield::take(5)    //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(1, 2, 3, 4, 5));
 }
 
 TEST(yield, drop)
 {
     EXPECT_THAT(
-        zx::range(1, 10)   //
-            | zx::drop(5)  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)  //
+        |= zx::yield::drop(5)    //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(6, 7, 8, 9));
 }
 
 TEST(yield, filter_transform)
 {
     EXPECT_THAT(
-        zx::range(1, 10)                                    //
-            | zx::filter([](int x) { return x % 2 == 0; })  //
-            | zx::transform([](int x) { return x * x; })    //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)                                 //
+        |= zx::yield::filter([](int x) { return x % 2 == 0; })  //
+        |= zx::yield::transform([](int x) { return x * x; })    //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(4, 16, 36, 64));
 }
 
 TEST(yield, transform_filter)
 {
     EXPECT_THAT(
-        zx::range(1, 10)                                    //
-            | zx::transform([](int x) { return x * x; })    //
-            | zx::filter([](int x) { return x % 2 == 0; })  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::range(1, 10)                                 //
+        |= zx::yield::transform([](int x) { return x * x; })    //
+        |= zx::yield::filter([](int x) { return x % 2 == 0; })  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(4, 16, 36, 64));
 }
 
@@ -258,9 +257,9 @@ TEST(yield, join)
 {
     const std::vector<std::string> in = { "Abc", "De", "Fghi" };
     EXPECT_THAT(
-        zx::from(in)      //
-            | zx::join()  //
-            | zx::into(std::string{}),
+        zx::yield::from(in)   //
+        |= zx::yield::join()  //
+        |= zx::yield::into(std::string{}),
         testing::Eq("AbcDeFghi"));
 }
 
@@ -268,50 +267,48 @@ TEST(yield, intersperse)
 {
     const std::vector<std::string> in = { "Abc", "De", "Fghi" };
     EXPECT_THAT(
-        zx::from(in)                                     //
-            | zx::intersperse(std::string_view{ ", " })  //
-            | zx::join()                                 //
-            | zx::into(std::string{}),
+        zx::yield::from(in)                                  //
+        |= zx::yield::intersperse(std::string_view{ ", " })  //
+        |= zx::yield::join()                                 //
+        |= zx::yield::into(std::string{}),
         testing::Eq("Abc, De, Fghi"));
 }
 
 TEST(yield, fork)
 {
     EXPECT_THAT(
-        zx::range(1, 10)  //
-            | zx::fork(   //
-                zx::into(std::vector<int>{}),
-                zx::count(),
-                zx::sum(0)),
+        zx::yield::range(1, 10)  //
+            |= zx::yield::fork(   //
+                zx::yield::into(std::vector<int>{}),
+                zx::yield::count(),
+                zx::yield::sum(0)),
         testing::FieldsAre(testing::ElementsAre(1, 2, 3, 4, 5, 6, 7, 8, 9), testing::Eq(9), testing::Eq(45)));
 }
 
 TEST(yield, dev_null)
 {
-    EXPECT_THAT(zx::range(1, 10) | zx::dev_null(), testing::_);
+    EXPECT_THAT(zx::yield::range(1, 10) |= zx::yield::dev_null(), testing::_);
 }
 
 TEST(yield, partition)
 {
     EXPECT_THAT(
-        zx::range(1, 10)
-            | zx::partition(
-                [](int x) { return x % 2 == 0; },
-                zx::transform([](int x) { return x * 10; }) | zx::into(std::vector<int>{}),
-                zx::into(std::vector<int>{})),
+        zx::yield::range(1, 10) |= zx::yield::partition(
+            [](int x) { return x % 2 == 0; },
+            zx::yield::transform([](int x) { return x * 10; }) |= zx::yield::into(std::vector<int>{}),
+            zx::yield::into(std::vector<int>{})),
         testing::FieldsAre(testing::ElementsAre(20, 40, 60, 80), testing::ElementsAre(1, 3, 5, 7, 9)));
 }
 
 TEST(yield, partition_if_else_chain)
 {
     EXPECT_THAT(
-        zx::range(1, 15)
-            | zx::partition(
-                [](int x) { return x % 2 == 0; },
-                zx::transform([](int x) { return x * 100; }) | zx::into(std::vector<int>{}),
-                [](int x) { return x % 3 == 0; },
-                zx::transform([](int x) { return x * 10; }) | zx::into(std::vector<int>{}),
-                zx::into(std::vector<int>{})),
+        zx::yield::range(1, 15) |= zx::yield::partition(
+            [](int x) { return x % 2 == 0; },
+            zx::yield::transform([](int x) { return x * 100; }) |= zx::yield::into(std::vector<int>{}),
+            [](int x) { return x % 3 == 0; },
+            zx::yield::transform([](int x) { return x * 10; }) |= zx::yield::into(std::vector<int>{}),
+            zx::yield::into(std::vector<int>{})),
         testing::FieldsAre(
             testing::ElementsAre(200, 400, 600, 800, 1000, 1200, 1400),
             testing::ElementsAre(30, 90),
@@ -320,7 +317,7 @@ TEST(yield, partition_if_else_chain)
 
 TEST(yield, accumulate)
 {
-    EXPECT_THAT(zx::range(1, 10) | zx::accumulate(1, std::multiplies{}), 362880);
+    EXPECT_THAT(zx::yield::range(1, 10) |= zx::yield::accumulate(1, std::multiplies{}), 362880);
 }
 
 TEST(yield, out)
@@ -328,7 +325,9 @@ TEST(yield, out)
     std::vector<int> out = {};
     const std::vector<int> in{ 2, 3, 5, 7, 11, 13, 17, 19 };
     std::copy(
-        in.begin(), in.end(), zx::out(zx::transform([](int x) { return x * 2; }) | zx::copy_to(std::back_inserter(out))));
+        in.begin(),
+        in.end(),
+        zx::yield::out(zx::yield::transform([](int x) { return x * 2; }) |= zx::yield::copy_to(std::back_inserter(out))));
     EXPECT_THAT(out, testing::ElementsAre(4, 6, 10, 14, 22, 26, 34, 38));
 }
 
@@ -336,7 +335,7 @@ TEST(yield, for_each)
 {
     std::vector<int> out = {};
     const std::vector<int> in{ 2, 3, 5, 7, 11, 13, 17, 19 };
-    zx::from(in) | zx::for_each([&out](int x) { out.push_back(x * 2); });
+    zx::yield::from(in) |= zx::yield::for_each([&out](int x) { out.push_back(x * 2); });
     EXPECT_THAT(out, testing::ElementsAre(4, 6, 10, 14, 22, 26, 34, 38));
 }
 
@@ -344,7 +343,8 @@ TEST(yield, for_each_indexed)
 {
     std::vector<int> out = {};
     const std::vector<int> in{ 2, 3, 5, 7, 11, 13, 17, 19 };
-    zx::from(in) | zx::for_each_indexed([&out](std::size_t i, int x) { out.push_back(x * (static_cast<int>(i) + 1)); });
+    zx::yield::from(in)
+        |= zx::yield::for_each_indexed([&out](std::size_t i, int x) { out.push_back(x * (static_cast<int>(i) + 1)); });
     EXPECT_THAT(out, testing::ElementsAre(2, 6, 15, 28, 55, 78, 119, 152));
 }
 
@@ -352,11 +352,11 @@ TEST(yield, unpack)
 {
     const std::vector<std::tuple<int, int>> in{ { 1, 2 }, { 3, 4 }, { 5, 6 } };
     EXPECT_THAT(
-        zx::from(in)                                             //
-            | zx::unpack()                                       //
-            | zx::filter([](int a, int) { return a != 3; })      //
-            | zx::transform([](int a, int b) { return a * b; })  //
-            | zx::into(std::vector<int>{}),
+        zx::yield::from(in)                                          //
+        |= zx::yield::unpack()                                       //
+        |= zx::yield::filter([](int a, int) { return a != 3; })      //
+        |= zx::yield::transform([](int a, int b) { return a * b; })  //
+        |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(2, 30));
 }
 
@@ -366,71 +366,70 @@ TEST(yield, project)
     constexpr auto front = [](const auto& str) { return str.front(); };
     constexpr auto back = [](const auto& str) { return str.back(); };
     EXPECT_THAT(
-        zx::from(in)                                        //
-            | zx::project(front, back, &std::string::size)  //
-            | zx::transform(
-                [](char f, char b, std::size_t s) -> std::string { return zx::str(f, "-", b, " (", s, ")"); })  //
-            | zx::into(std::vector<std::string>{}),
+        zx::yield::from(in)                                     //
+        |= zx::yield::project(front, back, &std::string::size)  //
+        |= zx::yield::transform(
+            [](char f, char b, std::size_t s) -> std::string { return zx::str(f, "-", b, " (", s, ")"); })  //
+        |= zx::yield::into(std::vector<std::string>{}),
         testing::ElementsAre("M-y (7)", "V-s (5)", "E-h (5)", "M-s (4)", "J-r (7)", "S-n (6)", "U-s (6)", "N-e (7)"));
 }
 
 TEST(yield, pythagorean_triples)
 {
-    const auto result = zx::generate(
-                            [](auto&& yield)
+    const auto result = zx::yield::generate(
+        [](auto&& yield)
+        {
+            for (int a = 1; a <= 20; ++a)
+            {
+                for (int b = a; b <= 20; ++b)
+                {
+                    for (int c = b; c <= 20; ++c)
+                    {
+                        if (a * a + b * b == c * c)
+                        {
+                            if (yield(a, b, c) == zx::yield::step_t::loop_break)
                             {
-                                for (int a = 1; a <= 20; ++a)
-                                {
-                                    for (int b = a; b <= 20; ++b)
-                                    {
-                                        for (int c = b; c <= 20; ++c)
-                                        {
-                                            if (a * a + b * b == c * c)
-                                            {
-                                                if (yield(a, b, c) == zx::step_t::loop_break)
-                                                {
-                                                    return;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            })
-                        | zx::transform([](int a, int b, int c) { return zx::str("(", a, " ", b, " ", c, ")"); })
-                        | zx::intersperse(std::string{ ", " })  //
-                        | zx::join()                            //
-                        | zx::into(std::string{});
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }) |= zx::yield::transform([](int a, int b, int c) { return zx::str("(", a, " ", b, " ", c, ")"); })
+        |= zx::yield::intersperse(std::string{ ", " })  //
+        |= zx::yield::join()                            //
+        |= zx::yield::into(std::string{});
     EXPECT_THAT(result, testing::Eq("(3 4 5), (5 12 13), (6 8 10), (8 15 17), (9 12 15), (12 16 20)"));
 }
 
 TEST(yield, transducer_chaining)
 {
-    const auto take_even_and_square
-        = zx::filter([](int x) { return x % 2 == 0; }) | zx::transform([](int x) { return x * x; });
-    const auto to_string_and_take_three = zx::transform(zx::str) | zx::take(3);
+    const auto take_even_and_square = zx::yield::filter([](int x) { return x % 2 == 0; })
+        |= zx::yield::transform([](int x) { return x * x; });
+    const auto to_string_and_take_three = zx::yield::transform(zx::str) |= zx::yield::take(3);
 
     EXPECT_THAT(
-        zx::range(1, 10)                //
-            | take_even_and_square      //
-            | to_string_and_take_three  //
-            | zx::to_vector<std::string>(),
+        zx::yield::range(1, 10)      //
+        |= take_even_and_square      //
+        |= to_string_and_take_three  //
+        |= zx::yield::to_vector<std::string>(),
         testing::ElementsAre("4", "16", "36"));
     EXPECT_THAT(
-        zx::range(10)                   //
-            | to_string_and_take_three  //
-            | zx::to_vector<std::string>(),
+        zx::yield::range(10)         //
+        |= to_string_and_take_three  //
+        |= zx::yield::to_vector<std::string>(),
         testing::ElementsAre("0", "1", "2"));
 }
 
 TEST(yield, combine_preserves_move_only_transducers)
 {
-    auto combined = zx::combine(
-        zx::transform([offset = std::make_unique<int>(7)](int x) { return x + *offset; }),
-        zx::filter([](int x) { return x % 2 == 0; }));
+    auto combined = zx::yield::combine(
+        zx::yield::transform([offset = std::make_unique<int>(7)](int x) { return x + *offset; }),
+        zx::yield::filter([](int x) { return x % 2 == 0; }));
 
     EXPECT_THAT(
-        zx::range(5)               //
-            | std::move(combined)  //
-            | zx::to_vector<int>(),
+        zx::yield::range(5)     //
+        |= std::move(combined)  //
+        |= zx::yield::to_vector<int>(),
         testing::ElementsAre(8, 10));
 }

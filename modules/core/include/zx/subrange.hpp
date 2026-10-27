@@ -364,14 +364,17 @@ template <class Iter>
 struct cursor_t
 {
     using iterator = Iter;
+    using const_iterator = Iter;
     using difference_type = std::ptrdiff_t;
+    using size_type = difference_type;
     using subrange_type = subrange_t<iterator>;
 
     iterator m_begin;
     iterator m_found;
     iterator m_end;
 
-    using reference = iter_reference_t<Iter>;
+    using value_type = iter_value_t<iterator>;
+    using reference = iter_reference_t<iterator>;
     using maybe_reference = maybe_t<reference>;
 
     constexpr iterator iter() const { return m_found; }
@@ -399,6 +402,12 @@ struct cursor_t
     }
 
     constexpr subrange_type after() const { return { has_value() ? std::next(m_found) : m_end, m_end }; }
+
+    constexpr iterator begin() const { return after().begin(); }
+    constexpr iterator end() const { return after().end(); }
+
+    constexpr size_type size() const { return after().size(); }
+    constexpr bool empty() const { return size() == 0; }
 };
 
 namespace subrange
@@ -472,7 +481,7 @@ struct at_fn
     {
         if (0 <= index && index < value.ssize())
         {
-            return Res{ *std::next(value.begin(), index) };
+            return *std::next(value.begin(), index);
         }
         throw std::out_of_range("subrange_t::at - index out of range");
     }

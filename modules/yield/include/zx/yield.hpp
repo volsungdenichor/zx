@@ -9,6 +9,9 @@
 namespace zx
 {
 
+namespace yield
+{
+
 enum class step_t
 {
     loop_continue,
@@ -148,7 +151,7 @@ template <
     class Reductor,
     class Reducer = detail::reducer_type_t<std::decay_t<Reductor>>,
     enable_if_t<detail::is_transducer<Transducer, Reducer>::value> = 0>
-constexpr auto operator|(Transducer&& transducer, Reductor&& reductor)
+constexpr auto operator|=(Transducer&& transducer, Reductor&& reductor)
 {
     return reductor_t{ std::forward<Reductor>(reductor).state,
                        std::forward<Transducer>(transducer).transduce(std::forward<Reductor>(reductor).reducer) };
@@ -159,7 +162,7 @@ template <
     class Reductor,
     class State = detail::state_type_t<std::decay_t<Reductor>>,
     enable_if_t<detail::is_generator<Generator, Reductor>::value> = 0>
-constexpr auto operator|(Generator&& generator, Reductor&& reductor) -> State
+constexpr auto operator|=(Generator&& generator, Reductor&& reductor) -> State
 {
     return std::forward<Generator>(generator).yield_to(std::forward<Reductor>(reductor));
 }
@@ -553,11 +556,11 @@ template <
     class Generator,
     class Transducer,
     enable_if_t<
-        zx::detail::is_any_generator<std::decay_t<Generator>>::value,
-        zx::detail::is_any_transducer<std::decay_t<Transducer>>::value> = 0>
-constexpr auto operator|(Generator&& generator, Transducer&& transducer)
+        zx::yield::detail::is_any_generator<std::decay_t<Generator>>::value,
+        zx::yield::detail::is_any_transducer<std::decay_t<Transducer>>::value> = 0>
+constexpr auto operator|=(Generator&& generator, Transducer&& transducer)
 {
-    return zx::detail::generator_pipe_t<std::decay_t<Generator>, std::decay_t<Transducer>>{
+    return zx::yield::detail::generator_pipe_t<std::decay_t<Generator>, std::decay_t<Transducer>>{
         std::forward<Generator>(generator), std::forward<Transducer>(transducer)
     };
 }
@@ -1036,11 +1039,11 @@ template <
     class Left,
     class Right,
     enable_if_t<
-        zx::detail::is_any_transducer<std::decay_t<Left>>::value,
-        zx::detail::is_any_transducer<std::decay_t<Right>>::value> = 0>
-constexpr auto operator|(Left&& left, Right&& right)
+        zx::yield::detail::is_any_transducer<std::decay_t<Left>>::value,
+        zx::yield::detail::is_any_transducer<std::decay_t<Right>>::value> = 0>
+constexpr auto operator|=(Left&& left, Right&& right)
 {
-    return zx::combine(std::forward<Left>(left), std::forward<Right>(right));
+    return zx::yield::combine(std::forward<Left>(left), std::forward<Right>(right));
 }
 
 }  // namespace detail
@@ -1383,14 +1386,14 @@ struct partition_fn
     template <class ArgsTuple, std::size_t... I>
     static constexpr bool odd_indices_are_reductors(std::index_sequence<I...>)
     {
-        return (::zx::detail::is_reductor<std::tuple_element_t<2 * I + 1, ArgsTuple>>::value && ...);
+        return (::zx::yield::detail::is_reductor<std::tuple_element_t<2 * I + 1, ArgsTuple>>::value && ...);
     }
 
     template <class Pred, class Reductor, class... Rest>
     constexpr auto operator()(Pred&& pred, Reductor&& reductor, Rest&&... rest) const
     {
         static_assert(
-            ::zx::detail::is_reductor<std::decay_t<Reductor>>::value,
+            ::zx::yield::detail::is_reductor<std::decay_t<Reductor>>::value,
             "partition requires a reductor right after each predicate");
         static_assert(sizeof...(Rest) % 2 == 1, "partition requires (predicate, reductor)... plus a catch-all reductor");
 
@@ -1406,7 +1409,7 @@ struct partition_fn
 
         static_assert(
             odd_indices_are_reductors<args_tuple_t>(std::make_index_sequence<num_preds>{})
-                && ::zx::detail::is_reductor<std::tuple_element_t<2 * num_preds, args_tuple_t>>::value,
+                && ::zx::yield::detail::is_reductor<std::tuple_element_t<2 * num_preds, args_tuple_t>>::value,
             "partition expects reductor arguments in each pair and for the final catch-all argument");
 
         using predicates_type = decltype(make_predicates(args, std::make_index_sequence<num_preds>{}));
@@ -1639,5 +1642,7 @@ constexpr auto to_vector()
 {
     return into(std::vector<T>{});
 }
+
+}  // namespace yield
 
 }  // namespace zx
