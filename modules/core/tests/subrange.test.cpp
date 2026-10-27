@@ -57,23 +57,59 @@ TEST(subrange, maybe_at)
     EXPECT_THAT(span |= zx::subrange::maybe_at(7), testing::Eq(zx::none));
 }
 
-TEST(iterator_range, find)
+TEST(subrange, find)
 {
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
     const auto span = zx::span_t<int>{ vect };
-    EXPECT_THAT(span |= zx::subrange::find(4), testing::ElementsAre(4));
-    EXPECT_THAT(span |= zx::subrange::find(-1), testing::IsEmpty());
+    EXPECT_THAT(
+        span |= zx::subrange::find(4),
+        testing::AllOf(
+            testing::ResultOf(
+                "from", [](auto c) { return c.from(); }, testing::ElementsAre(4, 5, 6, 7)),
+            testing::ResultOf(
+                "found", [](auto c) { return c.found(); }, testing::ElementsAre(4)),
+            testing::ResultOf(
+                "before", [](auto c) { return c.before(); }, testing::ElementsAre(1, 2, 3)),
+            testing::ResultOf("after", [](auto c) { return c.after(); }, testing::ElementsAre(5, 6, 7))));
+    EXPECT_THAT(
+        span |= zx::subrange::find(-1),
+        testing::AllOf(
+            testing::ResultOf(
+                "from", [](auto c) { return c.from(); }, testing::IsEmpty()),
+            testing::ResultOf(
+                "found", [](auto c) { return c.found(); }, testing::IsEmpty()),
+            testing::ResultOf(
+                "before", [](auto c) { return c.before(); }, testing::ElementsAre(1, 2, 3, 4, 5, 6, 7)),
+            testing::ResultOf("after", [](auto c) { return c.after(); }, testing::IsEmpty())));
 }
 
-TEST(iterator_range, find_if)
+TEST(subrange, find_if)
 {
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
     const auto span = zx::span_t<int>{ vect };
-    EXPECT_THAT(span |= zx::subrange::find_if([](int x) { return x % 2 == 0; }), testing::ElementsAre(2));
-    EXPECT_THAT(span |= zx::subrange::find_if([](int x) { return x < 0; }), testing::IsEmpty());
+    EXPECT_THAT(
+        span |= zx::subrange::find_if([](int x) { return x % 2 == 0; }),
+        testing::AllOf(
+            testing::ResultOf(
+                "from", [](auto c) { return c.from(); }, testing::ElementsAre(2, 3, 4, 5, 6, 7)),
+            testing::ResultOf(
+                "found", [](auto c) { return c.found(); }, testing::ElementsAre(2)),
+            testing::ResultOf(
+                "before", [](auto c) { return c.before(); }, testing::ElementsAre(1)),
+            testing::ResultOf("after", [](auto c) { return c.after(); }, testing::ElementsAre(3, 4, 5, 6, 7))));
+    EXPECT_THAT(
+        span |= zx::subrange::find_if([](int x) { return x < 0; }),
+        testing::AllOf(
+            testing::ResultOf(
+                "from", [](auto c) { return c.from(); }, testing::IsEmpty()),
+            testing::ResultOf(
+                "found", [](auto c) { return c.found(); }, testing::IsEmpty()),
+            testing::ResultOf(
+                "before", [](auto c) { return c.before(); }, testing::ElementsAre(1, 2, 3, 4, 5, 6, 7)),
+            testing::ResultOf("after", [](auto c) { return c.after(); }, testing::IsEmpty())));
 }
 
-TEST(iterator_range, starts_with)
+TEST(subrange, starts_with)
 {
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
     const auto span = zx::span_t<int>{ vect };
@@ -82,7 +118,7 @@ TEST(iterator_range, starts_with)
     EXPECT_THAT(span.starts_with(std::vector{ 2, 3 }), testing::IsFalse());
 }
 
-TEST(iterator_range, ends_with)
+TEST(subrange, ends_with)
 {
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
     const auto span = zx::span_t<int>{ vect };
@@ -91,7 +127,7 @@ TEST(iterator_range, ends_with)
     EXPECT_THAT(span.ends_with(std::vector{ 5, 6 }), testing::IsFalse());
 }
 
-TEST(iterator_range, contains_subrange)
+TEST(subrange, contains_subrange)
 {
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
     const auto span = zx::span_t<int>{ vect };
@@ -101,7 +137,7 @@ TEST(iterator_range, contains_subrange)
     EXPECT_THAT(span.contains_subrange(std::vector{ 2, 4 }), testing::IsFalse());
 }
 
-TEST(iterator_range, all_any_none_of)
+TEST(subrange, all_any_none_of)
 {
     constexpr auto is_even = [](int x) { return x % 2 == 0; };
     constexpr auto is_positive = [](int x) { return x > 0; };
@@ -117,7 +153,7 @@ TEST(iterator_range, all_any_none_of)
     EXPECT_THAT(span |= zx::subrange::none_of(is_even), testing::IsFalse());
 }
 
-TEST(iterator_range, comparison_operators)
+TEST(subrange, comparison_operators)
 {
     const std::vector<int> vect = { 1, 2, 3, 4, 5, 6, 7 };
     const auto span = zx::span_t<int>{ vect };

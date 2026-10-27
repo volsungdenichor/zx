@@ -379,11 +379,22 @@ struct cursor_t
 
     constexpr iterator iter() const { return m_found; }
     constexpr difference_type position() const { return std::distance(m_begin, m_found); }
-    constexpr subrange_type before() const { return { m_begin, m_found }; }
-    constexpr subrange_type from() const { return { m_found, m_end }; }
 
     constexpr bool has_value() const { return m_found != m_end; }
     constexpr explicit operator bool() const { return has_value(); }
+
+    constexpr subrange_type before() const { return { m_begin, m_found }; }
+    constexpr subrange_type from() const { return { m_found, m_end }; }
+
+    constexpr subrange_type found() const
+    {
+        return has_value() ? subrange_type{ m_found, std::next(m_found) } : subrange_type{ m_end, m_end };
+    }
+
+    constexpr subrange_type after() const
+    {
+        return has_value() ? subrange_type{ std::next(m_found), m_end } : subrange_type{ m_end, m_end };
+    }
 
     constexpr std::optional<difference_type> index() const
     {
@@ -401,12 +412,10 @@ struct cursor_t
         return *m_found;
     }
 
-    constexpr subrange_type after() const { return { has_value() ? std::next(m_found) : m_end, m_end }; }
+    constexpr iterator begin() const { return found().begin(); }
+    constexpr iterator end() const { return found().end(); }
 
-    constexpr iterator begin() const { return after().begin(); }
-    constexpr iterator end() const { return after().end(); }
-
-    constexpr size_type size() const { return after().size(); }
+    constexpr size_type size() const { return found().size(); }
     constexpr bool empty() const { return size() == 0; }
 };
 
