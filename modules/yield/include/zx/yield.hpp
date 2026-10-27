@@ -128,8 +128,7 @@ struct generator_pipe_t
         enable_if_t<is_reductor<std::decay_t<Reductor>>::value, is_transducer<const Transducer&, Reducer>::value> = 0>
     auto yield_to(Reductor&& reductor) const& -> State
     {
-        auto piped_reductor = m_transducer | std::forward<Reductor>(reductor);
-        return m_generator.yield_to(std::move(piped_reductor));
+        return m_generator.yield_to(m_transducer |= std::forward<Reductor>(reductor));
     }
 
     template <
@@ -139,8 +138,7 @@ struct generator_pipe_t
         enable_if_t<is_reductor<std::decay_t<Reductor>>::value, is_transducer<Transducer, Reducer>::value> = 0>
     auto yield_to(Reductor&& reductor) && -> State
     {
-        auto piped_reductor = std::move(m_transducer) | std::forward<Reductor>(reductor);
-        return std::move(m_generator).yield_to(std::move(piped_reductor));
+        return std::move(m_generator).yield_to(std::move(m_transducer) |= std::forward<Reductor>(reductor));
     }
 };
 
