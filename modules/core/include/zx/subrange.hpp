@@ -360,6 +360,47 @@ using span_t = subrange_t<const T*>;
 template <class T>
 using mut_span_t = subrange_t<T*>;
 
+template <class Iter>
+struct cursor_t
+{
+    using iterator = Iter;
+    using difference_type = std::ptrdiff_t;
+    using subrange_type = subrange_t<iterator>;
+
+    iterator m_begin;
+    iterator m_found;
+    iterator m_end;
+
+    using reference = iter_reference_t<Iter>;
+    using maybe_reference = maybe_t<reference>;
+
+    constexpr iterator iter() const { return m_found; }
+    constexpr difference_type position() const { return std::distance(m_begin, m_found); }
+    constexpr subrange_type before() const { return { m_begin, m_found }; }
+    constexpr subrange_type from() const { return { m_found, m_end }; }
+
+    constexpr bool has_value() const { return m_found != m_end; }
+    constexpr explicit operator bool() const { return has_value(); }
+
+    constexpr std::optional<difference_type> index() const
+    {
+        return has_value() ? std::optional{ position() } : std::nullopt;
+    }
+
+    constexpr maybe_reference maybe_value() const { return has_value() ? maybe_reference{ *m_found } : maybe_reference{}; }
+
+    constexpr reference value() const
+    {
+        if (!has_value())
+        {
+            throw std::out_of_range("cursor_t::value - not found");
+        }
+        return *m_found;
+    }
+
+    constexpr subrange_type after() const { return { has_value() ? std::next(m_found) : m_end, m_end }; }
+};
+
 namespace subrange
 {
 
@@ -426,7 +467,7 @@ struct maybe_at_fn
 
 struct at_fn
 {
-    template <class Iter, class Res = typename subrange_t<Iter>::maybe_reference>
+    template <class Iter, class Res = typename subrange_t<Iter>::reference>
     constexpr auto operator()(subrange_t<Iter> value, std::ptrdiff_t index) const -> Res
     {
         if (0 <= index && index < value.ssize())
@@ -533,11 +574,12 @@ struct slice_fn
 
 struct find_fn
 {
-    template <class Iter, class T, class Res = typename subrange_t<Iter>::maybe_reference>
-    auto operator()(subrange_t<Iter> value, const T& element) const -> Res
+    template <class Iter, class T>
+    auto operator()(subrange_t<Iter> value, const T& element) const -> cursor_t<Iter>
     {
-        const auto it = std::find(value.begin(), value.end(), element);
-        return it != value.end() ? Res{ *it } : Res{};
+        const auto b = value.begin();
+        const auto e = value.end();
+        return { b, std::find(b, e, element), e };
     }
 
     template <class T>
@@ -549,11 +591,12 @@ struct find_fn
 
 struct find_if_fn
 {
-    template <class Iter, class Pred, class Res = typename subrange_t<Iter>::maybe_reference>
-    auto operator()(subrange_t<Iter> value, const Pred& pred) const -> Res
+    template <class Iter, class Pred>
+    auto operator()(subrange_t<Iter> value, const Pred& pred) const -> cursor_t<Iter>
     {
-        const auto it = std::find_if(value.begin(), value.end(), pred);
-        return it != value.end() ? Res{ *it } : Res{};
+        const auto b = value.begin();
+        const auto e = value.end();
+        return { b, std::find_if(b, e, pred), e };
     }
 
     template <class Pred>

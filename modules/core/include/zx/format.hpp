@@ -203,4 +203,10 @@ struct formatter<std::optional<T>>
     }
 };
 
+template <class T>
+struct formatter<std::reference_wrapper<T>>
+{
+    void format(std::ostream& os, std::reference_wrapper<T> item) const { format_to(os, item.get()); }
+};
+
 }  // namespace zx
