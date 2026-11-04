@@ -395,7 +395,8 @@ TEST(yield, pythagorean_triples)
                     }
                 }
             }
-        }) |= zx::yield::transform([](int a, int b, int c) { return zx::str("(", a, " ", b, " ", c, ")"); })
+        })  //
+        |= zx::yield::transform([](int a, int b, int c) { return zx::str("(", a, " ", b, " ", c, ")"); })
         |= zx::yield::intersperse(std::string{ ", " })  //
         |= zx::yield::join()                            //
         |= zx::yield::into(std::string{});

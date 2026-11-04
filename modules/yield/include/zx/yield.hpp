@@ -1187,7 +1187,7 @@ struct fork_fn
         template <std::size_t N, class State, class... Args>
         void call(State& state, Args&&... args) const
         {
-            m_done[N] = (std::get<N>(m_reducers).reduce(std::get<N>(state), args...) == step_t::loop_break);
+            m_done[N] = m_done[N] || std::get<N>(m_reducers).reduce(std::get<N>(state), args...) == step_t::loop_break;
             if constexpr (N + 1 < sizeof...(Reducers))
             {
                 call<N + 1>(state, args...);
