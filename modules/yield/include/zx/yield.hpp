@@ -479,24 +479,49 @@ struct chain_fn
     {
         std::tuple<Generators...> m_generators;
 
-        template <std::size_t N, class Reductor>
-        void handle(Reductor&& reductor) const
+        template <class Reductor>
+        struct stop_reducer_t
         {
-            if constexpr (N == sizeof...(Generators))
+            Reductor* m_reductor;
+            bool* m_done;
+
+            template <class State, class... Args>
+            step_t reduce(State&, Args&&... args) const
             {
-                return;
+                if (*m_done)
+                {
+                    return step_t::loop_break;
+                }
+
+                const step_t step = (*m_reductor)(std::forward<Args>(args)...);
+                *m_done = step == step_t::loop_break;
+                return step;
             }
-            else
+        };
+
+        template <std::size_t N, class Reductor>
+        void handle(Reductor& reductor, bool& done) const
+        {
+            if constexpr (N < sizeof...(Generators))
             {
-                std::get<N>(m_generators).yield_to(std::forward<Reductor>(reductor));
-                handle<N + 1>(std::forward<Reductor>(reductor));
+                if (!done)
+                {
+                    std::get<N>(m_generators).yield_to(reductor);
+                    handle<N + 1>(reductor, done);
+                }
             }
         }
 
         template <class Reductor>
         void operator()(Reductor&& reductor) const
         {
-            handle<0>(std::forward<Reductor>(reductor));
+            using reductor_type = std::remove_reference_t<Reductor>;
+            bool done = false;
+            ::zx::yield::reductor_t<bool, stop_reducer_t<reductor_type>> tracked_reductor{
+                false,
+                stop_reducer_t<reductor_type>{ &reductor, &done },
+            };
+            handle<0>(tracked_reductor, done);
         }
     };
 
@@ -771,7 +796,7 @@ struct drop_while_fn
         template <class State, class... Args>
         step_t reduce(State& state, Args&&... args) const
         {
-            m_done |= !std::invoke(m_pred, std::forward<Args>(args)...);
+            m_done = m_done || !std::invoke(m_pred, std::forward<Args>(args)...);
             return m_done ? m_next_reducer.reduce(state, std::forward<Args>(args)...) : step_t::loop_continue;
         }
     };
@@ -787,7 +812,7 @@ struct drop_while_fn
         template <class State, class... Args>
         step_t reduce(State& state, Args&&... args) const
         {
-            m_done |= !std::invoke(m_pred, m_index++, std::forward<Args>(args)...);
+            m_done = m_done || !std::invoke(m_pred, m_index++, std::forward<Args>(args)...);
             return m_done ? m_next_reducer.reduce(state, std::forward<Args>(args)...) : step_t::loop_continue;
         }
     };
@@ -1333,7 +1358,8 @@ struct partition_fn
         step_t call(State& state, Args&&... args) const
         {
             m_done[N]
-                = (std::get<N>(m_reducers).reduce(std::get<N>(state), std::forward<Args>(args)...) == step_t::loop_break);
+                = m_done[N]
+                  || (std::get<N>(m_reducers).reduce(std::get<N>(state), std::forward<Args>(args)...) == step_t::loop_break);
             return !m_done.all() ? step_t::loop_continue : step_t::loop_break;
         }
 
