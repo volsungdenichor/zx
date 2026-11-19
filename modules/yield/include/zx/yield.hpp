@@ -468,6 +468,7 @@ struct from_fn
     template <class... Ranges>
     constexpr auto operator()(Ranges&&... ranges) const
     {
+        static_assert(sizeof...(Ranges) > 0, "from requires at least one range");
         return generate(generator_t<decltype(std::begin(ranges))...>{ { std::begin(ranges)... }, { std::end(ranges)... } });
     }
 };
@@ -873,7 +874,7 @@ struct take_fn
         }
     };
 
-    constexpr auto operator()(std::ptrdiff_t count) const { return transducer_t{ count }; }
+    constexpr auto operator()(std::ptrdiff_t count) const { return transducer_t{ std::max(count, std::ptrdiff_t{ 0 }) }; }
 };
 
 struct drop_fn
@@ -906,7 +907,7 @@ struct drop_fn
         }
     };
 
-    constexpr auto operator()(std::ptrdiff_t count) const { return transducer_t{ count }; }
+    constexpr auto operator()(std::ptrdiff_t count) const { return transducer_t{ std::max(count, std::ptrdiff_t{ 0 }) }; }
 };
 
 struct join_fn
