@@ -1034,8 +1034,7 @@ struct project_fn
         step_t reduce(State& state, Args&&... args) const
         {
             return std::apply(
-                [&](auto&&... funcs) -> step_t
-                { return m_next_reducer.reduce(state, std::invoke(funcs, std::forward<Args>(args)...)...); },
+                [&](const auto&... funcs) -> step_t { return m_next_reducer.reduce(state, std::invoke(funcs, args...)...); },
                 m_funcs);
         }
     };

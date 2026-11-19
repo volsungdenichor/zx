@@ -94,10 +94,12 @@ TEST(yield, chain_with_stop)
 TEST(yield, chain_stops_after_reducer_break)
 {
     int later_generator_runs = 0;
-    auto later = zx::yield::generate([&](auto&& yield) {
-        ++later_generator_runs;
-        yield(10);
-    });
+    auto later = zx::yield::generate(
+        [&](auto&& yield)
+        {
+            ++later_generator_runs;
+            yield(10);
+        });
 
     EXPECT_THAT(
         zx::yield::chain(zx::yield::range(1, 4), std::move(later))  //
@@ -111,21 +113,25 @@ TEST(yield, chain_stops_after_break_in_later_generator)
 {
     int middle_generator_runs = 0;
     int later_generator_runs = 0;
-    auto middle = zx::yield::generate([&](auto&& yield) {
-        ++middle_generator_runs;
-        if (yield(2) == zx::yield::step_t::loop_break)
+    auto middle = zx::yield::generate(
+        [&](auto&& yield)
         {
-            return;
-        }
-    });
-    auto later = zx::yield::generate([&](auto&& yield) {
-        ++later_generator_runs;
-        yield(3);
-    });
+            ++middle_generator_runs;
+            if (yield(2) == zx::yield::step_t::loop_break)
+            {
+                return;
+            }
+        });
+    auto later = zx::yield::generate(
+        [&](auto&& yield)
+        {
+            ++later_generator_runs;
+            yield(3);
+        });
 
     EXPECT_THAT(
         zx::yield::chain(zx::yield::range(1, 2), std::move(middle), std::move(later))  //
-        |= zx::yield::take(1)                                                           //
+        |= zx::yield::take(1)                                                          //
         |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(1));
     EXPECT_THAT(middle_generator_runs, 1);
@@ -155,7 +161,7 @@ TEST(yield, pad_input_with_repeated_values)
 {
     EXPECT_THAT(
         zx::yield::chain(zx::yield::range(1, 4), zx::yield::repeat(-1))  //
-        |= zx::yield::take(6)                                           //
+        |= zx::yield::take(6)                                            //
         |= zx::yield::into(std::vector<int>{}),
         testing::ElementsAre(1, 2, 3, -1, -1, -1));
 }
@@ -419,6 +425,16 @@ TEST(yield, project)
             [](char f, char b, std::size_t s) -> std::string { return zx::str(f, "-", b, " (", s, ")"); })  //
         |= zx::yield::into(std::vector<std::string>{}),
         testing::ElementsAre("M-y (7)", "V-s (5)", "E-h (5)", "M-s (4)", "J-r (7)", "S-n (6)", "U-s (6)", "N-e (7)"));
+}
+
+TEST(yield, project_with_multiple_input)
+{
+    EXPECT_THAT(
+        zx::yield::from(std::vector<int>{ 1, 2, 3 }, std::vector<int>{ 10, 20, 30 })  //
+        |= zx::yield::project(std::plus<>{}, std::minus<>{}, std::multiplies<>{})
+        |= zx::yield::transform([](int sum, int diff, int prod) { return zx::str(sum, " ", diff, " ", prod); })
+        |= zx::yield::into(std::vector<std::string>{}),
+        testing::ElementsAre("11 -9 10", "22 -18 40", "33 -27 90"));
 }
 
 TEST(yield, pythagorean_triples)
