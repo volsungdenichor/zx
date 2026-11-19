@@ -497,3 +497,25 @@ TEST(yield, combine_preserves_move_only_transducers)
         |= zx::yield::to_vector<int>(),
         testing::ElementsAre(8, 10));
 }
+
+TEST(yield, into_with_custom_insert)
+{
+    struct movie_t
+    {
+        std::string title;
+        int year;
+    };
+
+    const auto movies = std::vector<movie_t>{ { "The Matrix", 1999 }, { "Inception", 2010 }, { "Interstellar", 2014 } };
+
+    EXPECT_THAT(
+        zx::yield::from(movies)                                 //
+        |= zx::yield::project(&movie_t::year, &movie_t::title)  //
+        |= zx::yield::into(
+            std::map<int, std::vector<std::string>>{},
+            [](auto& out, auto year, auto title) { out[year].push_back(std::move(title)); }),
+        testing::UnorderedElementsAre(
+            testing::Pair(1999, testing::ElementsAre("The Matrix")),
+            testing::Pair(2010, testing::ElementsAre("Inception")),
+            testing::Pair(2014, testing::ElementsAre("Interstellar"))));
+}

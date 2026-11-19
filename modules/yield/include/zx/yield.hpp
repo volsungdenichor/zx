@@ -4,6 +4,7 @@
 #include <functional>
 #include <limits>
 #include <tuple>
+#include <type_traits>
 #include <zx/type_traits.hpp>
 
 namespace zx
@@ -1116,22 +1117,35 @@ struct copy_to_fn
     }
 };
 
+struct push_back_fn
+{
+    template <class Container, class Arg>
+    void operator()(Container& container, Arg&& arg) const
+    {
+        container.insert(std::end(container), std::forward<Arg>(arg));
+    }
+};
+
 struct into_fn
 {
+    template <class Insert>
     struct reducer_t
     {
-        template <class Container, class Arg>
-        step_t reduce(Container& state, Arg&& arg) const
+        Insert m_insert;
+
+        template <class Container, class... Args>
+        step_t reduce(Container& state, Args&&... args) const
         {
-            state.push_back(std::forward<Arg>(arg));
+            m_insert(state, std::forward<Args>(args)...);
             return step_t::loop_continue;
         }
     };
 
-    template <class Container>
-    constexpr auto operator()(Container&& container) const
+    template <class Container, class Insert = push_back_fn>
+    constexpr auto operator()(Container&& container, Insert&& insert = {}) const
     {
-        return reductor_t{ std::forward<Container>(container), reducer_t{} };
+        return reductor_t{ std::forward<Container>(container),
+                           reducer_t<std::decay_t<Insert>>{ std::forward<Insert>(insert) } };
     }
 };
 
