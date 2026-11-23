@@ -16,28 +16,28 @@ private:
 public:
     static constexpr std::string_view get() { return std::string_view{ value.data(), sizeof...(Ch) }; }
 
-    friend std::ostream& operator<<(std::ostream& os, const static_string_t& item) { return os << item.get(); }
+    friend std::ostream& operator<<(std::ostream& os, static_string_t item) { return os << item.get(); }
 
-    friend bool operator==(const static_string_t&, const static_string_t&) { return true; }
-    friend bool operator!=(const static_string_t&, const static_string_t&) { return false; }
-    friend bool operator<(const static_string_t&, const static_string_t&) { return false; }
-    friend bool operator<=(const static_string_t&, const static_string_t&) { return true; }
-    friend bool operator>(const static_string_t&, const static_string_t&) { return false; }
-    friend bool operator>=(const static_string_t&, const static_string_t&) { return true; }
+    friend constexpr bool operator==(static_string_t, static_string_t) { return true; }
+    friend constexpr bool operator!=(static_string_t, static_string_t) { return false; }
+    friend constexpr bool operator<(static_string_t, static_string_t) { return false; }
+    friend constexpr bool operator<=(static_string_t, static_string_t) { return true; }
+    friend constexpr bool operator>(static_string_t, static_string_t) { return false; }
+    friend constexpr bool operator>=(static_string_t, static_string_t) { return true; }
 
-    friend bool operator==(const static_string_t& lhs, const std::string_view& rhs) { return lhs.get() == rhs; }
-    friend bool operator!=(const static_string_t& lhs, const std::string_view& rhs) { return lhs.get() != rhs; }
-    friend bool operator<(const static_string_t& lhs, const std::string_view& rhs) { return lhs.get() < rhs; }
-    friend bool operator<=(const static_string_t& lhs, const std::string_view& rhs) { return lhs.get() <= rhs; }
-    friend bool operator>(const static_string_t& lhs, const std::string_view& rhs) { return lhs.get() > rhs; }
-    friend bool operator>=(const static_string_t& lhs, const std::string_view& rhs) { return lhs.get() >= rhs; }
+    friend constexpr bool operator==(static_string_t lhs, std::string_view rhs) { return lhs.get() == rhs; }
+    friend constexpr bool operator!=(static_string_t lhs, std::string_view rhs) { return lhs.get() != rhs; }
+    friend constexpr bool operator<(static_string_t lhs, std::string_view rhs) { return lhs.get() < rhs; }
+    friend constexpr bool operator<=(static_string_t lhs, std::string_view rhs) { return lhs.get() <= rhs; }
+    friend constexpr bool operator>(static_string_t lhs, std::string_view rhs) { return lhs.get() > rhs; }
+    friend constexpr bool operator>=(static_string_t lhs, std::string_view rhs) { return lhs.get() >= rhs; }
 
-    friend bool operator==(const std::string_view& lhs, const static_string_t& rhs) { return lhs == rhs.get(); }
-    friend bool operator!=(const std::string_view& lhs, const static_string_t& rhs) { return lhs != rhs.get(); }
-    friend bool operator<(const std::string_view& lhs, const static_string_t& rhs) { return lhs < rhs.get(); }
-    friend bool operator<=(const std::string_view& lhs, const static_string_t& rhs) { return lhs <= rhs.get(); }
-    friend bool operator>(const std::string_view& lhs, const static_string_t& rhs) { return lhs > rhs.get(); }
-    friend bool operator>=(const std::string_view& lhs, const static_string_t& rhs) { return lhs >= rhs.get(); }
+    friend constexpr bool operator==(std::string_view lhs, static_string_t rhs) { return lhs == rhs.get(); }
+    friend constexpr bool operator!=(std::string_view lhs, static_string_t rhs) { return lhs != rhs.get(); }
+    friend constexpr bool operator<(std::string_view lhs, static_string_t rhs) { return lhs < rhs.get(); }
+    friend constexpr bool operator<=(std::string_view lhs, static_string_t rhs) { return lhs <= rhs.get(); }
+    friend constexpr bool operator>(std::string_view lhs, static_string_t rhs) { return lhs > rhs.get(); }
+    friend constexpr bool operator>=(std::string_view lhs, static_string_t rhs) { return lhs >= rhs.get(); }
 };
 
 template <class L, class R>
@@ -53,7 +53,7 @@ struct concat_static_string_impl_t<static_string_t<L...>, static_string_t<R...>>
 };
 
 template <char... L, char... R>
-constexpr auto operator+(const static_string_t<L...>&, const static_string_t<R...>&)
+constexpr auto operator+(static_string_t<L...>, static_string_t<R...>)
     -> concat_static_string_t<static_string_t<L...>, static_string_t<R...>>
 {
     return {};
